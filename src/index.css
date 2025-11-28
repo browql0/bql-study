@@ -1,0 +1,339 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #4f8ff0;
+  --primary-dark: #3b7dd8;
+  --secondary: #64b5f6;
+  --danger: #f44336;
+  --warning: #ffa726;
+  --success: #4caf50;
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #e8eef5;
+  --bg-card: #ffffff;
+  --text-primary: #1a1f2b;
+  --text-secondary: #6b7280;
+  --border: rgba(79, 143, 240, 0.15);
+  --shadow: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #141625;
+  --bg-secondary: #1e2139;
+  --bg-card: #1e2139;
+  --text-primary: #ffffff;
+  --text-secondary: #888eb0;
+  --border: rgba(73, 78, 110, 0.2);
+  --shadow: rgba(0, 0, 0, 0.25);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  position: relative;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  #root {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+[data-theme="dark"] body {
+  background: var(--bg-primary);
+}
+
+body::before {
+  display: none;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 143, 240, 0.3);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 143, 240, 0.5);
+  background-clip: padding-box;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(79, 143, 240, 0.4);
+  background-clip: padding-box;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 143, 240, 0.6);
+  background-clip: padding-box;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.4s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.4s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Utilitaires */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  overflow-x: hidden;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(79, 143, 240, 0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 20px rgba(79, 143, 240, 0.4);
+}
+
+.btn-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .card {
+  background: linear-gradient(135deg, rgba(30, 33, 57, 0.95) 0%, rgba(26, 31, 43, 0.95) 100%);
+  border-color: rgba(79, 143, 240, 0.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(79, 143, 240, 0.15);
+  transform: translateY(-3px);
+  border-color: rgba(79, 143, 240, 0.25);
+}
+
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 6px 24px rgba(79, 143, 240, 0.25);
+  border-color: rgba(79, 143, 240, 0.4);
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  background: rgba(248, 249, 250, 0.8);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px var(--shadow);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea {
+  background: rgba(11, 15, 25, 0.6);
+  border-color: rgba(79, 143, 240, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+ input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 143, 240, 0.15);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus {
+  background: rgba(11, 15, 25, 0.8);
+  box-shadow: 0 0 0 3px rgba(79, 143, 240, 0.2);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+@media (max-width: 768px) {
+  input, textarea {
+    font-size: 16px;
+  }
+}
+
+/* Force red color for delete buttons everywhere */
+.delete-btn,
+button.delete-btn,
+.subject-header .delete-btn,
+.btn-icon.delete-btn {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border: 1px solid #dc2626 !important;
+}
+
+.delete-btn:hover,
+button.delete-btn:hover,
+.subject-header .delete-btn:hover,
+.btn-icon.delete-btn:hover {
+  background-color: #dc2626 !important;
+  border-color: #b91c1c !important;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.6) !important;
+}

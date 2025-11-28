@@ -1,0 +1,26 @@
+{
+  "name": "r2-signed-urls-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker pour générer des signed URLs pour R2",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "r2",
+    "signed-urls"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.19"
+  }
+}
+

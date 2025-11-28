@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="theme-color" content="#f8f9fa" />
+    <meta name="description" content="Application pour organiser vos notes de cours et photos par matière" />
+    <title>📚 Study Notes - Gestionnaire de Notes</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Désactiver/Supprimer les Service Workers existants
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('Service Worker désactivé:', registration.scope);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

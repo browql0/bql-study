@@ -1,0 +1,279 @@
+.files-list {
+  display: grid;
+  gap: 16px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .files-list {
+    gap: 12px;
+  }
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.file-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79, 143, 240, 0.15);
+}
+
+.file-icon {
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .file-icon {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.file-card:hover .file-icon {
+  transform: scale(1.05);
+}
+
+.file-icon svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  word-break: break-word;
+}
+
+.file-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.file-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.file-name {
+  font-family: monospace;
+  background: rgba(79, 143, 240, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+[data-theme="dark"] .file-name {
+  background: rgba(79, 143, 240, 0.15);
+}
+
+.file-size {
+  font-weight: 600;
+  color: #4f8ff0;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.file-actions .btn-icon {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+@media (max-width: 768px) {
+  .file-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .file-card:hover {
+    transform: none;
+  }
+
+  .file-card:hover .file-icon {
+    transform: none;
+  }
+
+  .file-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .file-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .file-info {
+    width: 100%;
+  }
+
+  .file-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.file-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(10px);
+  padding: 20px;
+}
+
+.file-viewer-content {
+  width: 100%;
+  max-width: 1200px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.file-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 28px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.file-viewer-header h3 {
+  font-size: 20px;
+  margin: 0 0 6px 0;
+  color: white;
+  font-weight: 600;
+}
+
+.file-viewer-name {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.btn-close-viewer {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-close-viewer:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: scale(1.05);
+}
+
+.file-viewer-frame {
+  position: relative;
+  flex: 1;
+  background: white;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-viewer-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+  .file-viewer-overlay {
+    padding: 10px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  .file-viewer-content {
+    height: 90vh;
+    border-radius: 12px;
+  }
+  
+  .file-viewer-header {
+    padding: 16px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .file-viewer-header h3 {
+    font-size: 18px;
+  }
+
+  .file-viewer-name {
+    font-size: 12px;
+  }
+
+  .file-viewer-header > div:last-child {
+    width: 100%;
+  }
+
+  .file-viewer-header .btn {
+    flex: 1;
+  }
+
+  .btn-close-viewer {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .btn-close-viewer:hover {
+    transform: none;
+  }
+}
+

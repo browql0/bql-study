@@ -1,0 +1,311 @@
+.voucher-modal {
+  max-width: 600px;
+}
+
+.voucher-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.voucher-hero {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.05));
+  border-radius: 20px;
+  border: 2px solid rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="dark"] .voucher-hero {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 191, 36, 0.08));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.gift-icon {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+  animation: giftFloat 3s ease-in-out infinite;
+}
+
+@keyframes giftFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.voucher-hero h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.voucher-hero p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Code Input Section */
+.voucher-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.code-input-wrapper {
+  position: relative;
+}
+
+.code-input {
+  width: 100%;
+  padding: 18px 20px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 2px;
+  border: 3px solid rgba(79, 143, 240, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"] .code-input {
+  background: rgba(30, 33, 57, 0.8);
+  border-color: rgba(79, 143, 240, 0.3);
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(79, 143, 240, 0.1);
+}
+
+.code-input.valid {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.code-input.invalid {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.code-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input-loader {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Validation Messages */
+.validation-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.05));
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-radius: 12px;
+  color: #10b981;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.validation-success svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.validation-details {
+  flex: 1;
+}
+
+.validation-details strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.validation-details p {
+  font-size: 13px;
+  margin: 2px 0;
+  color: #059669;
+}
+
+.validation-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 600;
+  animation: slideDown 0.3s ease-out;
+}
+
+.voucher-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 600;
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+/* Actions */
+.voucher-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.voucher-actions .btn {
+  flex: 1;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.btn-redeem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(79, 143, 240, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-redeem:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(79, 143, 240, 0.4);
+}
+
+.btn-redeem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Info Section */
+.voucher-info {
+  padding: 20px;
+  background: rgba(79, 143, 240, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(79, 143, 240, 0.1);
+}
+
+[data-theme="dark"] .voucher-info {
+  background: rgba(79, 143, 240, 0.08);
+  border-color: rgba(79, 143, 240, 0.15);
+}
+
+.voucher-info h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.voucher-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voucher-info li {
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .voucher-modal {
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .code-input {
+    font-size: 18px;
+    padding: 16px;
+  }
+
+  .gift-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .gift-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .voucher-actions {
+    flex-direction: column;
+  }
+
+  .voucher-actions .btn {
+    width: 100%;
+  }
+}

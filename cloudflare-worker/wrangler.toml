@@ -1,0 +1,23 @@
+name = "r2-signed-urls"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Variables d'environnement (secrets)
+# Ces valeurs seront définies via `wrangler secret put`
+# Ne jamais commiter ces valeurs dans le code !
+
+# R2 Configuration
+# Définir via: wrangler secret put R2_ACCOUNT_ID
+# Définir via: wrangler secret put R2_ACCESS_KEY_ID
+# Définir via: wrangler secret put R2_SECRET_ACCESS_KEY
+# Définir via: wrangler secret put R2_BUCKET_NAME
+
+# Supabase Configuration
+# Définir via: wrangler secret put SUPABASE_URL
+# Définir via: wrangler secret put SUPABASE_ANON_KEY
+
+# Routes (optionnel - pour un domaine personnalisé)
+# routes = [
+#   { pattern = "signed-urls.yourdomain.com/*", zone_name = "yourdomain.com" }
+# ]
+
