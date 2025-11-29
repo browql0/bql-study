@@ -110,21 +110,33 @@ export const isNameAlreadyUsed = async (name) => {
 
 /**
  * Vérifie directement dans la table profiles (fallback)
+ * Utilise une comparaison insensible à la casse
  */
 const checkNameDirectly = async (name) => {
   try {
+    if (!name || !name.trim()) return false;
+    
+    const normalizedName = name.trim();
+    
+    // Récupérer tous les noms et comparer de manière insensible à la casse
     const { data, error } = await supabase
       .from('profiles')
       .select('name')
-      .eq('name', name)
-      .limit(1);
+      .not('name', 'is', null)
+      .neq('name', '');
 
     if (error) {
       console.error('Erreur lors de la vérification directe du nom:', error);
       return false; // En cas d'erreur, on laisse passer pour ne pas bloquer
     }
 
-    return data && data.length > 0;
+    if (!data || data.length === 0) return false;
+
+    // Comparer de manière insensible à la casse
+    return data.some(profile => 
+      profile.name && 
+      profile.name.trim().toLowerCase() === normalizedName.toLowerCase()
+    );
   } catch (error) {
     console.error('Erreur lors de la vérification directe du nom:', error);
     return false;

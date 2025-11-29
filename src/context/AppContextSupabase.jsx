@@ -214,11 +214,69 @@ export const AppProvider = ({ children }) => {
       // Utiliser le nom exact du JSON pour l'enregistrement
       const exactName = nameValidation.exactName || name;
       
+      // VÉRIFICATION FINALE juste avant l'inscription pour éviter les race conditions
+      const { isNameAlreadyUsed } = await import('../services/studentNameService');
+      const nameStillUsed = await isNameAlreadyUsed(exactName);
+      if (nameStillUsed) {
+        return { success: false, error: 'Ce nom est déjà utilisé par un autre compte. Veuillez réessayer.' };
+      }
+      
       const { data, error } = await authSignUp(normalizedEmail, password, exactName);
       if (error) {
         // Le message d'erreur est déjà amélioré dans authService
         return { success: false, error };
       }
+      
+      // Vérifier et créer le profil avec trial si nécessaire
+      if (data?.user?.id) {
+        try {
+          // Attendre un peu pour que le trigger s'exécute
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Vérifier si le profil existe et a le trial
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, subscription_status, subscription_end_date')
+            .eq('id', data.user.id)
+            .single();
+          
+          // Si le profil n'existe pas ou n'a pas le trial, le créer/corriger
+          if (profileError || !profile || profile.subscription_status !== 'trial') {
+            const trialEndDate = new Date();
+            trialEndDate.setDate(trialEndDate.getDate() + 7);
+            
+            const { error: upsertError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: data.user.id,
+                email: normalizedEmail,
+                name: exactName,
+                role: 'spectator',
+                subscription_status: 'trial',
+                subscription_end_date: trialEndDate.toISOString(),
+                notification_preferences: {
+                  new_files: true,
+                  new_photos: true,
+                  new_users: false,
+                  new_payments: false,
+                  voucher_expired: false
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'id'
+              });
+            
+            if (upsertError) {
+              console.warn('Erreur lors de la création/correction du profil avec trial:', upsertError);
+            }
+          }
+        } catch (profileCheckError) {
+          console.warn('Erreur lors de la vérification du profil:', profileCheckError);
+          // On continue quand même car l'inscription a réussi
+        }
+      }
+      
       return { success: true, user: data.user, message: 'Vérifiez votre email pour confirmer votre inscription' };
     } catch (error) {
       // Gérer les erreurs inattendues

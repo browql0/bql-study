@@ -45,14 +45,19 @@ function AppContent() {
   // Vérifier l'abonnement au chargement et périodiquement
   React.useEffect(() => {
     if (currentUser?.id) {
-      checkSubscription();
+      // Forcer le rafraîchissement au chargement pour s'assurer que l'expiration est détectée
+      checkSubscription(true);
       
-      // Vérifier aussi toutes les 30 secondes pour détecter l'expiration
+      // Vérifier aussi toutes les 10 secondes pour détecter l'expiration plus rapidement
+      // et s'assurer que le blocage reste actif
       const interval = setInterval(() => {
-        checkSubscription();
-      }, 30000); // 30 secondes
+        checkSubscription(true); // Toujours forcer le rafraîchissement
+      }, 10000); // 10 secondes au lieu de 30 pour une détection plus rapide
       
       return () => clearInterval(interval);
+    } else {
+      // Si pas d'utilisateur, s'assurer que hasSubscription est false
+      setHasSubscription(false);
     }
   }, [currentUser, checkSubscription]);
 

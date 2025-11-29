@@ -5,56 +5,115 @@ export const subscriptionService = {
   // Vérifier si l'utilisateur a un abonnement actif
   async hasActiveSubscription(userId, forceRefresh = false) {
     try {
-      // Forcer le rafraîchissement en utilisant un select avec un timestamp pour bypasser le cache
-      let query = supabase
+      // Toujours forcer le rafraîchissement pour éviter le cache et détecter les expirations
+      // Utiliser maybeSingle() pour éviter les erreurs si le profil n'existe pas
+      const { data: profileData, error } = await supabase
         .from('profiles')
-        .select('subscription_status, subscription_end_date, role')
-        .eq('id', userId);
-      
-      // Si forceRefresh, ajouter un paramètre pour forcer une nouvelle requête
-      if (forceRefresh) {
-        // Utiliser un select avec une colonne calculée pour forcer le rafraîchissement
-        query = query.select('subscription_status, subscription_end_date, role, updated_at');
-      }
-      
-      const { data: profile, error } = await query.maybeSingle();
+        .select('subscription_status, subscription_end_date, role, updated_at')
+        .eq('id', userId)
+        .maybeSingle();
 
-      // Si le profil n'existe pas, essayer de le créer
-      if (error && error.code === 'PGRST116' || !profile) {
-        try {
-          // Importer le service de profil
-          const { createProfile } = await import('./profileService');
-          await createProfile(userId, {});
-          return false;
-        } catch (createError) {
-          return false;
-        }
+      // Si le profil n'existe pas, NE PAS le créer automatiquement
+      // Car cela pourrait réinitialiser le statut à 'free' et donner l'impression d'un accès
+      if ((error && error.code === 'PGRST116') || !profileData) {
+        // Si le profil n'existe pas, retourner false (pas d'accès)
+        // Ne pas créer le profil automatiquement car cela pourrait causer des problèmes
+        console.warn('Profil non trouvé pour l\'utilisateur:', userId);
+        return false;
       }
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erreur lors de la vérification de l\'abonnement:', error);
+        return false;
+      }
+      
+      // Vérifier explicitement que profileData existe avant de continuer
+      if (!profileData) {
         return false;
       }
 
       // Admin a toujours accès
-      if (profile.role === 'admin') return true;
+      if (profileData?.role === 'admin') return true;
 
       // Vérifier si premium et pas expiré
-      if (profile.subscription_status === 'premium') {
-        if (!profile.subscription_end_date) return true; // Abonnement illimité
-        return new Date(profile.subscription_end_date) > new Date();
+      if (profileData?.subscription_status === 'premium') {
+        if (!profileData.subscription_end_date) return true; // Abonnement illimité
+        const endDate = new Date(profileData.subscription_end_date);
+        const now = new Date();
+        const isExpired = endDate <= now;
+        
+        // Si l'abonnement premium est expiré, mettre à jour le statut SYNCHRONEMENT
+        if (isExpired) {
+          // Mettre à jour le statut de manière SYNCHRONE pour garantir que c'est fait avant de retourner
+          try {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                subscription_status: 'free',
+                subscription_end_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userId);
+            
+            if (updateError) {
+              console.error('Erreur lors de la mise à jour du statut expiré:', updateError);
+            } else {
+              console.log('Abonnement premium expiré, statut mis à jour vers free');
+            }
+          } catch (err) {
+            console.error('Erreur lors de la mise à jour du statut expiré:', err);
+          }
+          
+          return false; // Accès refusé car expiré
+        }
+        
+        return true; // Accès autorisé
       }
 
       // Vérifier si période d'essai (trial) et pas expirée
-      if (profile.subscription_status === 'trial') {
-        if (!profile.subscription_end_date) {
+      if (profileData?.subscription_status === 'trial') {
+        if (!profileData.subscription_end_date) {
           return false; // Pas de date = pas d'essai valide
         }
-        const endDate = new Date(profile.subscription_end_date);
+        const endDate = new Date(profileData.subscription_end_date);
         const now = new Date();
         const isExpired = endDate <= now;
-        return !isExpired;
+        
+        // Si la période d'essai est expirée, mettre à jour le statut SYNCHRONEMENT
+        if (isExpired) {
+          // Mettre à jour le statut de manière SYNCHRONE pour garantir que c'est fait avant de retourner
+          try {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                subscription_status: 'free',
+                subscription_end_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userId);
+            
+            if (updateError) {
+              console.error('Erreur lors de la mise à jour du statut expiré:', updateError);
+            } else {
+              console.log('Période d\'essai expirée, statut mis à jour vers free');
+            }
+          } catch (err) {
+            console.error('Erreur lors de la mise à jour du statut expiré:', err);
+          }
+          
+          return false; // Accès refusé car expiré
+        }
+        
+        return true; // Accès autorisé
       }
 
+      // Statut 'free', NULL, ou autre = pas d'accès
+      // IMPORTANT: Toujours retourner false pour 'free' pour garantir le blocage
+      if (profileData.subscription_status === 'free' || !profileData.subscription_status) {
+        return false;
+      }
+      
+      // Pour tout autre statut inconnu, bloquer l'accès par sécurité
       return false;
     } catch (error) {
       return false;
@@ -70,26 +129,45 @@ export const subscriptionService = {
         .eq('id', userId)
         .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
 
-      // Si le profil n'existe pas, essayer de le créer
+      // Si le profil n'existe pas, retourner null au lieu de créer un nouveau profil
+      // Car créer un profil pourrait réinitialiser le statut
       if (error && error.code === 'PGRST116' || !data) {
-        try {
-          // Importer le service de profil
-          const { createProfile } = await import('./profileService');
-          await createProfile(userId, {});
-          return {
-            subscription_status: 'free',
-            subscription_end_date: null,
-            last_payment_date: null,
-            payment_amount: null,
-            role: 'spectator'
-          };
-        } catch (createError) {
-          return null;
-        }
+        // Ne pas créer le profil automatiquement
+        return null;
       }
 
       if (error) {
         return null;
+      }
+
+      // Vérifier si l'abonnement ou la période d'essai est expiré
+      if (data.subscription_status === 'trial' || data.subscription_status === 'premium') {
+        if (data.subscription_end_date) {
+          const endDate = new Date(data.subscription_end_date);
+          const now = new Date();
+          const isExpired = endDate <= now;
+          
+          if (isExpired) {
+            // Mettre à jour le statut de manière synchrone pour que le profil se rafraîchisse
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                subscription_status: 'free',
+                subscription_end_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userId);
+            
+            if (!updateError) {
+              // Retourner les données mises à jour
+              return {
+                ...data,
+                subscription_status: 'free',
+                subscription_end_date: null
+              };
+            }
+          }
+        }
       }
 
       return data;

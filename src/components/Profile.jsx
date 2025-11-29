@@ -14,9 +14,17 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [formData, setFormData] = useState({
-    username: currentUser?.email?.split('@')[0] || '',
     name: currentUser?.name || ''
   });
+  
+  // Mettre à jour formData quand currentUser change
+  useEffect(() => {
+    if (currentUser) {
+      setFormData({
+        name: currentUser.name || ''
+      });
+    }
+  }, [currentUser]);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
     newPassword: '',
@@ -32,10 +40,87 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
   });
   const [loadingPreferences, setLoadingPreferences] = useState(false);
 
-  const loadSubscriptionInfo = useCallback(async () => {
+  const loadSubscriptionInfo = useCallback(async (forceRefresh = false) => {
     if (currentUser?.id) {
+      // Charger les détails (cette fonction vérifie et met à jour automatiquement si expiré)
       const details = await subscriptionService.getSubscriptionDetails(currentUser.id);
+      
+      // Vérifier manuellement si l'abonnement est expiré (double vérification)
+      if (details && (details.subscription_status === 'trial' || details.subscription_status === 'premium')) {
+        if (details.subscription_end_date) {
+          const endDate = new Date(details.subscription_end_date);
+          const now = new Date();
+          const isExpired = endDate <= now;
+          
+          if (isExpired) {
+            // Forcer la mise à jour du statut
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                subscription_status: 'free',
+                subscription_end_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', currentUser.id);
+            
+            if (!updateError) {
+              // Recharger les détails après mise à jour
+              const updatedDetails = await subscriptionService.getSubscriptionDetails(currentUser.id);
+              setSubscription(updatedDetails);
+              return;
+            }
+          }
+        }
+      }
+      
       setSubscription(details);
+      
+      // IMPORTANT: Ne PAS réinitialiser le statut 'free' vers 'trial'
+      // Si le statut est 'free', c'est qu'il a expiré et doit rester 'free'
+      // On ne donne le trial QUE si c'est un compte vraiment nouveau qui n'a jamais eu de trial
+      
+      // Si pas de subscription, vérifier si c'est un compte vraiment nouveau
+      if (!details || (details.subscription_status !== 'trial' && details.subscription_status !== 'premium' && details.subscription_status !== 'free')) {
+        // Vérifier si le profil existe
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id, subscription_status, subscription_end_date, created_at')
+          .eq('id', currentUser.id)
+          .single();
+        
+        // Si le profil existe mais n'a pas de statut valide, vérifier si c'est un nouveau compte
+        if (profile && !profile.subscription_status) {
+          // Vérifier si c'est un nouveau compte (créé il y a moins de 24h)
+          const createdAt = new Date(profile.created_at || new Date());
+          const now = new Date();
+          const hoursSinceCreation = (now - createdAt) / (1000 * 60 * 60);
+          
+          // Donner le trial SEULEMENT si :
+          // 1. Le compte a moins de 24h
+          // 2. ET qu'il n'a jamais eu de subscription_end_date (pas de trial avant)
+          if (hoursSinceCreation < 24 && !profile.subscription_end_date) {
+            // C'est un nouveau compte qui n'a jamais eu de trial, donner le trial
+            const trialEndDate = new Date();
+            trialEndDate.setDate(trialEndDate.getDate() + 7);
+            
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                subscription_status: 'trial',
+                subscription_end_date: trialEndDate.toISOString()
+              })
+              .eq('id', currentUser.id);
+            
+            if (!updateError) {
+              // Recharger les détails
+              const updatedDetails = await subscriptionService.getSubscriptionDetails(currentUser.id);
+              setSubscription(updatedDetails);
+            }
+          }
+        }
+      }
+      
+      // Si le statut est 'free', NE PAS le changer - c'est normal après expiration
     }
   }, [currentUser?.id]);
 
@@ -104,6 +189,18 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
     };
 
     loadNotificationPreferences();
+    
+    // Rafraîchir les informations d'abonnement périodiquement (toutes les 30 secondes)
+    // pour détecter les expirations en temps réel
+    const subscriptionInterval = setInterval(() => {
+      if (currentUser?.id) {
+        loadSubscriptionInfo();
+      }
+    }, 30000); // 30 secondes
+    
+    return () => {
+      clearInterval(subscriptionInterval);
+    };
   }, [currentUser?.id, currentUser?.name, loadSubscriptionInfo, handleSaveNotificationPreferences]);
 
   const getPlanName = () => {
@@ -120,18 +217,70 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
     return subscriptionService.getDaysRemaining(subscription.subscription_end_date);
   };
 
+  // Vérifier si l'abonnement est expiré
+  const isSubscriptionExpired = () => {
+    if (!subscription) return false;
+    
+    // Si le statut est 'free', c'est expiré
+    if (subscription.subscription_status === 'free') return true;
+    
+    // Si le statut est 'trial' ou 'premium' et que la date est expirée
+    if ((subscription.subscription_status === 'trial' || subscription.subscription_status === 'premium') && 
+        subscription.subscription_end_date) {
+      const endDate = new Date(subscription.subscription_end_date);
+      const now = new Date();
+      return endDate <= now;
+    }
+    
+    return false;
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       alert('Le nom est obligatoire');
       return;
     }
     
-    try {
-      await updateProfile({ name: formData.name });
+    // Vérifier si le nom a changé
+    if (formData.name.trim() === currentUser?.name) {
       setIsEditing(false);
+      return;
+    }
+    
+    try {
+      // Mettre à jour directement dans la table profiles (plus fiable)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          name: formData.name.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+      
+      if (profileError) {
+        console.error('Erreur lors de la mise à jour du profil:', profileError);
+        alert('Erreur lors de la mise à jour du profil: ' + (profileError.message || 'Erreur inconnue'));
+        return;
+      }
+      
+      // Mettre à jour aussi les métadonnées de l'utilisateur dans auth (optionnel)
+      try {
+        await updateProfile({ name: formData.name.trim() });
+      } catch (authError) {
+        console.warn('Erreur lors de la mise à jour des métadonnées auth (non bloquant):', authError);
+        // Ne pas bloquer si la mise à jour auth échoue, car profiles est déjà mis à jour
+      }
+      
+      setIsEditing(false);
+      
+      // Afficher un message de succès
+      alert('Profil mis à jour avec succès !');
+      
+      // Recharger la page pour voir les changements
+      window.location.reload();
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Erreur lors de la mise à jour du profil');
+      alert('Erreur lors de la mise à jour du profil: ' + (error.message || 'Erreur inconnue'));
     }
   };
 
@@ -209,10 +358,20 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                       <span>Premium</span>
                     </div>
                   )}
-                  {subscription?.subscription_status === 'trial' && (
+                  {subscription?.subscription_status === 'trial' && 
+                   subscription?.subscription_end_date && 
+                   new Date(subscription.subscription_end_date) > new Date() && (
                     <div className="profile-badge profile-badge-trial">
                       <Sparkles size={14} />
                       <span>Essai gratuit</span>
+                    </div>
+                  )}
+                  {(!subscription || 
+                    subscription.subscription_status === 'free' || 
+                    (subscription.subscription_status === 'trial' && subscription.subscription_end_date && new Date(subscription.subscription_end_date) <= new Date())) && (
+                    <div className="profile-badge profile-badge-free">
+                      <Lock size={14} />
+                      <span>Gratuit</span>
                     </div>
                   )}
                 </div>
@@ -220,8 +379,11 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
             </div>
           </section>
 
-          {/* Subscription Info */}
-          {(subscription?.subscription_status === 'premium' || subscription?.subscription_status === 'trial') && (
+          {/* Subscription Info - Actif */}
+          {/* Afficher seulement si le statut est premium ou trial ET que la date n'est pas expirée */}
+          {subscription && (subscription.subscription_status === 'premium' || subscription.subscription_status === 'trial') && 
+           subscription.subscription_end_date && 
+           new Date(subscription.subscription_end_date) > new Date() && (
             <section className="profile-section">
               <div className="profile-section-label">
                 <span className="profile-section-number">01</span>
@@ -331,21 +493,49 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                       <Crown size={18} />
                       {subscription?.subscription_status === 'trial' ? 'S\'abonner maintenant' : 'Renouveler l\'abonnement'}
                     </button>
-                    {onRefreshSubscription && (
-                      <button 
-                        className="btn-refresh-subscription"
-                        onClick={async () => {
-                          await onRefreshSubscription(true);
-                          await loadSubscriptionInfo();
-                        }}
-                        title="Rafraîchir le statut d'abonnement"
-                      >
-                        <RotateCcw size={16} />
-                        Vérifier l'expiration
-                      </button>
-                    )}
+                    
+         
+         
                   </div>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Subscription Expired Info */}
+          {/* Afficher quand l'abonnement ou la période d'essai est expirée */}
+          {isSubscriptionExpired() && (
+            <section className="profile-section">
+              <div className="profile-section-label">
+                <span className="profile-section-number">01</span>
+                <h3>Abonnement</h3>
+              </div>
+              <div className="profile-subscription-expired">
+                <div className="subscription-expired-icon">
+                  <Lock size={48} />
+                </div>
+                <h3>Période d'essai expirée</h3>
+                <p>
+                  Votre période d'essai gratuite de 7 jours est terminée. 
+                  Abonnez-vous maintenant pour continuer à profiter de toutes les fonctionnalités premium.
+                </p>
+                <div className="subscription-expired-features">
+                  <p>✨ Accès illimité à tout le contenu</p>
+                  <p>📚 Notes, Quiz, Photos et Fichiers</p>
+                  <p>🎓 Support prioritaire</p>
+                </div>
+                <button 
+                  className="btn-subscribe-now"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenPayment) {
+                      onOpenPayment();
+                    }
+                  }}
+                >
+                  <Crown size={18} />
+                  S'abonner maintenant
+                </button>
               </div>
             </section>
           )}
@@ -359,37 +549,14 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
             <div className="profile-info-grid">
               <div className="profile-info-field">
                 <label>
-                  <User size={18} />
-                  Nom d'utilisateur
+                  <UserCircle size={18} />
+                  Nom complet 
                 </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    placeholder="Votre nom d'utilisateur"
-                  />
-                ) : (
-                  <div className="profile-info-value">{formData.username}</div>
-                )}
+                <div className="profile-info-value">{currentUser?.name || 'Non défini'}</div>
+      
               </div>
 
-              <div className="profile-info-field">
-                <label>
-                  <UserCircle size={18} />
-                  Nom complet
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Votre nom complet"
-                  />
-                ) : (
-                  <div className="profile-info-value">{currentUser?.name || 'Non défini'}</div>
-                )}
-              </div>
+           
 
               <div className="profile-info-field">
                 <label>
@@ -649,7 +816,6 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                       onClick={() => {
                         setIsEditing(false);
                         setFormData({
-                          username: currentUser?.email?.split('@')[0] || '',
                           name: currentUser?.name || ''
                         });
                       }}
@@ -667,13 +833,7 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                   </>
                 ) : (
                   <>
-                    <button 
-                      className="profile-btn profile-btn-secondary" 
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Edit2 size={18} />
-                      Modifier le profil
-                    </button>
+                
                     <button 
                       className="profile-btn profile-btn-secondary" 
                       onClick={() => setShowChangePassword(true)}
