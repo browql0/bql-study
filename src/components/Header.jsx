@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContextSupabase';
 import { 
   Search, Moon, Sun, Plus, Menu, X, LogOut, User, BookOpen, 
   PlusCircle, SearchCode, BarChart3, Sparkles, Grid3x3, Settings,
-  FileText, Image, Folder, Bell
+  FileText, Image, Folder, Bell, AlertTriangle
 } from 'lucide-react';
 import { notificationsService } from '../services/notificationsService';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const totalNotes = subjects.reduce((acc, subject) => {
     return acc + 
@@ -73,6 +74,32 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
       supabase.removeChannel(channel);
     };
   }, [currentUser?.id]);
+
+  // Gérer le modal de confirmation de déconnexion
+  useEffect(() => {
+    if (showLogoutConfirm) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [showLogoutConfirm]);
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+    setMenuOpen(false);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
+    logout();
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutConfirm(false);
+  };
 
   return (
     <>
@@ -173,7 +200,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
                 </button>
                 <button 
                   className="logout-btn"
-                  onClick={logout}
+                  onClick={handleLogoutClick}
                   title="Déconnexion"
                 >
                   <LogOut size={18} />
@@ -435,10 +462,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
             
             <button 
               className="mobile-menu-action danger"
-              onClick={() => {
-                logout();
-                setMenuOpen(false);
-              }}
+              onClick={handleLogoutClick}
             >
               <LogOut size={22} />
               <span>Déconnexion</span>
@@ -461,6 +485,39 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
           userId={currentUser.id}
           onClose={() => setShowNotifications(false)}
         />
+      )}
+
+      {/* Modal de confirmation de déconnexion */}
+      {showLogoutConfirm && (
+        <div className="modal-overlay mobile-modal-overlay" onClick={cancelLogout}>
+          <div className="modal mobile-modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header mobile-modal-header">
+              <h2>Confirmer la déconnexion</h2>
+              <button className="btn-icon mobile-close-btn" onClick={cancelLogout} aria-label="Fermer">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body mobile-modal-body">
+              <div className="confirm-content">
+                <div className="alert-icon">
+                  <AlertTriangle size={56} strokeWidth={2.5} />
+                </div>
+                <div className="confirm-text">
+                  <p className="confirm-question">Voulez-vous vraiment vous déconnecter ?</p>
+                  <p className="warning-text">Vous devrez vous reconnecter pour accéder à votre compte.</p>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer mobile-modal-footer">
+              <button type="button" className="btn btn-secondary mobile-btn" onClick={cancelLogout}>
+                Annuler
+              </button>
+              <button type="button" className="btn btn-danger mobile-btn" onClick={confirmLogout}>
+                Déconnexion
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
