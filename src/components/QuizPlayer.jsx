@@ -13,10 +13,15 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Gestion de la classe modal-open pour masquer le header
   useEffect(() => {
-    loadQuiz();
-  }, [quiz.id, loadQuiz]);
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
 
+  // Déclaration déplacée avant le useEffect
   const loadQuiz = async () => {
     try {
       const data = await quizService.getQuizWithQuestions(quiz.id);
@@ -27,6 +32,10 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadQuiz();
+  }, [quiz.id]);
 
   const handleSelectAnswer = (answer) => {
     if (!showResult) {
