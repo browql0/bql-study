@@ -12,7 +12,7 @@ export const notificationManager = {
         applicationServerKey: 'BGSYDQhokiAm4GWSmfVbAkU46vbj-Nnoakm7KuIqhxSb_Hr3M3UBmi-woEbTNEQ_kmA8WFyPDWQfDACfX7xC4zM'
       });
       // Envoyer la subscription au backend
-      await fetch('outstanding-upliftment-production.up.railway.app/subscribe', {
+      await fetch('https://outstanding-upliftment-production.up.railway.app/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription)
