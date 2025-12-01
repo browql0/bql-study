@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import { 
-  User, Mail, Shield, Calendar, Edit2, Save, X, Key, LogOut, 
+  User, Mail, Shield, Calendar, Edit2, Save, X, Key, LogOut, Gift, 
   Crown, CreditCard, Clock, Sparkles, Lock, UserCircle, Hash, Users, Bell, FileText, Image, AlertCircle, RotateCcw
 } from 'lucide-react';
 import { subscriptionService } from '../services/subscriptionService';
 import { getStudentInfo } from '../services/studentNameService';
 import { supabase } from '../lib/supabase';
+import { notificationManager } from '../utils/notificationManager';
 import './Profile.css';
 
 const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
@@ -34,11 +35,20 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
   const [notificationPreferences, setNotificationPreferences] = useState({
     new_files: true,
     new_photos: true,
+    new_notes: true,
+    new_quiz: true,
+    trial_expiry: true,
+    subscription_expiry: true,
+    custom_admin: true,
     new_users: false,
     new_payments: false,
     voucher_expired: false
   });
   const [loadingPreferences, setLoadingPreferences] = useState(false);
+
+  // Ajout de la fonction d'activation des notifications système
+  const [notifActive, setNotifActive] = useState(false);
+  const [notifConfirmation, setNotifConfirmation] = useState(false);
 
   const loadSubscriptionInfo = useCallback(async (forceRefresh = false) => {
     if (currentUser?.id) {
@@ -165,6 +175,11 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
             setNotificationPreferences({
               new_files: data.notification_preferences.new_files ?? true,
               new_photos: data.notification_preferences.new_photos ?? true,
+              new_notes: data.notification_preferences.new_notes ?? true,
+              new_quiz: data.notification_preferences.new_quiz ?? true,
+              trial_expiry: data.notification_preferences.trial_expiry ?? true,
+              subscription_expiry: data.notification_preferences.subscription_expiry ?? true,
+              custom_admin: data.notification_preferences.custom_admin ?? true,
               new_users: data.notification_preferences.new_users ?? false,
               new_payments: data.notification_preferences.new_payments ?? false,
               voucher_expired: data.notification_preferences.voucher_expired ?? false
@@ -174,6 +189,11 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
             const defaultPrefs = {
               new_files: true,
               new_photos: true,
+              new_notes: true,
+              new_quiz: true,
+              trial_expiry: true,
+              subscription_expiry: true,
+              custom_admin: true,
               new_users: false,
               new_payments: false,
               voucher_expired: false
@@ -321,6 +341,17 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
     }
   };
 
+  // Fonction pour activer les notifications système
+  const handleActiverNotifications = async () => {
+    const success = await notificationManager.requestPermission();
+    if (success) {
+      await notificationManager.subscribeToPush();
+      setNotifActive(true);
+      setNotifConfirmation(true);
+      setTimeout(() => setNotifConfirmation(false), 3000);
+    }
+  };
+
   return (
     <div className="profile-modal-overlay" onClick={onClose}>
       <div className="profile-modal-container" onClick={(e) => e.stopPropagation()}>
@@ -377,6 +408,7 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                 </div>
               </div>
             </div>
+       
           </section>
 
           {/* Subscription Info - Actif */}
@@ -674,56 +706,114 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
               <h3>Préférences de notification</h3>
             </div>
             <div className="profile-notification-preferences">
+              {/* Utilisateur */}
+                   {/* Bouton d'activation des notifications système */}
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleActiverNotifications}
+                style={{ marginBottom: 8 }}
+              >
+                <Bell size={18} style={{ marginRight: 8 }} />
+                Activer les notifications système
+              </button>
+              {notifConfirmation && (
+                <span style={{ color: 'green', marginLeft: 8 }}>Notifications activées !</span>
+              )}
+            </div>
               <div className="notification-preference-item">
+                
                 <div className="notification-preference-info">
                   <Bell size={20} />
                   <div>
                     <div className="notification-preference-label">Nouveaux fichiers</div>
-                    <div className="notification-preference-description">
-                      Recevoir une notification lorsqu'un nouveau fichier est ajouté
-                    </div>
+                    <div className="notification-preference-description">Recevoir une notification lorsqu'un nouveau fichier est ajouté</div>
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input
-                    type="checkbox"
-                    checked={notificationPreferences.new_files ?? true}
-                    onChange={(e) => {
-                      const newPrefs = { ...notificationPreferences, new_files: e.target.checked };
-                      setNotificationPreferences(newPrefs);
-                      handleSaveNotificationPreferences(newPrefs);
-                    }}
-                    disabled={loadingPreferences}
-                  />
+                  <input type="checkbox" checked={notificationPreferences.new_files ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_files: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
                   <span className="notification-toggle-slider"></span>
                 </label>
               </div>
-
               <div className="notification-preference-item">
                 <div className="notification-preference-info">
                   <Image size={20} />
                   <div>
                     <div className="notification-preference-label">Nouvelles photos</div>
-                    <div className="notification-preference-description">
-                      Recevoir une notification lorsqu'une nouvelle photo est ajoutée
-                    </div>
+                    <div className="notification-preference-description">Recevoir une notification lorsqu'une nouvelle photo est ajoutée</div>
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input
-                    type="checkbox"
-                    checked={notificationPreferences.new_photos ?? true}
-                    onChange={(e) => {
-                      const newPrefs = { ...notificationPreferences, new_photos: e.target.checked };
-                      setNotificationPreferences(newPrefs);
-                      handleSaveNotificationPreferences(newPrefs);
-                    }}
-                    disabled={loadingPreferences}
-                  />
+                  <input type="checkbox" checked={notificationPreferences.new_photos ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_photos: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
                   <span className="notification-toggle-slider"></span>
                 </label>
               </div>
-
+              <div className="notification-preference-item">
+                <div className="notification-preference-info">
+                  <FileText size={20} />
+                  <div>
+                    <div className="notification-preference-label">Nouvelles notes</div>
+                    <div className="notification-preference-description">Recevoir une notification lorsqu'une nouvelle note est ajoutée</div>
+                  </div>
+                </div>
+                <label className="notification-toggle">
+                  <input type="checkbox" checked={notificationPreferences.new_notes ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_notes: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
+                  <span className="notification-toggle-slider"></span>
+                </label>
+              </div>
+              <div className="notification-preference-item">
+                <div className="notification-preference-info">
+                  <Sparkles size={20} />
+                  <div>
+                    <div className="notification-preference-label">Nouveaux quiz</div>
+                    <div className="notification-preference-description">Recevoir une notification lorsqu'un nouveau quiz est ajouté</div>
+                  </div>
+                </div>
+                <label className="notification-toggle">
+                  <input type="checkbox" checked={notificationPreferences.new_quiz ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_quiz: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
+                  <span className="notification-toggle-slider"></span>
+                </label>
+              </div>
+              <div className="notification-preference-item">
+                <div className="notification-preference-info">
+                  <Clock size={20} />
+                  <div>
+                    <div className="notification-preference-label">Fin de période d'essai</div>
+                    <div className="notification-preference-description">Recevoir une notification à l'approche de la fin de la période d'essai</div>
+                  </div>
+                </div>
+                <label className="notification-toggle">
+                  <input type="checkbox" checked={notificationPreferences.trial_expiry ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, trial_expiry: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
+                  <span className="notification-toggle-slider"></span>
+                </label>
+              </div>
+              <div className="notification-preference-item">
+                <div className="notification-preference-info">
+                  <Clock size={20} />
+                  <div>
+                    <div className="notification-preference-label">Fin d'abonnement</div>
+                    <div className="notification-preference-description">Recevoir une notification à l'approche de la fin de l'abonnement</div>
+                  </div>
+                </div>
+                <label className="notification-toggle">
+                  <input type="checkbox" checked={notificationPreferences.subscription_expiry ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, subscription_expiry: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
+                  <span className="notification-toggle-slider"></span>
+                </label>
+              </div>
+              <div className="notification-preference-item">
+                <div className="notification-preference-info">
+                  <Gift size={20} />
+                  <div>
+                    <div className="notification-preference-label">Notification personnalisée (admin)</div>
+                    <div className="notification-preference-description">Recevoir les notifications personnalisées envoyées par l'administrateur</div>
+                  </div>
+                </div>
+                <label className="notification-toggle">
+                  <input type="checkbox" checked={notificationPreferences.custom_admin ?? true} onChange={(e) => { const newPrefs = { ...notificationPreferences, custom_admin: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
+                  <span className="notification-toggle-slider"></span>
+                </label>
+              </div>
+              {/* Admin uniquement */}
               {currentUser?.role === 'admin' && (
                 <>
                   <div className="notification-preference-item">
@@ -731,72 +821,37 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
                       <Users size={20} />
                       <div>
                         <div className="notification-preference-label">Nouveaux utilisateurs</div>
-                        <div className="notification-preference-description">
-                          Recevoir une notification lorsqu'un nouvel utilisateur s'inscrit
-                        </div>
+                        <div className="notification-preference-description">Recevoir une notification lorsqu'un nouvel utilisateur s'inscrit</div>
                       </div>
                     </div>
                     <label className="notification-toggle">
-                      <input
-                        type="checkbox"
-                        checked={notificationPreferences.new_users ?? false}
-                        onChange={(e) => {
-                          const newPrefs = { ...notificationPreferences, new_users: e.target.checked };
-                          setNotificationPreferences(newPrefs);
-                          handleSaveNotificationPreferences(newPrefs);
-                        }}
-                        disabled={loadingPreferences}
-                      />
+                      <input type="checkbox" checked={notificationPreferences.new_users ?? false} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_users: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
                       <span className="notification-toggle-slider"></span>
                     </label>
                   </div>
-
                   <div className="notification-preference-item">
                     <div className="notification-preference-info">
                       <CreditCard size={20} />
                       <div>
                         <div className="notification-preference-label">Nouveaux paiements</div>
-                        <div className="notification-preference-description">
-                          Recevoir une notification lorsqu'un nouveau paiement est effectué
-                        </div>
+                        <div className="notification-preference-description">Recevoir une notification lorsqu'un nouveau paiement est effectué</div>
                       </div>
                     </div>
                     <label className="notification-toggle">
-                      <input
-                        type="checkbox"
-                        checked={notificationPreferences.new_payments ?? false}
-                        onChange={(e) => {
-                          const newPrefs = { ...notificationPreferences, new_payments: e.target.checked };
-                          setNotificationPreferences(newPrefs);
-                          handleSaveNotificationPreferences(newPrefs);
-                        }}
-                        disabled={loadingPreferences}
-                      />
+                      <input type="checkbox" checked={notificationPreferences.new_payments ?? false} onChange={(e) => { const newPrefs = { ...notificationPreferences, new_payments: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
                       <span className="notification-toggle-slider"></span>
                     </label>
                   </div>
-
                   <div className="notification-preference-item">
                     <div className="notification-preference-info">
                       <AlertCircle size={20} />
                       <div>
                         <div className="notification-preference-label">Code promo épuisé</div>
-                        <div className="notification-preference-description">
-                          Recevoir une notification lorsqu'un code promo est épuisé
-                        </div>
+                        <div className="notification-preference-description">Recevoir une notification lorsqu'un code promo est épuisé</div>
                       </div>
                     </div>
                     <label className="notification-toggle">
-                      <input
-                        type="checkbox"
-                        checked={notificationPreferences.voucher_expired ?? false}
-                        onChange={(e) => {
-                          const newPrefs = { ...notificationPreferences, voucher_expired: e.target.checked };
-                          setNotificationPreferences(newPrefs);
-                          handleSaveNotificationPreferences(newPrefs);
-                        }}
-                        disabled={loadingPreferences}
-                      />
+                      <input type="checkbox" checked={notificationPreferences.voucher_expired ?? false} onChange={(e) => { const newPrefs = { ...notificationPreferences, voucher_expired: e.target.checked }; setNotificationPreferences(newPrefs); handleSaveNotificationPreferences(newPrefs); }} disabled={loadingPreferences} />
                       <span className="notification-toggle-slider"></span>
                     </label>
                   </div>

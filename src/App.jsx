@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContextSupabase';
 import Header from './components/Header';
 import SubjectList from './components/SubjectList';
@@ -16,7 +16,8 @@ import { GraduationCap } from 'lucide-react';
 import './App.css';
 
 function AppContent() {
-  const { currentUser, subjects, loading } = useApp();
+  // usePullToRefresh(); // Désactivé pour comportement natif iOS
+  const { currentUser, subjects, loading, theme } = useApp();
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -94,6 +95,27 @@ function AppContent() {
     }
   }, [subjects, selectedSubject]);
 
+  useEffect(() => {
+    // Changer la couleur de la barre de statut iOS selon le thème
+    const metaBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (metaBar) {
+      if (theme === 'dark') {
+        metaBar.setAttribute('content', 'black-translucent');
+      } else {
+        metaBar.setAttribute('content', 'white');
+      }
+    }
+    // Changer la couleur du theme-color
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      if (theme === 'dark') {
+        metaTheme.setAttribute('content', '#1a1d29'); // couleur du header dark
+      } else {
+        metaTheme.setAttribute('content', '#fff');
+      }
+    }
+  }, [theme]);
+
   if (loading) {
     return (
       <div className="app-loading">
@@ -149,77 +171,80 @@ function AppContent() {
   };
 
   return (
-    <div className="app">
-      {showDashboard ? (
-        <Dashboard />
-      ) : (
-        <>
-          <Header 
-            onAddSubject={() => setShowAddModal(true)}
-            onOpenProfile={() => setShowProfile(true)}
-            onOpenSearch={() => setShowAdvancedSearch(true)}
-            onOpenDashboard={() => setShowDashboard(true)}
-          />
-          
-          <div className="main-content container">
-            {selectedSubject ? (
-              <SubjectDetail 
-                subject={selectedSubject} 
-                onBack={() => setSelectedSubject(null)}
-                initialSection={activeSection}
-                initialTab={activeTab}
-                hasSubscription={hasSubscription}
-                onUpgrade={() => setShowPayment(true)}
-              />
-            ) : (
-              <SubjectList 
-                onSelectSubject={setSelectedSubject}
-                hasSubscription={hasSubscription}
-                onUpgrade={() => setShowPayment(true)}
+    <>
+      <div id="pull-loader"></div>
+      <div className="app">
+        {showDashboard ? (
+          <Dashboard />
+        ) : (
+          <>
+            <Header 
+              onAddSubject={() => setShowAddModal(true)}
+              onOpenProfile={() => setShowProfile(true)}
+              onOpenSearch={() => setShowAdvancedSearch(true)}
+              onOpenDashboard={() => setShowDashboard(true)}
+            />
+            
+            <div className="main-content container">
+              {selectedSubject ? (
+                <SubjectDetail 
+                  subject={selectedSubject} 
+                  onBack={() => setSelectedSubject(null)}
+                  initialSection={activeSection}
+                  initialTab={activeTab}
+                  hasSubscription={hasSubscription}
+                  onUpgrade={() => setShowPayment(true)}
+                />
+              ) : (
+                <SubjectList 
+                  onSelectSubject={setSelectedSubject}
+                  hasSubscription={hasSubscription}
+                  onUpgrade={() => setShowPayment(true)}
+                />
+              )}
+            </div>
+
+            {showAddModal && (
+              <AddSubjectModal onClose={() => setShowAddModal(false)} />
+            )}
+
+            {showProfile && (
+              <Profile 
+                onClose={() => setShowProfile(false)} 
+                onOpenPayment={() => setShowPayment(true)}
+                onRefreshSubscription={checkSubscription}
               />
             )}
-          </div>
 
-          {showAddModal && (
-            <AddSubjectModal onClose={() => setShowAddModal(false)} />
-          )}
+            {showAdvancedSearch && (
+              <AdvancedSearch 
+                onClose={() => setShowAdvancedSearch(false)}
+                onSelectResult={handleSearchResult}
+              />
+            )}
 
-          {showProfile && (
-            <Profile 
-              onClose={() => setShowProfile(false)} 
-              onOpenPayment={() => setShowPayment(true)}
-              onRefreshSubscription={checkSubscription}
-            />
-          )}
+            {showPayment && (
+              <PaymentModal 
+                onClose={() => setShowPayment(false)}
+                onPaymentSuccess={handlePaymentSuccess}
+                onOpenVoucher={() => {
+                  setShowPayment(false);
+                  setShowVoucher(true);
+                }}
+              />
+            )}
 
-          {showAdvancedSearch && (
-            <AdvancedSearch 
-              onClose={() => setShowAdvancedSearch(false)}
-              onSelectResult={handleSearchResult}
-            />
-          )}
-
-          {showPayment && (
-            <PaymentModal 
-              onClose={() => setShowPayment(false)}
-              onPaymentSuccess={handlePaymentSuccess}
-              onOpenVoucher={() => {
-                setShowPayment(false);
-                setShowVoucher(true);
-              }}
-            />
-          )}
-
-          {showVoucher && (
-            <VoucherModal 
-              onClose={() => setShowVoucher(false)}
-              userId={currentUser?.id}
-              onSuccess={handleVoucherSuccess}
-            />
-          )}
-        </>
-      )}
-    </div>
+            {showVoucher && (
+              <VoucherModal 
+                onClose={() => setShowVoucher(false)}
+                userId={currentUser?.id}
+                onSuccess={handleVoucherSuccess}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </>
   );
 }
 

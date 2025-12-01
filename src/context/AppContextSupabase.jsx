@@ -399,6 +399,17 @@ export const AppProvider = ({ children }) => {
         }
         return subject;
       }));
+
+      // Créer la notification pour l'utilisateur
+      if (currentUser?.id) {
+        await notificationsService.createNotificationWithPreference(
+          currentUser.id,
+          'new_note',
+          'Nouvelle note ajoutée',
+          `La note "${note.title}" a été ajoutée.`,
+          { subjectId, section, noteId: newNote.id }
+        );
+      }
     } catch (error) {
       console.error('Error adding note:', error);
     }

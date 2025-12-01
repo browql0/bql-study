@@ -1,6 +1,112 @@
 import { supabase } from '../lib/supabase';
 
 export const notificationsService = {
+      // Fonction de test pour créer plusieurs notifications
+      async testNotifications(userId) {
+        const results = [];
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_file',
+          'Nouveau fichier ajouté',
+          'Un nouveau fichier est disponible.',
+          { fileId: 'test-file-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_photo',
+          'Nouvelle photo ajoutée',
+          'Une nouvelle photo est disponible.',
+          { photoId: 'test-photo-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_note',
+          'Nouvelle note ajoutée',
+          'Une nouvelle note est disponible.',
+          { noteId: 'test-note-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_quiz',
+          'Nouveau quiz ajouté',
+          'Un nouveau quiz est disponible.',
+          { quizId: 'test-quiz-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'trial_expiry',
+          'Fin de période d’essai',
+          'Votre période d’essai se termine bientôt.',
+          null
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'subscription_expiry',
+          'Fin d’abonnement',
+          'Votre abonnement arrive à expiration.',
+          null
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'custom_admin',
+          'Message de l’administrateur',
+          'Notification personnalisée envoyée par l’admin.',
+          { customData: 'test' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_user',
+          'Nouvel utilisateur inscrit',
+          'Un nouvel utilisateur vient de s’inscrire.',
+          { newUserId: 'test-user-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'new_payment',
+          'Paiement reçu',
+          'Un paiement vient d’être reçu.',
+          { paymentId: 'test-payment-1' }
+        ));
+        results.push(await notificationsService.createNotificationWithPreference(
+          userId,
+          'voucher_expired',
+          'Code promo épuisé',
+          'Un code promo vient d’être épuisé.',
+          { voucherId: 'test-voucher-1' }
+        ));
+        return results;
+      },
+    // Vérifier la préférence de notification avant de créer
+    async createNotificationWithPreference(userId, type, title, message, data = null) {
+      // Charger les préférences de l'utilisateur
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('notification_preferences')
+        .eq('id', userId)
+        .single();
+      if (error || !profile) return { success: false, error: 'Impossible de charger les préférences' };
+      const prefs = profile.notification_preferences || {};
+      // Map type vers clé de préférence
+      const typeToPref = {
+        new_file: 'new_files',
+        new_photo: 'new_photos',
+        new_note: 'new_notes',
+        new_quiz: 'new_quiz',
+        trial_expiry: 'trial_expiry',
+        subscription_expiry: 'subscription_expiry',
+        custom_admin: 'custom_admin',
+        new_user: 'new_users',
+        new_payment: 'new_payments',
+        voucher_expired: 'voucher_expired'
+      };
+      const prefKey = typeToPref[type];
+      if (prefKey && prefs[prefKey] === false) {
+        // Préférence désactivée, ne pas créer la notification
+        return { success: false, error: 'Notification désactivée par préférence utilisateur' };
+      }
+      // Sinon, créer la notification normalement
+      return await notificationsService.createNotification(userId, type, title, message, data);
+    },
   // Récupérer toutes les notifications non lues pour l'utilisateur actuel
   async getUnreadNotifications(userId) {
     try {

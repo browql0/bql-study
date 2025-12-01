@@ -1,3 +1,47 @@
+html, body, #root {
+  background: #fff;
+  overscroll-behavior-y: contain;
+  min-height: 100vh;
+  height: 100%;
+}
+
+/* Animation loader pull-to-refresh */
+#pull-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 6px;
+  background: linear-gradient(90deg, #4f8ff0 0%, #4f46e5 100%);
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#pull-loader.active {
+  opacity: 1;
+  transform: scaleY(1.5);
+}
+
+html, body {
+  background: #fff;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: contain;
+  touch-action: pan-y;
+  min-height: 100vh;
+  height: 100%;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
 .app {
   min-height: 100vh;
   background-color: var(--bg-primary);

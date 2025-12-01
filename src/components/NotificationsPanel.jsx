@@ -124,6 +124,16 @@ const NotificationsPanel = ({ userId, onClose }) => {
         return <FileText size={20} />;
       case 'new_photo':
         return <Image size={20} />;
+      case 'new_note':
+        return <FileText size={20} />;
+      case 'new_quiz':
+        return <Gift size={20} />;
+      case 'trial_expiry':
+        return <AlertCircle size={20} />;
+      case 'subscription_expiry':
+        return <AlertCircle size={20} />;
+      case 'custom_admin':
+        return <Gift size={20} />;
       case 'new_user':
         return <User size={20} />;
       case 'new_payment':
