@@ -1,35 +1,45 @@
-// Backend Node.js pour envoyer des notifications push
-import webpush from 'web-push';
+// index.js
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import 'dotenv/config'; // pour charger .env si nécessaire
+import webpush from 'web-push';
+import 'dotenv/config';
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Clés VAPID (à générer avec web-push generate-vapid-keys)
+// Clés VAPID depuis .env
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  console.warn("⚠️ VAPID keys non définies !");
+} else {
 webpush.setVapidDetails(
-  'mailto:alihajjaj930@gmail.com',
+  'mailto:alihajjaj930@gmail.com', // <-- ajoute le "mailto:"
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+}
+
+webpush.setVapidDetails(
+  'mailto:alihajjaj930@gmail.com', // <-- ajoute le "mailto:"
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
 
-// Stockage en mémoire des subscriptions (à remplacer par une DB en prod)
+
 const subscriptions = [];
 
-// Route pour enregistrer une subscription
+// Enregistrer une subscription
 app.post('/subscribe', (req, res) => {
   const subscription = req.body;
   subscriptions.push(subscription);
   res.status(201).json({ message: 'Subscription enregistrée !' });
 });
 
-// Route pour envoyer une notification à tous les abonnés
+// Envoyer une notification à tous les abonnés
 app.post('/notify', (req, res) => {
   const { title, body } = req.body;
   const payload = JSON.stringify({ title, body });
@@ -39,6 +49,7 @@ app.post('/notify', (req, res) => {
   res.json({ message: 'Notifications envoyées !' });
 });
 
-app.listen(4000, () => {
-  console.log('Push backend running on port 4000');
-});
+// Railway fournit le port via process.env.PORT
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`Push backend running on port ${PORT}`));
+    

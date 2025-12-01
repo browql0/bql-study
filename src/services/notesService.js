@@ -137,6 +137,20 @@ export async function createNote(noteData) {
       throw error;
     }
 
+    // Envoi notification push système
+    try {
+      await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Nouvelle note ajoutée',
+          body: `Une nouvelle note "${noteData.title}" a été ajoutée.`
+        })
+      });
+    } catch (err) {
+      console.warn('Erreur envoi notification push:', err);
+    }
+
     return data;
   } catch (error) {
     console.error('Error in createNote:', error);

@@ -179,6 +179,20 @@ export async function uploadPhoto(file, photoData) {
       // Ne pas faire échouer l'upload si la notification échoue
     }
 
+    // Envoi notification push système
+    try {
+      await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Nouvelle photo ajoutée',
+          body: `Une nouvelle photo "${photoData.title}" a été ajoutée.`
+        })
+      });
+    } catch (err) {
+      console.warn('Erreur envoi notification push:', err);
+    }
+
     return data;
   } catch (error) {
     // Nettoyer en cas d'erreur

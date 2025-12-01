@@ -104,8 +104,66 @@ export const notificationsService = {
         // Préférence désactivée, ne pas créer la notification
         return { success: false, error: 'Notification désactivée par préférence utilisateur' };
       }
-      // Sinon, créer la notification normalement
-      return await notificationsService.createNotification(userId, type, title, message, data);
+      // Créer la notification locale
+      const result = await notificationsService.createNotification(userId, type, title, message, data);
+      // Envoi notification push système si préférence activée
+      try {
+        // Adapter le titre, le body et l'icône selon le type
+        let pushTitle = title;
+        let pushBody = message;
+        let pushIcon = '/favicon.svg';
+        switch (type) {
+          case 'new_file':
+            pushTitle = 'Nouveau fichier ajouté';
+            pushBody = 'Un nouveau fichier est disponible.';
+            break;
+          case 'new_photo':
+            pushTitle = 'Nouvelle photo ajoutée';
+            pushBody = 'Une nouvelle photo est disponible.';
+            break;
+          case 'new_note':
+            pushTitle = 'Nouvelle note ajoutée';
+            pushBody = 'Une nouvelle note est disponible.';
+            break;
+          case 'new_quiz':
+            pushTitle = 'Nouveau quiz ajouté';
+            pushBody = 'Un nouveau quiz est disponible.';
+            break;
+          case 'trial_expiry':
+            pushTitle = 'Fin de période d’essai';
+            pushBody = 'Votre période d’essai se termine bientôt.';
+            break;
+          case 'subscription_expiry':
+            pushTitle = 'Fin d’abonnement';
+            pushBody = 'Votre abonnement arrive à expiration.';
+            break;
+          case 'custom_admin':
+            pushTitle = 'Message de l’administrateur';
+            pushBody = 'Notification personnalisée envoyée par l’admin.';
+            break;
+          case 'new_user':
+            pushTitle = 'Nouvel utilisateur inscrit';
+            pushBody = 'Un nouvel utilisateur vient de s’inscrire.';
+            break;
+          case 'new_payment':
+            pushTitle = 'Paiement reçu';
+            pushBody = 'Un paiement vient d’être reçu.';
+            break;
+          case 'voucher_expired':
+            pushTitle = 'Code promo épuisé';
+            pushBody = 'Un code promo vient d’être épuisé.';
+            break;
+        }
+        await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: pushTitle, body: pushBody, icon: pushIcon })
+        });
+      } catch (err) {
+        // Ne pas bloquer la notification locale si le push échoue
+        console.warn('Erreur envoi notification push:', err);
+      }
+      return result;
     },
   // Récupérer toutes les notifications non lues pour l'utilisateur actuel
   async getUnreadNotifications(userId) {
