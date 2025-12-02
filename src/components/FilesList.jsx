@@ -11,17 +11,17 @@ const FilesList = ({ subjectId, section, files }) => {
   const [viewerUrl, setViewerUrl] = useState(null);
 
   // Ajouter/retirer la classe modal-open au body quand le modal de confirmation est ouvert
+  // Gestion de la classe modal-open pour le file viewer
   useEffect(() => {
-    if (deleteConfirm) {
+    if (viewingFile || deleteConfirm) {
       document.body.classList.add('modal-open');
     } else {
       document.body.classList.remove('modal-open');
     }
-    
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [deleteConfirm]);
+  }, [viewingFile, deleteConfirm]);
 
   const handleDelete = (fileId) => {
     setDeleteConfirm(fileId);
@@ -53,6 +53,7 @@ const FilesList = ({ subjectId, section, files }) => {
 
   const closeFileViewer = () => {
     setViewingFile(null);
+    document.body.classList.remove('modal-open');
   };
 
 

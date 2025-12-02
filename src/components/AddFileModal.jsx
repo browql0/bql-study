@@ -1,3 +1,4 @@
+import './AddFileModal.css';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import { X, Upload, FileText } from 'lucide-react';
@@ -36,10 +37,10 @@ const AddFileModal = ({ subjectId, section, onClose }) => {
       }
 
       // Limiter la taille à 20MB
-      if (selectedFile.size > 20 * 1024 * 1024) {
-        alert('Le fichier ne doit pas dépasser 20 MB');
-        return;
-      }
+       //if (selectedFile.size > 20 * 1024 * 1024) {
+       // alert('Le fichier ne doit pas dépasser 20 MB');
+        //return;
+     // }
 
       setFile(selectedFile);
       setFileInfo({

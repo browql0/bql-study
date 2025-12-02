@@ -35,7 +35,10 @@ const subscriptions = [];
 // Enregistrer une subscription
 app.post('/subscribe', (req, res) => {
   const subscription = req.body;
-  subscriptions.push(subscription);
+  // Évite les doublons
+  if (!subscriptions.find(sub => JSON.stringify(sub) === JSON.stringify(subscription))) {
+    subscriptions.push(subscription);
+  }
   res.status(201).json({ message: 'Subscription enregistrée !' });
 });
 
