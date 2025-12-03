@@ -1,4 +1,4 @@
-.photo-gallery {
+﻿.photo-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
@@ -382,7 +382,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  z-index: 100001;
+  z-index: 100002;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -423,7 +423,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  z-index: 100001;
+  z-index: 100002;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -747,4 +747,116 @@
   .photo-info {
     padding: 10px;
   }
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.zoom-controls button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.zoom-controls button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.zoom-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .zoom-controls {
+    padding: 10px 20px;
+    gap: 20px;
+  }
+  
+  .zoom-controls button {
+    padding: 12px;
+  }
+}
+
+.zoom-level {
+  color: white;
+  font-weight: 500;
+  min-width: 50px;
+  text-align: center;
+}
+
+/* Multi-upload styles */
+.photos-grid-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.photo-preview-card {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.preview-image-container {
+  position: relative;
+  height: 120px;
+}
+
+.preview-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-photo-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.preview-inputs {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-inputs input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }

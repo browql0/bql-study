@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import { 
   Search, Moon, Sun, Plus, Menu, X, LogOut, User, BookOpen, 
@@ -19,26 +19,27 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
   const [unreadCount, setUnreadCount] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const totalNotes = subjects.reduce((acc, subject) => {
-    return acc + 
-      (subject.cours?.notes?.length || 0) + 
-      (subject.exercices?.notes?.length || 0) + 
-      (subject.corrections?.notes?.length || 0);
-  }, 0);
-  
-  const totalPhotos = subjects.reduce((acc, subject) => {
-    return acc + 
-      (subject.cours?.photos?.length || 0) + 
-      (subject.exercices?.photos?.length || 0) + 
-      (subject.corrections?.photos?.length || 0);
-  }, 0);
+  const totals = useMemo(() => {
+    let notes = 0;
+    let photos = 0;
+    let files = 0;
 
-  const totalFiles = subjects.reduce((acc, subject) => {
-    return acc + 
-      (subject.cours?.files?.length || 0) + 
-      (subject.exercices?.files?.length || 0) + 
-      (subject.corrections?.files?.length || 0);
-  }, 0);
+    for (const subject of subjects) {
+      notes += (subject.cours?.notes?.length || 0) + 
+               (subject.exercices?.notes?.length || 0) + 
+               (subject.corrections?.notes?.length || 0);
+      photos += (subject.cours?.photos?.length || 0) + 
+                (subject.exercices?.photos?.length || 0) + 
+                (subject.corrections?.photos?.length || 0);
+      files += (subject.cours?.files?.length || 0) + 
+               (subject.exercices?.files?.length || 0) + 
+               (subject.corrections?.files?.length || 0);
+    }
+
+    return { totalNotes: notes, totalPhotos: photos, totalFiles: files };
+  }, [subjects]);
+  
+  const { totalNotes, totalPhotos, totalFiles } = totals;
 
   // Charger le nombre de notifications non lues
   useEffect(() => {

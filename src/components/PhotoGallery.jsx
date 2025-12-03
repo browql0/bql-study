@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContextSupabase';
-import { Trash2, ZoomIn, X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Trash2, ZoomIn, ZoomOut, X, ChevronLeft, ChevronRight, AlertTriangle, RotateCcw } from 'lucide-react';
 import { getDisplayUrl } from '../utils/fileUrlHelper';
 import './PhotoGallery.css';
 
@@ -9,6 +9,18 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [photoUrls, setPhotoUrls] = useState({});
+  
+  // Zoom state
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const imageRef = useRef(null);
+
+  // Touch state for mobile
+  const [touchStartDist, setTouchStartDist] = useState(0);
+  const [touchStartScale, setTouchStartScale] = useState(1);
+  const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 });
 
   const handleDelete = (e, photoId) => {
     e.stopPropagation();
@@ -28,10 +40,118 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
 
   const openPhotoViewer = (index) => {
     setSelectedPhotoIndex(index);
+    resetZoom();
   };
 
   const closePhotoViewer = () => {
     setSelectedPhotoIndex(null);
+    resetZoom();
+  };
+
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  const handleZoomIn = (e) => {
+    e.stopPropagation();
+    setScale(prev => Math.min(prev + 0.5, 4));
+  };
+
+  const handleZoomOut = (e) => {
+    e.stopPropagation();
+    setScale(prev => Math.max(prev - 0.5, 1));
+    if (scale <= 1.5) {
+      setPosition({ x: 0, y: 0 });
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    if (scale > 1) {
+      setIsDragging(true);
+      setStartPos({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && scale > 1) {
+      e.preventDefault();
+      setPosition({
+        x: e.clientX - startPos.x,
+        y: e.clientY - startPos.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Touch events for mobile
+  const getDistance = (touches) => {
+    return Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    );
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      // Pinch start
+      const dist = getDistance(e.touches);
+      setTouchStartDist(dist);
+      setTouchStartScale(scale);
+    } else if (e.touches.length === 1) {
+      // Pan start or Swipe start
+      setTouchStartPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      if (scale > 1) {
+        setIsDragging(true);
+        setStartPos({ 
+          x: e.touches[0].clientX - position.x, 
+          y: e.touches[0].clientY - position.y 
+        });
+      }
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      e.preventDefault();
+      const dist = getDistance(e.touches);
+      const newScale = Math.min(Math.max(touchStartScale * (dist / touchStartDist), 1), 4);
+      setScale(newScale);
+      if (newScale === 1) setPosition({ x: 0, y: 0 });
+    } else if (e.touches.length === 1) {
+      if (scale > 1 && isDragging) {
+        // Pan
+        e.preventDefault();
+        setPosition({
+          x: e.touches[0].clientX - startPos.x,
+          y: e.touches[0].clientY - startPos.y
+        });
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    setIsDragging(false);
+    
+    // Swipe detection (only if not zoomed)
+    if (scale === 1 && e.changedTouches.length === 1) {
+      const touchEndPos = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      const diffX = touchEndPos.x - touchStartPos.x;
+      const diffY = touchEndPos.y - touchStartPos.y;
+      
+      // Horizontal swipe detection (threshold 50px)
+      if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
+        if (diffX > 0) {
+          navigatePhoto(-1); // Swipe right -> prev
+        } else {
+          navigatePhoto(1); // Swipe left -> next
+        }
+      }
+    }
   };
 
   // Ajouter/retirer la classe modal-open au body quand le viewer ou le modal de confirmation est ouvert
@@ -52,6 +172,7 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     const newIndex = selectedPhotoIndex + direction;
     if (newIndex >= 0 && newIndex < photos.length) {
       setSelectedPhotoIndex(newIndex);
+      resetZoom();
     }
   };
 
@@ -98,7 +219,6 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     // Cela affichera une icône cassée mais au moins on sait qu'il y a un problème
     return photo.storage_path || photo.url || '';
   };
-
 
   if (photos.length === 0) {
     return (
@@ -178,13 +298,55 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
           )}
 
           <div className="photo-viewer-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ position: 'relative' }}>
+            <div 
+              className="image-container"
+              style={{ 
+                overflow: 'hidden', 
+                cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '70vh',
+                width: '100%',
+                touchAction: 'none'
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <img 
+                ref={imageRef}
                 src={getPhotoUrl(selectedPhoto)} 
                 alt={selectedPhoto.title} 
                 className="viewer-image"
+                style={{
+                  transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                  maxHeight: '100%',
+                  maxWidth: '100%',
+                  objectFit: 'contain'
+                }}
+                draggable={false}
               />
             </div>
+            
+            <div className="zoom-controls">
+              <button onClick={handleZoomOut} disabled={scale <= 1} title="Zoom arrière">
+                <ZoomOut size={20} />
+              </button>
+              <span className="zoom-level">{Math.round(scale * 100)}%</span>
+              <button onClick={handleZoomIn} disabled={scale >= 4} title="Zoom avant">
+                <ZoomIn size={20} />
+              </button>
+              <button onClick={resetZoom} title="Réinitialiser">
+                <RotateCcw size={20} />
+              </button>
+            </div>
+
             <div className="viewer-info">
               <div className="viewer-header">
                 <div>
