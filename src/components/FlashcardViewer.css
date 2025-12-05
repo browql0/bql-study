@@ -66,7 +66,7 @@
   gap: 8px;
 }
 
-.btn-icon {
+.flashcard-header .btn-icon {
   width: 42px;
   height: 42px;
   border: none;
@@ -80,7 +80,7 @@
   transition: all 0.3s;
 }
 
-.btn-icon:hover {
+.flashcard-header .btn-icon:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 16px rgba(79, 143, 240, 0.4);
 }

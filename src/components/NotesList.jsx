@@ -36,12 +36,64 @@ const NotesList = ({ subjectId, section, notes }) => {
   };
 
   const formatContent = (text) => {
+    // Coloration syntaxique simple pour les blocs de code
+    const highlightCode = (code) => {
+      // Échapper le HTML d'abord
+      const escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      return escaped
+        // Keywords JavaScript/TypeScript
+        .replace(/\b(if|else if|else|const|let|var|function|return|for|while|do|switch|case|break|continue|class|extends|import|export|from|default|async|await|try|catch|finally|throw|new|this|super|static|public|private|protected)\b/g, '<span class="keyword">$1</span>')
+        // Strings (simple quotes, double quotes, backticks)
+        .replace(/(&quot;)(.*?)(&quot;)/g, '<span class="string">&quot;$2&quot;</span>')
+        .replace(/(&#39;)(.*?)(&#39;)/g, '<span class="string">&#39;$2&#39;</span>')
+        .replace(/(`)(.*?)(`)/g, '<span class="string">`$2`</span>')
+        // Numbers
+        .replace(/\b(\d+\.?\d*)\b/g, '<span class="number">$1</span>')
+        // Comments (// et /* */)
+        .replace(/(\/\/.*?)(\n|$)/g, '<span class="comment">$1</span>$2')
+        .replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>')
+        // Functions (word followed by parenthesis)
+        .replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g, '<span class="function">$1</span>');
+    };
+
     return text
+      // Code blocks (triple backticks) - avec coloration
+      .replace(/```([\s\S]*?)```/g, (match, code) => {
+        const highlighted = highlightCode(code.trim());
+        return `<pre><code>${highlighted}</code></pre>`;
+      })
+      // Headers
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Bold
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      // Images
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+      // Code inline (après les blocs)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Unordered lists
       .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+      // Ordered lists
+      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+      // Blockquote
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      // Horizontal rule
+      .replace(/^---$/gm, '<hr />')
+      // Wrap lists
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      // Line breaks - convertir les doubles sauts de ligne en paragraphes
+      .replace(/\n\n/g, '</p><p>')
+      // Single line breaks
+      .replace(/\n/g, '<br>');
   };
 
   if (notes.length === 0) {

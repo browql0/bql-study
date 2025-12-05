@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Users, UserCheck, UserX, Activity, TrendingUp, Calendar, Clock, Shield, Eye, Mail, Award, Zap } from 'lucide-react';
+import './StatsTab.css';
 
 const StatCard = ({ icon, label, value, type, color, trend }) => (
   <div className={`stat-card-enhanced ${type}`}>

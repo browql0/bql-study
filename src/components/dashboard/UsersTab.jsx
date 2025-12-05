@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Shield, Ban, CheckCircle, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import './UsersTab.css';
 
 const UsersTab = () => {
   const [users, setUsers] = useState([]);
@@ -13,6 +14,7 @@ const UsersTab = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
 
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -47,8 +49,7 @@ const UsersTab = () => {
           total_spent: userPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
           last_payment_date: lastPayment?.created_at,
           last_payment_amount: lastPayment?.amount,
-          subscription_active: user.plan_type === 'premium' || 
-            (user.trial_ends_at && new Date(user.trial_ends_at) > new Date())
+          subscription_active: user.subscription_status === 'premium' || user.subscription_status === 'trial'
         };
       });
 
@@ -84,17 +85,12 @@ const UsersTab = () => {
 
     // Filtrer par abonnement
     if (subscriptionFilter !== 'all') {
-      const now = new Date();
       filtered = filtered.filter(user => {
         switch (subscriptionFilter) {
           case 'premium':
-            return user.plan_type === 'premium';
-          case 'trial':
-            return user.trial_ends_at && new Date(user.trial_ends_at) > now;
-          case 'expired':
-            return user.trial_ends_at && new Date(user.trial_ends_at) <= now;
+            return user.subscription_status === 'premium';
           case 'none':
-            return !user.plan_type && !user.trial_ends_at;
+            return !user.subscription_status || user.subscription_status === 'free';
           default:
             return true;
         }
@@ -117,16 +113,42 @@ const UsersTab = () => {
     }, 3000);
   };
 
-  const handleGrantPremium = async (userId) => {
+  const handleGrantTrial = async (userId) => {
     try {
+      // Donner un essai gratuit de 7 jours
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+      
       const { error } = await supabase
         .from('profiles')
-        .update({ plan_type: 'premium' })
+        .update({ 
+          subscription_status: 'trial',
+          subscription_end_date: trialEndDate.toISOString()
+        })
         .eq('id', userId);
 
       if (error) throw error;
       await fetchAllUsers();
-      showNotification('Accès premium accordé avec succès !', 'success');
+      showNotification('Essai gratuit de 7 jours accordé !', 'success');
+    } catch (error) {
+      console.error('Erreur:', error);
+      showNotification('Erreur lors de l\'attribution de l\'essai', 'error');
+    }
+  };
+
+  const handleGrantPremium = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          subscription_status: 'premium',
+          subscription_end_date: null  // Premium illimité
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      await fetchAllUsers();
+      showNotification('Accès premium mensuel accordé !', 'success');
     } catch (error) {
       console.error('Erreur:', error);
       showNotification('Erreur lors de l\'attribution du premium', 'error');
@@ -134,44 +156,66 @@ const UsersTab = () => {
   };
 
   const handleRevokeAccess = async (userId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir révoquer l\'accès de cet utilisateur ?')) {
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          plan_type: null,
-          trial_ends_at: null 
-        })
-        .eq('id', userId);
+    setConfirmModal({
+      show: true,
+      title: '⚠️ Révoquer l\'accès',
+      message: 'Êtes-vous sûr de vouloir révoquer l\'accès de cet utilisateur ? Cette action supprimera son abonnement premium.',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              subscription_status: 'free',
+              subscription_end_date: null
+            })
+            .eq('id', userId);
 
-      if (error) throw error;
-      await fetchAllUsers();
-      showNotification('Accès révoqué avec succès !', 'success');
-    } catch (error) {
-      console.error('Erreur:', error);
-      showNotification('Erreur lors de la révocation', 'error');
-    }
+          if (error) throw error;
+          await fetchAllUsers();
+          showNotification('Accès révoqué avec succès !', 'success');
+        } catch (error) {
+          console.error('Erreur:', error);
+          showNotification('Erreur lors de la révocation', 'error');
+        }
+        setConfirmModal({ show: false, title: '', message: '', onConfirm: null });
+      }
+    });
   };
 
-  const handleMakeAdmin = async (userId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir rendre cet utilisateur administrateur ?')) {
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', userId);
+  const handleToggleAdmin = async (userId, currentRole) => {
+    const isAdmin = currentRole === 'admin';
+    const action = isAdmin ? 'rétrograder en spectateur' : 'promouvoir administrateur';
+    
+    setConfirmModal({
+      show: true,
+      title: isAdmin ? '⬇️ Rétrograder l\'utilisateur' : '⬆️ Promouvoir administrateur',
+      message: `Êtes-vous sûr de vouloir ${action} cet utilisateur ?`,
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              role: isAdmin ? 'spectator' : 'admin',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
 
-      if (error) throw error;
-      await fetchAllUsers();
-      showNotification('Utilisateur promu administrateur !', 'success');
-    } catch (error) {
-      console.error('Erreur:', error);
-      showNotification('Erreur lors de la promotion', 'error');
-    }
+          if (error) throw error;
+          
+          // Forcer le rafraîchissement des données
+          await fetchAllUsers();
+          
+          showNotification(
+            isAdmin ? 'Utilisateur rétrogradé en spectateur !' : 'Utilisateur promu administrateur !', 
+            'success'
+          );
+        } catch (error) {
+          console.error('Erreur:', error);
+          showNotification('Erreur lors du changement de rôle', 'error');
+        }
+        setConfirmModal({ show: false, title: '', message: '', onConfirm: null });
+      }
+    });
   };
 
   if (loading) {
@@ -185,18 +229,15 @@ const UsersTab = () => {
   const userStats = {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
-    premium: users.filter(u => u.plan_type === 'premium').length,
-    trial: users.filter(u => {
-      const now = new Date();
-      return u.trial_ends_at && new Date(u.trial_ends_at) > now;
-    }).length,
+    premium: users.filter(u => u.subscription_status === 'premium').length,
+    free: users.filter(u => !u.subscription_status || u.subscription_status === 'free').length,
     spectators: users.filter(u => u.role === 'spectator').length,
     newThisWeek: users.filter(u => {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       return new Date(u.created_at) > weekAgo;
     }).length,
-    premiumRate: users.length > 0 ? ((users.filter(u => u.plan_type === 'premium').length / users.length) * 100).toFixed(1) : 0
+    premiumRate: users.length > 0 ? ((users.filter(u => u.subscription_status === 'premium').length / users.length) * 100).toFixed(1) : 0
   };
 
   const handleViewDetails = (user) => {
@@ -213,14 +254,27 @@ const UsersTab = () => {
     }
   };
 
-  // Tri des utilisateurs
+  // Tri des utilisateurs avec gestion améliorée
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
     
+    // Gestion des dates
     if (sortBy === 'created_at') {
       aVal = new Date(aVal).getTime();
       bVal = new Date(bVal).getTime();
+    }
+    
+    // Gestion des valeurs numériques (dépenses, paiements)
+    if (sortBy === 'total_spent' || sortBy === 'total_payments') {
+      aVal = aVal || 0;
+      bVal = bVal || 0;
+    }
+    
+    // Gestion des chaînes de caractères (nom, email)
+    if (sortBy === 'name' || sortBy === 'email') {
+      aVal = (aVal || '').toLowerCase();
+      bVal = (bVal || '').toLowerCase();
     }
     
     if (sortOrder === 'asc') {
@@ -269,403 +323,514 @@ const UsersTab = () => {
             <Eye size={24} />
           </div>
           <div className="stat-content">
-            <span className="stat-value">{userStats.trial}</span>
-            <span className="stat-label">En Essai</span>
-            <span className="stat-trend">Période d'essai active</span>
+            <span className="stat-value">{userStats.free}</span>
+            <span className="stat-label">Gratuits</span>
+            <span className="stat-trend">Sans abonnement</span>
           </div>
         </div>
       </div>
 
-      <div className="filters">
-        <div className="search-bar">
-          <Search size={18} />
+      {/* Advanced Filters & Controls V2 */}
+      <div className="users-controls-v2">
+        <div className="search-container-v2">
+          <div className="search-icon-wrapper">
+            <Search size={20} />
+          </div>
           <input 
             type="text" 
-            placeholder="Rechercher par nom ou email..." 
+            className="search-input-v2"
+            placeholder="Rechercher un utilisateur par nom ou email..." 
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)} 
           />
+          {searchTerm && (
+            <button className="search-clear" onClick={() => setSearchTerm('')}>×</button>
+          )}
         </div>
-        <div className="filter-select-wrapper">
-          <Shield size={16} className="filter-icon" />
-          <select className="filter-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-            <option value="all">Tous les rôles</option>
-            <option value="admin">👑 Admin</option>
-            <option value="spectator">👁️ Spectateur</option>
-          </select>
-        </div>
-        <div className="filter-select-wrapper">
-          <CheckCircle size={16} className="filter-icon" />
-          <select className="filter-select" value={subscriptionFilter} onChange={e => setSubscriptionFilter(e.target.value)}>
-            <option value="all">Tous les abonnements</option>
-            <option value="premium">⭐ Premium</option>
-            <option value="trial">🔄 Essai</option>
-            <option value="expired">⏰ Expiré</option>
-            <option value="none">- Aucun</option>
-          </select>
-        </div>
-      </div>
 
-      <div className="users-list">
-        <div className="users-list-header">
-          <div className="header-left">
-            <h3>Liste des Utilisateurs</h3>
-            <span className="users-count">{filteredUsers.length} utilisateur(s)</span>
-          </div>
-          <div className="header-actions">
-            <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="created_at">Trier par date</option>
-              <option value="name">Trier par nom</option>
-              <option value="email">Trier par email</option>
+        <div className="filters-row-v2">
+          <div className="filter-group-v2">
+            <Shield size={18} className="filter-icon-v2" />
+            <select className="filter-select-v2" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+              <option value="all">Tous les rôles</option>
+              <option value="admin">👑 Administrateur</option>
+              <option value="spectator">👁️ Spectateur</option>
             </select>
-            <button className="btn-sort-order" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
+          </div>
+
+          <div className="filter-group-v2">
+            <CheckCircle size={18} className="filter-icon-v2" />
+            <select className="filter-select-v2" value={subscriptionFilter} onChange={e => setSubscriptionFilter(e.target.value)}>
+              <option value="all">Tous les abonnements</option>
+              <option value="premium">⭐ Premium</option>
+              <option value="none">🆓 Sans abonnement</option>
+            </select>
+          </div>
+
+          <div className="sort-controls-v2">
+            <select className="sort-select-v2" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="created_at">📅 Date d'inscription</option>
+              <option value="name">🔤 Nom</option>
+              <option value="email">📧 Email</option>
+              <option value="total_spent">💰 Dépenses</option>
+            </select>
+            <button 
+              className={`sort-order-btn-v2 ${sortOrder}`} 
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              title={sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+            >
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
           </div>
         </div>
 
-        {/* Desktop Table View */}
-        <div className="users-table-container desktop-only">
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('name')} className="sortable">
-                  <span>Nom</span>
-                  {sortBy === 'name' && <span className="sort-indicator">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
-                </th>
-                <th onClick={() => handleSort('email')} className="sortable">
-                  <span>Email</span>
-                  {sortBy === 'email' && <span className="sort-indicator">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
-                </th>
-                <th>Rôle</th>
-                <th>Abonnement</th>
-                <th onClick={() => handleSort('created_at')} className="sortable">
-                  <span>Date d'inscription</span>
-                  {sortBy === 'created_at' && <span className="sort-indicator">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
-                </th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedUsers.map(user => {
-                const isPremium = user.plan_type === 'premium';
-                const isAdmin = user.role === 'admin';
-                const trialActive = user.trial_ends_at && new Date(user.trial_ends_at) > new Date();
-                
-                return (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="user-name-cell">
-                        <span className="user-name">{user.name || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td><span className="user-email">{user.email}</span></td>
-                    <td>
-                      <span className={`role-badge role-${user.role}`}>
-                        {isAdmin && <Shield size={14} />}
-                        {user.role === 'admin' ? 'Admin' : 'Spectateur'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`subscription-badge ${isPremium ? 'premium' : trialActive ? 'trial' : 'none'}`}>
-                        {isPremium ? '⭐ Premium' : trialActive ? '🔄 Essai' : '－ Aucun'}
-                      </span>
-                    </td>
-                    <td><span className="user-date">{new Date(user.created_at).toLocaleDateString('fr-FR')}</span></td>
-                    <td className="user-actions">
-                      <button className="btn-icon btn-view" onClick={() => handleViewDetails(user)} title="Voir détails">
-                        <Eye size={16} />
-                      </button>
-                      <button className="btn-icon btn-premium" onClick={() => handleGrantPremium(user.id)} title="Accorder premium">
-                        <CheckCircle size={16} />
-                      </button>
-                      <button className="btn-icon btn-revoke" onClick={() => handleRevokeAccess(user.id)} title="Révoquer accès">
-                        <Ban size={16} />
-                      </button>
-                      <button className="btn-icon btn-admin" onClick={() => handleMakeAdmin(user.id)} title="Rendre admin">
-                        <Shield size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="users-mobile-view mobile-only">
-          {sortedUsers.map(user => {
-            const isPremium = user.plan_type === 'premium';
-            const isAdmin = user.role === 'admin';
-            const trialActive = user.trial_ends_at && new Date(user.trial_ends_at) > new Date();
-            
-            return (
-              <div key={user.id} className="user-mobile-card">
-                <div className="user-mobile-header">
-                  <div className="user-info">
-                    <span className="user-name">{user.name || 'N/A'}</span>
-                    <span className="user-email">{user.email}</span>
-                  </div>
-                  <span className={`subscription-badge ${isPremium ? 'premium' : trialActive ? 'trial' : 'none'}`}>
-                    {isPremium ? '⭐ Premium' : trialActive ? '🔄 Essai' : '－ Aucun'}
-                  </span>
-                </div>
-                
-                <div className="user-mobile-info">
-                  <div className="info-row">
-                    <span className="info-label">Rôle</span>
-                    <span className={`role-badge role-${user.role}`}>
-                      {isAdmin && <Shield size={14} />}
-                      {user.role === 'admin' ? 'Admin' : 'Spectateur'}
-                    </span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Inscription</span>
-                    <span className="info-value">{new Date(user.created_at).toLocaleDateString('fr-FR')}</span>
-                  </div>
-                </div>
-                
-                <div className="user-mobile-actions">
-                  <button className="btn-mobile btn-view" onClick={() => handleViewDetails(user)}>
-                    <Eye size={18} />
-                    <span>Détails</span>
-                  </button>
-                  <button className="btn-mobile btn-premium" onClick={() => handleGrantPremium(user.id)}>
-                    <CheckCircle size={18} />
-                    <span>Premium</span>
-                  </button>
-                  <button className="btn-mobile btn-revoke" onClick={() => handleRevokeAccess(user.id)}>
-                    <Ban size={18} />
-                    <span>Révoquer</span>
-                  </button>
-                  <button className="btn-mobile btn-admin" onClick={() => handleMakeAdmin(user.id)}>
-                    <Shield size={18} />
-                    <span>Admin</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="results-summary-v2">
+          <span className="results-count">
+            <strong>{filteredUsers.length}</strong> utilisateur{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''}
+          </span>
+          {(searchTerm || roleFilter !== 'all' || subscriptionFilter !== 'all') && (
+            <button className="clear-filters-btn" onClick={() => {
+              setSearchTerm('');
+              setRoleFilter('all');
+              setSubscriptionFilter('all');
+            }}>
+              Réinitialiser les filtres
+            </button>
+          )}
         </div>
       </div>
 
-      {/* User Details Modal */}
-      {showUserModal && selectedUser && (
-        <div className="user-modal-overlay" onClick={() => setShowUserModal(false)}>
-          <div className="user-modal-content enhanced-modal" onClick={(e) => e.stopPropagation()}>
-            {/* Enhanced Header with Gradient */}
-            <div className="modal-header enhanced-header">
-              <div className="modal-header-content">
-                <div className="user-avatar">
-                  <span className="avatar-text">{selectedUser.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  <div className="avatar-status-indicator"></div>
+      {/* Modern Users Grid V2 */}
+      <div className="users-grid-v2">
+        {sortedUsers.length === 0 ? (
+          <div className="no-results-v2">
+            <div className="no-results-icon">🔍</div>
+            <h3>Aucun utilisateur trouvé</h3>
+            <p>Essayez d'ajuster vos filtres de recherche</p>
+          </div>
+        ) : (
+          sortedUsers.map((user, index) => {
+            const isPremium = user.subscription_status === 'premium';
+            const isAdmin = user.role === 'admin';
+            const userInitial = user.name?.charAt(0).toUpperCase() || 'U';
+            
+            return (
+              <div 
+                key={user.id} 
+                className="user-card-v2"
+                style={{ '--card-index': index }}
+              >
+                {/* Card Header with Avatar */}
+                <div className="user-card-header-v2">
+                  <div className="user-avatar-v2">
+                    <div className="avatar-letter-v2">{userInitial}</div>
+                    <div className={`avatar-status-indicator ${user.subscription_active ? 'active' : 'inactive'}`}></div>
+                  </div>
+                  
+                  <div className="user-main-info-v2">
+                    <h4 className="user-card-name">{user.name || 'Utilisateur'}</h4>
+                    <p className="user-card-email">{user.email}</p>
+                    
+                    <div className="user-badges-v2">
+                      <span className={`badge-v2-mini badge-role-${user.role}`}>
+                        {isAdmin ? <Shield size={12} /> : <Eye size={12} />}
+                        <span>{isAdmin ? 'Admin' : 'Spectateur'}</span>
+                      </span>
+                      
+                      {isPremium && (
+                        <span className="badge-v2-mini badge-premium">
+                          ⭐ <span>Premium</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="user-title-section">
-                  <h2>{selectedUser.name || 'Utilisateur'}</h2>
-                  <p className="user-email-subtitle">{selectedUser.email}</p>
-                  <div className="user-badges-row">
-                    <span className={`role-badge role-${selectedUser.role}`}>
-                      {selectedUser.role === 'admin' ? <Shield size={14} /> : <Eye size={14} />}
-                      {selectedUser.role === 'admin' ? 'Admin' : 'Spectateur'}
-                    </span>
-                    <span className={`subscription-badge ${selectedUser.subscription_active ? 'premium' : 'none'}`}>
-                      {selectedUser.subscription_active ? '✓ Actif' : '✗ Inactif'}
-                    </span>
+
+                {/* Card Stats */}
+                <div className="user-card-stats-v2">
+                  <div className="stat-item-v2">
+                    <div className="stat-icon-v2">💰</div>
+                    <div className="stat-content-v2">
+                      <span className="stat-value-card">{user.total_spent || 0}€</span>
+                      <span className="stat-label-card">Dépensé</span>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-divider-v2"></div>
+                  
+                  <div className="stat-item-v2">
+                    <div className="stat-icon-v2">🧾</div>
+                    <div className="stat-content-v2">
+                      <span className="stat-value-card">{user.total_payments || 0}</span>
+                      <span className="stat-label-card">Paiements</span>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-divider-v2"></div>
+                  
+                  <div className="stat-item-v2">
+                    <div className="stat-icon-v2">📅</div>
+                    <div className="stat-content-v2">
+                      <span className="stat-value-card">{new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                      <span className="stat-label-card">Inscrit</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div className="user-card-actions-v2">
+                  <button 
+                    className="card-action-btn view-details-btn"
+                    onClick={() => handleViewDetails(user)}
+                    title="Voir les détails complets"
+                  >
+                    <Eye size={18} />
+                    <span>Détails</span>
+                  </button>
+                  
+                  <div className="quick-actions-v2">
+                    <button 
+                      className="quick-action-btn trial-action"
+                      onClick={() => handleGrantTrial(user.id)}
+                      title="Donner essai gratuit (7 jours)"
+                    >
+                      🎁
+                    </button>
+                    
+                    <button 
+                      className="quick-action-btn premium-action"
+                      onClick={() => handleGrantPremium(user.id)}
+                      title="Accorder Premium mensuel"
+                    >
+                      <CheckCircle size={16} />
+                    </button>
+                    
+                    <button 
+                      className="quick-action-btn revoke-action"
+                      onClick={() => handleRevokeAccess(user.id)}
+                      title="Révoquer l'accès"
+                    >
+                      <Ban size={16} />
+                    </button>
+                    
+                    <button 
+                      className={`quick-action-btn ${isAdmin ? 'demote-action' : 'admin-action'}`}
+                      onClick={() => handleToggleAdmin(user.id, user.role)}
+                      title={isAdmin ? 'Rétrograder en spectateur' : 'Promouvoir administrateur'}
+                    >
+                      <Shield size={16} />
+                    </button>
                   </div>
                 </div>
               </div>
-              <button className="btn-close" onClick={() => setShowUserModal(false)}>×</button>
+            );
+          })
+        )}
+      </div>
+
+      {/* User Details Modal - Ultra Modern Design */}
+      {showUserModal && selectedUser && (
+        <div className="user-modal-overlay-v2" onClick={() => setShowUserModal(false)}>
+          <div className="user-modal-wrapper" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Floating Particles Background */}
+            <div className="modal-particles">
+              <div className="particle"></div>
+              <div className="particle"></div>
+              <div className="particle"></div>
+              <div className="particle"></div>
+              <div className="particle"></div>
+            </div>
+
+            {/* Premium Header Section */}
+            <div className="modal-header-v2">
+              <div className="header-background-glow"></div>
+              <button className="btn-close-v2" onClick={() => setShowUserModal(false)}>
+                <span className="close-icon">×</span>
+              </button>
+              
+              <div className="header-content-v2">
+                {/* Avatar avec effet 3D */}
+                <div className="avatar-container-v2">
+                  <div className="avatar-ring"></div>
+                  <div className="avatar-circle-v2">
+                    <span className="avatar-letter">{selectedUser.name?.charAt(0).toUpperCase() || 'U'}</span>
+                  </div>
+                  <div className="avatar-status-v2"></div>
+                </div>
+
+                {/* User Info */}
+                <div className="user-info-header-v2">
+                  <h2 className="user-name-v2">{selectedUser.name || 'Utilisateur'}</h2>
+                  <p className="user-email-v2">{selectedUser.email}</p>
+                  
+                  {/* Badges Premium */}
+                  <div className="badges-container-v2">
+                    <div className={`badge-v2 badge-role ${selectedUser.role}`}>
+                      {selectedUser.role === 'admin' ? <Shield size={16} /> : <Eye size={16} />}
+                      <span>{selectedUser.role === 'admin' ? 'Administrateur' : 'Spectateur'}</span>
+                    </div>
+                    <div className={`badge-v2 badge-status ${selectedUser.subscription_active ? 'active' : 'inactive'}`}>
+                      <div className="status-dot"></div>
+                      <span>{selectedUser.subscription_active ? 'Abonnement Actif' : 'Inactif'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
-            <div className="modal-body enhanced-body">
-              {/* Quick Stats Cards */}
-              <div className="modal-quick-stats">
-                <div className="quick-stat-card stat-blue">
-                  <div className="stat-icon-circle">
-                    <CheckCircle size={20} />
+            {/* Modal Body - Redesigned */}
+            <div className="modal-body-v2">
+              
+              {/* Stats Overview Cards */}
+              <div className="stats-overview-v2">
+                <div className="stat-card-v2 stat-payments">
+                  <div className="stat-icon-v2">
+                    <CheckCircle size={24} />
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-number">{selectedUser.total_payments || 0}</span>
-                    <span className="stat-text">Paiements</span>
+                  <div className="stat-data-v2">
+                    <span className="stat-value-v2">{selectedUser.total_payments || 0}</span>
+                    <span className="stat-label-v2">Transactions</span>
                   </div>
-                </div>
-                <div className="quick-stat-card stat-green">
-                  <div className="stat-icon-circle">
-                    <span className="currency-icon">DH</span>
-                  </div>
-                  <div className="stat-info">
-                    <span className="stat-number">{selectedUser.total_spent || 0}</span>
-                    <span className="stat-text">Total Dépensé</span>
+                  <div className="stat-trend-v2">
+                    <span className="trend-indicator up">↑</span>
                   </div>
                 </div>
-                <div className="quick-stat-card stat-purple">
-                  <div className="stat-icon-circle">
-                    <Shield size={20} />
+
+                <div className="stat-card-v2 stat-revenue">
+                  <div className="stat-icon-v2">
+                    <span className="currency-symbol">DH</span>
                   </div>
-                  <div className="stat-info">
-                    <span className="stat-number">{selectedUser.plan_type === 'premium' ? 'Premium' : 'Gratuit'}</span>
-                    <span className="stat-text">Plan</span>
+                  <div className="stat-data-v2">
+                    <span className="stat-value-v2">{selectedUser.total_spent || 0}</span>
+                    <span className="stat-label-v2">Revenus Générés</span>
+                  </div>
+                  <div className="stat-trend-v2">
+                    <span className="trend-indicator up">+{Math.round((selectedUser.total_spent || 0) * 0.1)}</span>
+                  </div>
+                </div>
+
+                  <div className="stat-card-v2 stat-plan">
+                  <div className="stat-icon-v2">
+                    <Shield size={24} />
+                  </div>
+                  <div className="stat-data-v2">
+                    <span className="stat-value-v2">{selectedUser.subscription_status === 'premium' ? 'Premium' : 'Gratuit'}</span>
+                    <span className="stat-label-v2">Type de Plan</span>
+                  </div>
+                  <div className={`stat-badge-v2 ${selectedUser.subscription_status === 'premium' ? 'premium' : 'free'}`}>
+                    {selectedUser.subscription_status === 'premium' ? '⭐' : '🆓'}
                   </div>
                 </div>
               </div>
 
-              {/* Detailed Information Sections */}
-              <div className="user-detail-section">
-                <div className="section-title">
-                  <div className="title-icon">📋</div>
-                  <h3>Informations Générales</h3>
-                </div>
-                <div className="detail-grid-enhanced">
-                  <div className="detail-item-enhanced">
-                    <div className="detail-icon"><Shield size={16} /></div>
-                    <div className="detail-content">
-                      <span className="detail-label">ID Utilisateur</span>
-                      <span className="detail-value detail-id">{selectedUser.id}</span>
-                    </div>
+              {/* Information Sections */}
+              <div className="info-sections-v2">
+                
+                {/* General Information */}
+                <div className="info-section-v2">
+                  <div className="section-header-v2">
+                    <span className="section-icon-v2">📋</span>
+                    <h3 className="section-title-v2">Informations Générales</h3>
+                    <div className="section-line-v2"></div>
                   </div>
-                  <div className="detail-item-enhanced">
-                    <div className="detail-icon">📅</div>
-                    <div className="detail-content">
-                      <span className="detail-label">Date d'inscription</span>
-                      <span className="detail-value">{new Date(selectedUser.created_at).toLocaleDateString('fr-FR', { 
-                        day: 'numeric', 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}</span>
-                    </div>
-                  </div>
-                  {selectedUser.last_sign_in_at && (
-                    <div className="detail-item-enhanced">
-                      <div className="detail-icon">🕐</div>
-                      <div className="detail-content">
-                        <span className="detail-label">Dernière connexion</span>
-                        <span className="detail-value">{new Date(selectedUser.last_sign_in_at).toLocaleString('fr-FR')}</span>
+                  <div className="section-content-v2">
+                    <div className="info-grid-v2">
+                      <div className="info-item-v2">
+                        <div className="info-item-icon"><Shield size={18} /></div>
+                        <div className="info-item-content">
+                          <span className="info-label-v2">ID Utilisateur</span>
+                          <span className="info-value-v2 mono">{selectedUser.id}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="user-detail-section">
-                <div className="section-title">
-                  <div className="title-icon">⭐</div>
-                  <h3>Abonnement & Essai</h3>
-                </div>
-                <div className="detail-grid-enhanced">
-                  <div className="detail-item-enhanced highlight-premium">
-                    <div className="detail-icon">🎯</div>
-                    <div className="detail-content">
-                      <span className="detail-label">Type d'abonnement</span>
-                      <span className="detail-value premium-text">
-                        {selectedUser.plan_type === 'premium' ? '⭐ Premium' : '🆓 Gratuit'}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedUser.trial_ends_at && (
-                    <div className="detail-item-enhanced">
-                      <div className="detail-icon">⏰</div>
-                      <div className="detail-content">
-                        <span className="detail-label">Période d'essai</span>
-                        <span className={`detail-value ${new Date(selectedUser.trial_ends_at) > new Date() ? 'active-trial' : 'expired-trial'}`}>
-                          {new Date(selectedUser.trial_ends_at) > new Date() 
-                            ? `✓ Expire le ${new Date(selectedUser.trial_ends_at).toLocaleDateString('fr-FR')}`
-                            : `✗ Expiré le ${new Date(selectedUser.trial_ends_at).toLocaleDateString('fr-FR')}`
-                          }
-                        </span>
+                      <div className="info-item-v2">
+                        <div className="info-item-icon">📅</div>
+                        <div className="info-item-content">
+                          <span className="info-label-v2">Date d'inscription</span>
+                          <span className="info-value-v2">{new Date(selectedUser.created_at).toLocaleDateString('fr-FR', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {(selectedUser.total_payments > 0 || selectedUser.last_payment_date) && (
-                <div className="user-detail-section">
-                  <div className="section-title">
-                    <div className="title-icon">💰</div>
-                    <h3>Historique de Paiements</h3>
-                  </div>
-                  <div className="payment-stats-grid">
-                    <div className="payment-stat-card">
-                      <div className="payment-stat-icon">📊</div>
-                      <div className="payment-stat-content">
-                        <span className="payment-stat-label">Total des transactions</span>
-                        <span className="payment-stat-value">{selectedUser.total_payments || 0}</span>
-                      </div>
-                    </div>
-                    <div className="payment-stat-card highlight-green">
-                      <div className="payment-stat-icon">💵</div>
-                      <div className="payment-stat-content">
-                        <span className="payment-stat-label">Montant total</span>
-                        <span className="payment-stat-value">{selectedUser.total_spent || 0} DH</span>
-                      </div>
-                    </div>
-                    {selectedUser.last_payment_date && (
-                      <>
-                        <div className="payment-stat-card">
-                          <div className="payment-stat-icon">📅</div>
-                          <div className="payment-stat-content">
-                            <span className="payment-stat-label">Dernier paiement</span>
-                            <span className="payment-stat-value">{new Date(selectedUser.last_payment_date).toLocaleDateString('fr-FR')}</span>
+                      {selectedUser.last_sign_in_at && (
+                        <div className="info-item-v2">
+                          <div className="info-item-icon">🕐</div>
+                          <div className="info-item-content">
+                            <span className="info-label-v2">Dernière connexion</span>
+                            <span className="info-value-v2">{new Date(selectedUser.last_sign_in_at).toLocaleString('fr-FR')}</span>
                           </div>
                         </div>
-                        <div className="payment-stat-card">
-                          <div className="payment-stat-icon">💳</div>
-                          <div className="payment-stat-content">
-                            <span className="payment-stat-label">Montant</span>
-                            <span className="payment-stat-value">{selectedUser.last_payment_amount || 0} DH</span>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="user-detail-section">
-                <div className="section-title">
-                  <div className="title-icon">⚡</div>
-                  <h3>Actions Rapides</h3>
+                {/* Subscription Information */}
+                <div className="info-section-v2 section-premium">
+                  <div className="section-header-v2">
+                    <span className="section-icon-v2">⭐</span>
+                    <h3 className="section-title-v2">Abonnement & Accès</h3>
+                    <div className="section-line-v2"></div>
+                  </div>
+                  <div className="section-content-v2">
+                    <div className="subscription-details-v2">
+                      <div className="subscription-card-v2 primary">
+                        <div className="subscription-icon-v2">🎯</div>
+                        <div className="subscription-info-v2">
+                          <span className="subscription-label-v2">Type d'abonnement</span>
+                          <span className={`subscription-value-v2 ${selectedUser.subscription_status === 'premium' ? 'premium' : 'free'}`}>
+                            {selectedUser.subscription_status === 'premium' ? '⭐ Premium' : '🆓 Gratuit'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="modal-actions-enhanced">
-                  <button className="btn-modal-enhanced btn-premium" onClick={() => {
+
+                {/* Payment History */}
+                {(selectedUser.total_payments > 0 || selectedUser.last_payment_date) && (
+                  <div className="info-section-v2 section-payments">
+                    <div className="section-header-v2">
+                      <span className="section-icon-v2">💰</span>
+                      <h3 className="section-title-v2">Historique de Paiements</h3>
+                      <div className="section-line-v2"></div>
+                    </div>
+                    <div className="section-content-v2">
+                      <div className="payment-history-grid-v2">
+                        <div className="payment-card-v2">
+                          <div className="payment-card-icon">📊</div>
+                          <div className="payment-card-data">
+                            <span className="payment-card-value">{selectedUser.total_payments || 0}</span>
+                            <span className="payment-card-label">Transactions</span>
+                          </div>
+                        </div>
+                        <div className="payment-card-v2 highlight">
+                          <div className="payment-card-icon">💵</div>
+                          <div className="payment-card-data">
+                            <span className="payment-card-value">{selectedUser.total_spent || 0} DH</span>
+                            <span className="payment-card-label">Montant Total</span>
+                          </div>
+                        </div>
+                        {selectedUser.last_payment_date && (
+                          <>
+                            <div className="payment-card-v2">
+                              <div className="payment-card-icon">📅</div>
+                              <div className="payment-card-data">
+                                <span className="payment-card-value">{new Date(selectedUser.last_payment_date).toLocaleDateString('fr-FR')}</span>
+                                <span className="payment-card-label">Dernier Paiement</span>
+                              </div>
+                            </div>
+                            <div className="payment-card-v2">
+                              <div className="payment-card-icon">💳</div>
+                              <div className="payment-card-data">
+                                <span className="payment-card-value">{selectedUser.last_payment_amount || 0} DH</span>
+                                <span className="payment-card-label">Montant</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Section */}
+              <div className="actions-section-v2">
+                <div className="section-header-v2">
+                  <span className="section-icon-v2">⚡</span>
+                  <h3 className="section-title-v2">Actions Rapides</h3>
+                  <div className="section-line-v2"></div>
+                </div>
+                <div className="actions-grid-v2">
+                  <button className="action-btn-v2 action-trial" onClick={() => {
+                    handleGrantTrial(selectedUser.id);
+                    setShowUserModal(false);
+                  }}>
+                    <div className="action-icon-v2">
+                      🎁
+                    </div>
+                    <div className="action-content-v2">
+                      <span className="action-title-v2">Essai Gratuit</span>
+                      <span className="action-desc-v2">Donner 7 jours d'essai</span>
+                    </div>
+                    <div className="action-arrow-v2">→</div>
+                  </button>
+
+                  <button className="action-btn-v2 action-premium" onClick={() => {
                     handleGrantPremium(selectedUser.id);
                     setShowUserModal(false);
                   }}>
-                    <div className="btn-icon-wrapper">
-                      <CheckCircle size={20} />
+                    <div className="action-icon-v2">
+                      <CheckCircle size={24} />
                     </div>
-                    <div className="btn-text">
-                      <span className="btn-title">Accorder Premium</span>
-                      <span className="btn-subtitle">Donner un accès premium</span>
+                    <div className="action-content-v2">
+                      <span className="action-title-v2">Premium Mensuel</span>
+                      <span className="action-desc-v2">Activer abonnement mensuel</span>
                     </div>
+                    <div className="action-arrow-v2">→</div>
                   </button>
-                  <button className="btn-modal-enhanced btn-revoke" onClick={() => {
+
+                  <button className="action-btn-v2 action-revoke" onClick={() => {
                     handleRevokeAccess(selectedUser.id);
                     setShowUserModal(false);
                   }}>
-                    <div className="btn-icon-wrapper">
-                      <Ban size={20} />
+                    <div className="action-icon-v2">
+                      <Ban size={24} />
                     </div>
-                    <div className="btn-text">
-                      <span className="btn-title">Révoquer Accès</span>
-                      <span className="btn-subtitle">Retirer tous les accès</span>
+                    <div className="action-content-v2">
+                      <span className="action-title-v2">Révoquer Accès</span>
+                      <span className="action-desc-v2">Supprimer tous les accès</span>
                     </div>
+                    <div className="action-arrow-v2">→</div>
                   </button>
-                  <button className="btn-modal-enhanced btn-admin" onClick={() => {
-                    handleMakeAdmin(selectedUser.id);
+
+                  <button className="action-btn-v2 action-admin" onClick={() => {
+                    handleToggleAdmin(selectedUser.id, selectedUser.role);
                     setShowUserModal(false);
                   }}>
-                    <div className="btn-icon-wrapper">
-                      <Shield size={20} />
+                    <div className="action-icon-v2">
+                      <Shield size={24} />
                     </div>
-                    <div className="btn-text">
-                      <span className="btn-title">Rendre Admin</span>
-                      <span className="btn-subtitle">Promouvoir en admin</span>
+                    <div className="action-content-v2">
+                      <span className="action-title-v2">{selectedUser.role === 'admin' ? 'Rétrograder' : 'Promouvoir Admin'}</span>
+                      <span className="action-desc-v2">{selectedUser.role === 'admin' ? 'Retirer droits admin' : 'Accorder droits admin'}</span>
                     </div>
+                    <div className="action-arrow-v2">→</div>
                   </button>
                 </div>
               </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="user-modal-overlay-v2" onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}>
+          <div className="confirm-modal-wrapper" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <h3 className="confirm-modal-title">{confirmModal.title}</h3>
+            </div>
+            <div className="confirm-modal-body">
+              <p className="confirm-modal-message">{confirmModal.message}</p>
+            </div>
+            <div className="confirm-modal-actions">
+              <button 
+                className="confirm-btn cancel-btn" 
+                onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}
+              >
+                ✕ Annuler
+              </button>
+              <button 
+                className="confirm-btn confirm-btn-primary" 
+                onClick={confirmModal.onConfirm}
+              >
+                ✓ Confirmer
+              </button>
             </div>
           </div>
         </div>

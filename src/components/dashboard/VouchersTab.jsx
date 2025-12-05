@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Gift, Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
 import { voucherService } from '../../services/voucherService';
+import './VouchersTab.css';
 
 const VouchersTab = () => {
   const [showVoucherForm, setShowVoucherForm] = useState(false);

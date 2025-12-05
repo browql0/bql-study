@@ -6,6 +6,7 @@ import {
   CreditCard, Award, Clock, ArrowUpRight, ArrowDownRight,
   Receipt, Target, Zap, PieChart
 } from 'lucide-react';
+import './RevenueTab.css';
 
 const RevenueCard = ({ icon, label, value, trend, trendValue, color, suffix = 'DH' }) => (
   <div className="revenue-card-enhanced">

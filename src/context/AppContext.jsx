@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { createContext, useContext, useState, useLayoutEffect } from 'react';
+import { notificationsService } from '../services/notificationsService';
 
 /* eslint-disable react-refresh/only-export-components */
 const AppContext = createContext();
@@ -104,18 +105,20 @@ export const AppProvider = ({ children }) => {
   };
 
   // Ajouter une note (Admin seulement)
-  const addNote = (subjectId, section, noteData) => {
+  const addNote = async (subjectId, section, noteData) => {
     if (!isAdmin()) return { success: false, error: 'Action réservée aux administrateurs' };
+    
+    const newNote = {
+      id: Date.now().toString(),
+      title: noteData.title,
+      content: noteData.content,
+      tags: noteData.tags || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
     setSubjects(subjects.map(subject => {
       if (subject.id === subjectId) {
-        const newNote = {
-          id: Date.now().toString(),
-          title: noteData.title,
-          content: noteData.content,
-          tags: noteData.tags || [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
         return {
           ...subject,
           [section]: {
@@ -126,6 +129,25 @@ export const AppProvider = ({ children }) => {
       }
       return subject;
     }));
+    
+    // Envoyer notification aux spectateurs
+    try {
+      const subject = subjects.find(s => s.id === subjectId);
+      await notificationsService.notifySpectatorsNewContent(
+        'new_note',
+        'Nouvelle note ajoutée',
+        `Une nouvelle note "${noteData.title}" a été ajoutée dans ${subject?.name || 'un cours'}`,
+        {
+          subjectId,
+          section,
+          noteId: newNote.id,
+          noteTitle: noteData.title
+        }
+      );
+    } catch (error) {
+      console.error('Erreur notification:', error);
+    }
+    
     return { success: true };
   };
 
@@ -170,17 +192,19 @@ export const AppProvider = ({ children }) => {
   };
 
   // Ajouter une photo (Admin seulement)
-  const addPhoto = (subjectId, section, photoData) => {
+  const addPhoto = async (subjectId, section, photoData) => {
     if (!isAdmin()) return { success: false, error: 'Action réservée aux administrateurs' };
+    
+    const newPhoto = {
+      id: Date.now().toString(),
+      url: photoData.url,
+      title: photoData.title,
+      description: photoData.description || '',
+      createdAt: new Date().toISOString(),
+    };
+    
     setSubjects(subjects.map(subject => {
       if (subject.id === subjectId) {
-        const newPhoto = {
-          id: Date.now().toString(),
-          url: photoData.url,
-          title: photoData.title,
-          description: photoData.description || '',
-          createdAt: new Date().toISOString(),
-        };
         return {
           ...subject,
           [section]: {
@@ -191,6 +215,25 @@ export const AppProvider = ({ children }) => {
       }
       return subject;
     }));
+    
+    // Envoyer notification aux spectateurs
+    try {
+      const subject = subjects.find(s => s.id === subjectId);
+      await notificationsService.notifySpectatorsNewContent(
+        'new_photo',
+        'Nouvelle photo ajoutée',
+        `Une nouvelle photo "${photoData.title}" a été ajoutée dans ${subject?.name || 'un cours'}`,
+        {
+          subjectId,
+          section,
+          photoId: newPhoto.id,
+          photoTitle: photoData.title
+        }
+      );
+    } catch (error) {
+      console.error('Erreur notification:', error);
+    }
+    
     return { success: true };
   };
 
@@ -213,19 +256,21 @@ export const AppProvider = ({ children }) => {
   };
 
   // Ajouter un fichier (Admin seulement)
-  const addFile = (subjectId, section, fileData) => {
+  const addFile = async (subjectId, section, fileData) => {
     if (!isAdmin()) return { success: false, error: 'Action réservée aux administrateurs' };
+    
+    const newFile = {
+      id: Date.now().toString(),
+      url: fileData.url,
+      name: fileData.name,
+      title: fileData.title,
+      description: fileData.description || '',
+      size: fileData.size || 0,
+      createdAt: new Date().toISOString(),
+    };
+    
     setSubjects(subjects.map(subject => {
       if (subject.id === subjectId) {
-        const newFile = {
-          id: Date.now().toString(),
-          url: fileData.url,
-          name: fileData.name,
-          title: fileData.title,
-          description: fileData.description || '',
-          size: fileData.size || 0,
-          createdAt: new Date().toISOString(),
-        };
         return {
           ...subject,
           [section]: {
@@ -236,6 +281,26 @@ export const AppProvider = ({ children }) => {
       }
       return subject;
     }));
+    
+    // Envoyer notification aux spectateurs
+    try {
+      const subject = subjects.find(s => s.id === subjectId);
+      await notificationsService.notifySpectatorsNewContent(
+        'new_file',
+        'Nouveau fichier ajouté',
+        `Un nouveau fichier "${fileData.title || fileData.name}" a été ajouté dans ${subject?.name || 'un cours'}`,
+        {
+          subjectId,
+          section,
+          fileId: newFile.id,
+          fileName: fileData.name,
+          fileTitle: fileData.title
+        }
+      );
+    } catch (error) {
+      console.error('Erreur notification:', error);
+    }
+    
     return { success: true };
   };
 

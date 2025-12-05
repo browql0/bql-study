@@ -6,6 +6,7 @@ import * as subjectsService from '../services/subjectsService';
 import * as notesService from '../services/notesService';
 import * as photosService from '../services/photosService';
 import * as filesService from '../services/filesService';
+import { notificationsService } from '../services/notificationsService';
 import { quizService } from '../services/quizService';
 
 const AppContext = createContext();
@@ -38,12 +39,19 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const authStateChangeResult = onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        // Charger le rôle depuis la table profiles au lieu de user_metadata
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role, name')
+          .eq('id', session.user.id)
+          .single();
+        
         setCurrentUser({
           id: session.user.id,
           email: session.user.email,
-          name: session.user.user_metadata?.name || session.user.email,
+          name: profileData?.name || session.user.user_metadata?.name || session.user.email,
           username: session.user.email,
-          role: session.user.user_metadata?.role || 'spectator'
+          role: profileData?.role || 'spectator'
         });
         // Charger les matières depuis Supabase de manière optimisée
         await loadSubjects();
@@ -77,6 +85,44 @@ export const AppProvider = ({ children }) => {
       window.removeEventListener('auth-expired', handleAuthExpired);
     };
   }, []);
+
+  // Écouter les changements de profil en temps réel
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    // S'abonner aux changements du profil de l'utilisateur actuel
+    const profileSubscription = supabase
+      .channel(`profile-${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${currentUser.id}`
+        },
+        async (payload) => {
+          console.log('Profil mis à jour en temps réel:', payload);
+          
+          // Mettre à jour le rôle si il a changé
+          if (payload.new.role !== currentUser.role) {
+            setCurrentUser(prev => ({
+              ...prev,
+              role: payload.new.role,
+              name: payload.new.name || prev.name
+            }));
+            
+            // Recharger la page pour appliquer les changements de permission
+            window.location.reload();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      profileSubscription.unsubscribe();
+    };
+  }, [currentUser?.id]);
 
   // Charger les matières depuis Supabase (optimisé)
   const loadSubjects = async () => {
