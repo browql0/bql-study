@@ -312,6 +312,7 @@ const PaymentModal = ({ onClose, onPaymentSuccess, onOpenVoucher }) => {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Bank Transfer Form */}
       {showBankTransferForm && (
