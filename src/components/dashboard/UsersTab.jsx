@@ -36,20 +36,31 @@ const UsersTab = () => {
 
       if (paymentsError) console.warn('Erreur paiements:', paymentsError);
 
+      // Récupérer aussi les paiements manuels approuvés (virement/cash)
+      const { data: manualPayments, error: manualError } = await supabase
+        .from('pending_payments')
+        .select('user_id, amount, created_at')
+        .eq('status', 'approved');
+
+      if (manualError) console.warn('Erreur paiements manuels:', manualError);
+
       // Enrichir les données utilisateurs avec les infos de paiement
       const enrichedUsers = usersData.map(user => {
         const userPayments = paymentsData?.filter(p => p.user_id === user.id) || [];
-        const lastPayment = userPayments.sort((a, b) => 
+        const userManualPayments = manualPayments?.filter(p => p.user_id === user.id) || [];
+        const allPayments = [...userPayments, ...userManualPayments];
+        
+        const lastPayment = allPayments.sort((a, b) => 
           new Date(b.created_at) - new Date(a.created_at)
         )[0];
 
         return {
           ...user,
-          total_payments: userPayments.length,
-          total_spent: userPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+          total_payments: allPayments.length,
+          total_spent: allPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
           last_payment_date: lastPayment?.created_at,
           last_payment_amount: lastPayment?.amount,
-          subscription_active: user.subscription_status === 'premium' || user.subscription_status === 'trial'
+          subscription_active: user.subscription_status === 'premium' || user.subscription_status === 'trial' || user.subscription_status === 'active'
         };
       });
 
@@ -165,7 +176,7 @@ const UsersTab = () => {
           const { error } = await supabase
             .from('profiles')
             .update({ 
-              subscription_status: 'free',
+              subscription_status: 'expired',
               subscription_end_date: null
             })
             .eq('id', userId);
