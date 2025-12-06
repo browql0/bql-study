@@ -94,7 +94,7 @@ export default {
     // Headers CORS
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
     
@@ -129,9 +129,92 @@ export default {
         });
       }
       
-      // Vérifier l'abonnement (sauf pour les admins)
+      const url = new URL(request.url);
+      const pathname = url.pathname;
+      const path = url.searchParams.get('path');
+      
+      // Route: POST /upload - Upload avec FormData (pour BankTransferForm)
+      if (request.method === 'POST' && pathname === '/upload') {
+        try {
+          const formData = await request.formData();
+          const file = formData.get('file');
+          const filePath = formData.get('path');
+          
+          if (!file || !filePath) {
+            return new Response(JSON.stringify({ error: 'File and path are required' }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            });
+          }
+          
+          const fileData = await file.arrayBuffer();
+          const contentType = file.type || 'application/octet-stream';
+          const decodedPath = decodeURIComponent(filePath);
+          
+          const aws = new AwsClient({
+            accessKeyId: accessKeyId,
+            secretAccessKey: secretAccessKey,
+            service: 's3',
+            region: 'auto',
+          });
+          
+          const encodedPath = encodeR2Path(decodedPath);
+          const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
+          
+          const signedRequest = await aws.sign(r2Url, {
+            method: 'PUT',
+            body: fileData,
+            headers: {
+              'Content-Type': contentType,
+            },
+          });
+          
+          const uploadResponse = await fetch(signedRequest);
+          
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            return new Response(JSON.stringify({ error: `Upload failed: ${uploadResponse.status} ${errorText}` }), {
+              status: uploadResponse.status,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            });
+          }
+          
+          // Retourner l'URL publique du fichier
+          const publicUrl = `https://pub-7b40cd8a60564c57996c99bb2ef7024a.r2.dev/${encodedPath}`;
+          
+          return new Response(JSON.stringify({ 
+            success: true, 
+            path: decodedPath,
+            url: publicUrl 
+          }), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        } catch (error) {
+          console.error('Error uploading file via POST:', error);
+          return new Response(JSON.stringify({ error: 'Failed to upload file', details: error.message }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        }
+      }
+      
+      // Vérifier l'abonnement (sauf pour les admins et les uploads de preuve de virement)
       const userRole = user.user_metadata?.role;
-      if (userRole !== 'admin') {
+      const isTransferProof = path && path.startsWith('transfer-proofs/');
+      
+      if (userRole !== 'admin' && !isTransferProof) {
         const hasSubscription = await hasActiveSubscription(user.id, supabaseUrl, supabaseAnonKey);
         if (!hasSubscription) {
           return new Response(JSON.stringify({ error: 'Subscription required' }), {
@@ -143,9 +226,6 @@ export default {
           });
         }
       }
-      
-      const url = new URL(request.url);
-      const path = url.searchParams.get('path');
       const decodedPath = path ? decodeURIComponent(path) : null;
       
       if (!decodedPath) {

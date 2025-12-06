@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, BarChart3, DollarSign, Gift, Users, Settings, Home } from 'lucide-react';
+import { Activity, BarChart3, DollarSign, Clock, Gift, Users, Settings, Home } from 'lucide-react';
 import './DashboardNavigation.css';
 
 const DashboardNavigation = ({ activeTab, setActiveTab }) => {
@@ -26,6 +26,13 @@ const DashboardNavigation = ({ activeTab, setActiveTab }) => {
         >
           <DollarSign size={20} />
           <span>Revenus</span>
+        </button>
+        <button 
+          className={`sidebar-item ${activeTab === 'pending-payments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pending-payments')}
+        >
+          <Clock size={20} />
+          <span>Paiements</span>
         </button>
         <button 
           className={`sidebar-item ${activeTab === 'vouchers' ? 'active' : ''}`}

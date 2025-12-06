@@ -55,6 +55,12 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
 
   const uploadProof = async (file) => {
     const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw new Error('Session expirée, veuillez vous reconnecter');
+    }
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
     
@@ -65,6 +71,9 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
     
     const response = await fetch(import.meta.env.VITE_CLOUDFLARE_WORKER_URL + '/upload', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      },
       body: formDataUpload
     });
     

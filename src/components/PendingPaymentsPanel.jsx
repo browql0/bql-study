@@ -1,0 +1,235 @@
+import React, { useState, useEffect } from 'react';
+import { Clock, CheckCircle, XCircle, Building2, Banknote, Eye, AlertCircle, User, Calendar, Phone, FileText } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import './PendingPaymentsPanel.css';
+
+const PendingPaymentsPanel = () => {
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    loadPendingPayments();
+  }, []);
+
+  const loadPendingPayments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('pending_payments')
+        .select(`
+          *,
+          profiles!pending_payments_user_id_fkey(name, email)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingPayments(data || []);
+    } catch (error) {
+      console.error('Error loading pending payments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (paymentId) => {
+    if (!confirm('Confirmer la validation de ce paiement ?')) return;
+
+    setProcessing(true);
+    try {
+      const { data, error } = await supabase.rpc('approve_pending_payment', {
+        payment_id: paymentId
+      });
+
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la validation');
+      }
+
+      alert('✅ Paiement validé ! L\'utilisateur a maintenant accès au contenu.');
+      await loadPendingPayments();
+      setSelectedPayment(null);
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      alert('Erreur : ' + error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async (paymentId) => {
+    const reason = prompt('Raison du refus (optionnel) :');
+    if (reason === null) return; // Annulé
+
+    setProcessing(true);
+    try {
+      const { data, error } = await supabase.rpc('reject_pending_payment', {
+        payment_id: paymentId,
+        rejection_reason: reason || null
+      });
+
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors du rejet');
+      }
+
+      alert('Paiement rejeté.');
+      await loadPendingPayments();
+      setSelectedPayment(null);
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      alert('Erreur : ' + error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const formatPlanName = (planType) => {
+    const plans = {
+      monthly: 'Mensuel',
+      quarterly: 'Trimestriel',
+      yearly: 'Semestre'
+    };
+    return plans[planType] || planType;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="pending-payments-loading">
+        <div className="spinner"></div>
+        <p>Chargement des paiements...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pending-payments-panel">
+      <div className="panel-header">
+        <div className="header-title">
+          <Clock size={24} />
+          <h2>Paiements en attente</h2>
+        </div>
+        <div className="pending-count-badge">
+          {pendingPayments.length}
+        </div>
+      </div>
+
+      {pendingPayments.length === 0 ? (
+        <div className="empty-state">
+          <CheckCircle size={48} />
+          <h3>Aucun paiement en attente</h3>
+          <p>Tous les paiements ont été traités</p>
+        </div>
+      ) : (
+        <div className="payments-grid">
+          {pendingPayments.map((payment) => (
+            <div key={payment.id} className="payment-card">
+              <div className="payment-card-header">
+                <div className="payment-method-badge">
+                  {payment.payment_method === 'bank_transfer' ? (
+                    <>
+                      <Building2 size={16} />
+                      <span>Virement</span>
+                    </>
+                  ) : (
+                    <>
+                      <Banknote size={16} />
+                      <span>Cash</span>
+                    </>
+                  )}
+                </div>
+                <span className="payment-date">
+                  {formatDate(payment.created_at)}
+                </span>
+              </div>
+
+              <div className="payment-card-body">
+                <div className="payment-user-info">
+                  <User size={18} />
+                  <div>
+                    <span className="user-name">{payment.profiles?.name || 'Utilisateur'}</span>
+                    <span className="user-email">{payment.profiles?.email}</span>
+                  </div>
+                </div>
+
+                <div className="payment-details">
+                  <div className="detail-row">
+                    <span className="detail-label">Plan</span>
+                    <span className="detail-value">{formatPlanName(payment.plan_type)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Montant</span>
+                    <span className="detail-value-amount">{payment.amount} DH</span>
+                  </div>
+                </div>
+
+                {payment.payment_method === 'bank_transfer' && (
+                  <div className="transfer-info">
+                    <p><strong>Titulaire :</strong> {payment.account_holder_name}</p>
+                    <p><strong>Date :</strong> {formatDate(payment.transfer_date)}</p>
+                    {payment.transfer_reference && (
+                      <p><strong>Référence :</strong> {payment.transfer_reference}</p>
+                    )}
+                  </div>
+                )}
+
+                {payment.payment_method === 'cash' && (
+                  <div className="cash-info">
+                    <p><Phone size={14} /> {payment.contact_phone}</p>
+                    <p><Calendar size={14} /> RDV souhaité : {formatDate(payment.preferred_date)}</p>
+                    {payment.notes && (
+                      <p className="cash-notes"><FileText size={14} /> {payment.notes}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="payment-card-actions">
+                {payment.payment_method === 'bank_transfer' && payment.transfer_proof_url && (
+                  <button
+                    className="btn-view-proof"
+                    onClick={() => window.open(payment.transfer_proof_url, '_blank')}
+                  >
+                    <Eye size={16} />
+                    Voir la preuve
+                  </button>
+                )}
+                
+                <button
+                  className="btn-approve"
+                  onClick={() => handleApprove(payment.id)}
+                  disabled={processing}
+                >
+                  <CheckCircle size={16} />
+                  Valider
+                </button>
+                
+                <button
+                  className="btn-reject"
+                  onClick={() => handleReject(payment.id)}
+                  disabled={processing}
+                >
+                  <XCircle size={16} />
+                  Rejeter
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PendingPaymentsPanel;
