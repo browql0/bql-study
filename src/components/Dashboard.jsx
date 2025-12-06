@@ -5,6 +5,7 @@ import RevenueTab from './dashboard/RevenueTab';
 import VouchersTab from './dashboard/VouchersTab';
 import UsersTab from './dashboard/UsersTab';
 import SettingsTab from './dashboard/SettingsTab';
+import DevicesTab from './dashboard/DevicesTab';
 import PendingPaymentsPanel from './PendingPaymentsPanel';
 import './Dashboard.css';
 
@@ -18,6 +19,7 @@ const Dashboard = () => {
       case 'pending-payments': return 'Paiements en attente';
       case 'vouchers': return 'Codes Promo';
       case 'manage-users': return 'Utilisateurs';
+      case 'devices': return 'Appareils Connectés';
       case 'settings': return 'Paramètres';
       default: return 'Dashboard';
     }
@@ -40,6 +42,7 @@ const Dashboard = () => {
           {activeTab === 'pending-payments' && <PendingPaymentsPanel />}
           {activeTab === 'vouchers' && <VouchersTab />}
           {activeTab === 'manage-users' && <UsersTab />}
+          {activeTab === 'devices' && <DevicesTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
       </main>

@@ -10,8 +10,10 @@ import Dashboard from './components/Dashboard';
 import PaymentModal from './components/PaymentModal';
 import PaymentCheckout from './components/PaymentCheckout';
 import VoucherModal from './components/VoucherModal';
+import DeviceLimitModal from './components/DeviceLimitModal';
 import Login from './components/Login';
 import { subscriptionService } from './services/subscriptionService';
+import { deviceService } from './services/deviceService';
 import { GraduationCap } from 'lucide-react';
 import './App.css';
 
@@ -25,9 +27,11 @@ function AppContent() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showVoucher, setShowVoucher] = useState(false);
+  const [showDeviceLimitModal, setShowDeviceLimitModal] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [activeSection, setActiveSection] = useState('cours');
   const [activeTab, setActiveTab] = useState('notes');
+  const [deviceCheckDone, setDeviceCheckDone] = useState(false);
   
   // Vérifier si on est sur une page de paiement
   const isPaymentPage = window.location.pathname.includes('/payment/');
@@ -61,6 +65,36 @@ function AppContent() {
       setHasSubscription(false);
     }
   }, [currentUser, checkSubscription]);
+
+  // Vérifier et enregistrer l'appareil au chargement
+  useEffect(() => {
+    const checkDevice = async () => {
+      if (currentUser?.id && !deviceCheckDone) {
+        try {
+          const result = await deviceService.registerDevice(currentUser.id);
+          
+          if (!result.success) {
+            // Limite d'appareils atteinte
+            setShowDeviceLimitModal(true);
+            
+            // Déconnecter après 5 secondes
+            setTimeout(async () => {
+              const { supabase } = await import('./lib/supabase');
+              await supabase.auth.signOut();
+              window.location.reload();
+            }, 5000);
+          }
+          
+          setDeviceCheckDone(true);
+        } catch (error) {
+          console.error('Erreur vérification appareil:', error);
+          setDeviceCheckDone(true);
+        }
+      }
+    };
+
+    checkDevice();
+  }, [currentUser, deviceCheckDone]);
 
   const handlePaymentSuccess = async (plan) => {
     if (currentUser?.id) {
@@ -280,6 +314,10 @@ function AppContent() {
                 userId={currentUser?.id}
                 onSuccess={handleVoucherSuccess}
               />
+            )}
+
+            {showDeviceLimitModal && (
+              <DeviceLimitModal onClose={() => setShowDeviceLimitModal(false)} />
             )}
           </>
         )}

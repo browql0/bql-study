@@ -108,25 +108,34 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       const oneDayAgo = new Date();
       oneDayAgo.setHours(oneDayAgo.getHours() - 24);
       
+      console.log('🔍 Vérification cooldown pour user:', user.id);
+      console.log('🔍 Date limite (24h ago):', oneDayAgo.toISOString());
+      
       const { data: recentPayments, error: checkError } = await supabase
         .from('pending_payments')
-        .select('created_at')
+        .select('created_at, status')
         .eq('user_id', user.id)
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'pending')
         .gte('created_at', oneDayAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(1);
       
-      if (checkError) throw checkError;
+      console.log('🔍 Résultat requête cooldown:', { recentPayments, checkError });
+      
+      if (checkError) {
+        console.error('❌ Erreur vérification cooldown:', checkError);
+      }
       
       if (recentPayments && recentPayments.length > 0) {
+        console.log('⏰ Demande récente trouvée:', recentPayments[0]);
         const lastPaymentDate = new Date(recentPayments[0].created_at);
         const hoursSince = Math.floor((new Date() - lastPaymentDate) / (1000 * 60 * 60));
         const hoursLeft = 24 - hoursSince;
+        console.log('⏰ Heures écoulées:', hoursSince, '- Heures restantes:', hoursLeft);
         
         setConfirmationMessage({
           title: '⏰ Cooldown actif',
-          message: `Vous avez déjà une demande en cours. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
+          message: `Vous avez déjà une demande en attente. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
           type: 'warning'
         });
         setShowConfirmation(true);

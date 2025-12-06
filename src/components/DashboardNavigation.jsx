@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, BarChart3, DollarSign, Clock, Gift, Users, Settings, Home } from 'lucide-react';
+import { Activity, BarChart3, DollarSign, Clock, Gift, Users, Settings, Home, Smartphone } from 'lucide-react';
 import './DashboardNavigation.css';
 
 const DashboardNavigation = ({ activeTab, setActiveTab }) => {
@@ -47,6 +47,13 @@ const DashboardNavigation = ({ activeTab, setActiveTab }) => {
         >
           <Users size={20} />
           <span>Utilisateurs</span>
+        </button>
+        <button 
+          className={`sidebar-item ${activeTab === 'devices' ? 'active' : ''}`}
+          onClick={() => setActiveTab('devices')}
+        >
+          <Smartphone size={20} />
+          <span>Appareils</span>
         </button>
         <button 
           className={`sidebar-item ${activeTab === 'settings' ? 'active' : ''}`}

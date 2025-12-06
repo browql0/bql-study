@@ -54,14 +54,16 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       
       const { data: recentPayments, error: checkError } = await supabase
         .from('pending_payments')
-        .select('created_at')
+        .select('created_at, status')
         .eq('user_id', user.id)
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'pending')
         .gte('created_at', oneDayAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(1);
       
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Erreur vérification cooldown:', checkError);
+      }
       
       if (recentPayments && recentPayments.length > 0) {
         const lastPaymentDate = new Date(recentPayments[0].created_at);
@@ -70,7 +72,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         
         setConfirmationMessage({
           title: '⏰ Cooldown actif',
-          message: `Vous avez déjà une demande en cours. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
+          message: `Vous avez déjà une demande en attente. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
           type: 'warning'
         });
         setShowConfirmation(true);
