@@ -126,15 +126,19 @@ const PendingPaymentsPanel = () => {
       // Notifier l'utilisateur
       if (payment?.user_id) {
         try {
+          console.log('🔔 Envoi notification d\'approbation à:', payment.user_id);
           const pushNotificationService = (await import('../services/pushNotificationService')).default;
-          await pushNotificationService.notifyUser(
+          const result = await pushNotificationService.notifyUser(
             payment.user_id,
             '✅ Paiement validé',
             `Votre paiement de ${payment.amount} DH a été approuvé. Votre abonnement est maintenant actif !`
           );
+          console.log('✅ Résultat notification approbation:', result);
         } catch (notifError) {
-          console.debug('User notification failed:', notifError);
+          console.error('❌ Erreur notification approbation:', notifError);
         }
+      } else {
+        console.warn('⚠️ Impossible de notifier: payment.user_id manquant', payment);
       }
 
       setConfirmationMessage({
@@ -189,16 +193,20 @@ const PendingPaymentsPanel = () => {
       // Notifier l'utilisateur
       if (payment?.user_id) {
         try {
+          console.log('🔔 Envoi notification de rejet à:', payment.user_id);
           const pushNotificationService = (await import('../services/pushNotificationService')).default;
           const reasonMsg = rejectReason ? `\nRaison: ${rejectReason}` : '';
-          await pushNotificationService.notifyUser(
+          const result = await pushNotificationService.notifyUser(
             payment.user_id,
             '❌ Paiement rejeté',
             `Votre demande de paiement de ${payment.amount} DH a été refusée.${reasonMsg}`
           );
+          console.log('✅ Résultat notification rejet:', result);
         } catch (notifError) {
-          console.debug('User notification failed:', notifError);
+          console.error('❌ Erreur notification rejet:', notifError);
         }
+      } else {
+        console.warn('⚠️ Impossible de notifier: payment.user_id manquant', payment);
       }
 
       setConfirmationMessage({

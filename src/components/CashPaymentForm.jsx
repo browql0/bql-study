@@ -64,14 +64,16 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       
       // Notifier les admins
       try {
+        console.log('🔔 Envoi notification paiement cash aux admins');
         const pushNotificationService = (await import('../services/pushNotificationService')).default;
-        await pushNotificationService.notifyAdmins(
+        const result = await pushNotificationService.notifyAdmins(
           'pending_payment_cash',
           '💵 Demande de paiement cash',
           `RDV demandé le ${new Date(formData.preferredDate).toLocaleDateString('fr-FR')}`
         );
+        console.log('✅ Résultat notification admins:', result);
       } catch (notifError) {
-        console.debug('Admin notification failed:', notifError);
+        console.error('❌ Erreur notification admins:', notifError);
       }
       
       setShowConfirmation(true);

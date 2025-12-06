@@ -31,7 +31,7 @@ const UsersTab = () => {
       // Récupérer les paiements pour chaque utilisateur
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('*')
+        .select('user_id, amount, created_at, plan_type')
         .in('status', ['success', 'completed']);
 
       if (paymentsError) console.warn('Erreur paiements:', paymentsError);
@@ -39,7 +39,7 @@ const UsersTab = () => {
       // Récupérer aussi les paiements manuels approuvés (virement/cash)
       const { data: manualPayments, error: manualError } = await supabase
         .from('pending_payments')
-        .select('user_id, amount, created_at')
+        .select('user_id, amount, created_at, plan_type')
         .eq('status', 'approved');
 
       if (manualError) console.warn('Erreur paiements manuels:', manualError);
@@ -60,6 +60,7 @@ const UsersTab = () => {
           total_spent: allPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
           last_payment_date: lastPayment?.created_at,
           last_payment_amount: lastPayment?.amount,
+          plan_type: lastPayment?.plan_type || null,
           subscription_active: user.subscription_status === 'premium' || user.subscription_status === 'trial' || user.subscription_status === 'active'
         };
       });
@@ -626,11 +627,19 @@ const UsersTab = () => {
                     <Shield size={24} />
                   </div>
                   <div className="stat-data-v2">
-                    <span className="stat-value-v2">{selectedUser.subscription_status === 'premium' ? 'Premium' : 'Gratuit'}</span>
+                    <span className="stat-value-v2">
+                      {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' 
+                        ? (selectedUser.plan_type === 'monthly' ? '📅 Mensuel'
+                          : selectedUser.plan_type === 'quarterly' ? '📆 Trimestriel'
+                          : selectedUser.plan_type === 'yearly' ? '🗓️ Annuel'
+                          : 'Premium')
+                        : selectedUser.subscription_status === 'trial' ? '🎁 Essai'
+                        : 'Gratuit'}
+                    </span>
                     <span className="stat-label-v2">Type de Plan</span>
                   </div>
-                  <div className={`stat-badge-v2 ${selectedUser.subscription_status === 'premium' ? 'premium' : 'free'}`}>
-                    {selectedUser.subscription_status === 'premium' ? '⭐' : '🆓'}
+                  <div className={`stat-badge-v2 ${selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? 'premium' : selectedUser.subscription_status === 'trial' ? 'trial' : 'free'}`}>
+                    {selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? '⭐' : selectedUser.subscription_status === 'trial' ? '🎁' : '🆓'}
                   </div>
                 </div>
               </div>
@@ -688,11 +697,20 @@ const UsersTab = () => {
                   <div className="section-content-v2">
                     <div className="subscription-details-v2">
                       <div className="subscription-card-v2 primary">
-                        <div className="subscription-icon-v2">🎯</div>
+                        <div className="subscription-icon-v2">
+                          {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' ? '⭐' 
+                            : selectedUser.subscription_status === 'trial' ? '🎁' : '🆓'}
+                        </div>
                         <div className="subscription-info-v2">
                           <span className="subscription-label-v2">Type d'abonnement</span>
-                          <span className={`subscription-value-v2 ${selectedUser.subscription_status === 'premium' ? 'premium' : 'free'}`}>
-                            {selectedUser.subscription_status === 'premium' ? '⭐ Premium' : '🆓 Gratuit'}
+                          <span className={`subscription-value-v2 ${selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? 'premium' : selectedUser.subscription_status === 'trial' ? 'trial' : 'free'}`}>
+                            {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
+                              ? (selectedUser.plan_type === 'monthly' ? '⭐ Premium Mensuel (120 DH/mois)'
+                                : selectedUser.plan_type === 'quarterly' ? '⭐ Premium Trimestriel (320 DH/3 mois)'
+                                : selectedUser.plan_type === 'yearly' ? '⭐ Premium Annuel (600 DH/6 mois)'
+                                : '⭐ Premium')
+                              : selectedUser.subscription_status === 'trial' ? '🎁 Période d\'essai (7 jours)'
+                              : '🆓 Abonnement gratuit'}
                           </span>
                         </div>
                       </div>

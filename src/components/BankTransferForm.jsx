@@ -129,14 +129,16 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       
       // Notifier les admins
       try {
+        console.log('🔔 Envoi notification virement aux admins');
         const pushNotificationService = (await import('../services/pushNotificationService')).default;
-        await pushNotificationService.notifyAdmins(
+        const result = await pushNotificationService.notifyAdmins(
           'pending_payment',
           '💰 Nouveau virement en attente',
           `${formData.accountHolderName} - ${amount} DH`
         );
+        console.log('✅ Résultat notification admins:', result);
       } catch (notifError) {
-        console.debug('Admin notification failed:', notifError);
+        console.error('❌ Erreur notification admins:', notifError);
       }
       
       setShowConfirmation(true);
