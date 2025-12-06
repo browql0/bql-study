@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, Building2, Banknote, Eye, AlertCircle, User, Calendar, Phone, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import ImageModal from './ImageModal';
+import ConfirmationModal from './ConfirmationModal';
 import './PendingPaymentsPanel.css';
 
 const PendingPaymentsPanel = () => {
@@ -8,6 +10,10 @@ const PendingPaymentsPanel = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState({ title: '', message: '', type: 'success' });
 
   useEffect(() => {
     loadPendingPayments();
@@ -64,10 +70,9 @@ const PendingPaymentsPanel = () => {
       const urlParts = proofUrl.split('.r2.dev/');
       const filePath = urlParts.length > 1 ? urlParts[1] : proofUrl;
       
-      // Ouvrir via le worker avec auth
+      // Charger via le worker avec auth
       const viewUrl = `${import.meta.env.VITE_CLOUDFLARE_WORKER_URL}/view?path=${encodeURIComponent(filePath)}`;
       
-      // Créer une requête avec le token
       const response = await fetch(viewUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -78,10 +83,11 @@ const PendingPaymentsPanel = () => {
         throw new Error('Impossible de charger l\'image');
       }
       
-      // Créer un blob et l'ouvrir dans un nouvel onglet
+      // Créer un blob et l'afficher dans le modal
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
+      setCurrentImageUrl(blobUrl);
+      setShowImageModal(true);
     } catch (error) {
       console.error('Error viewing proof:', error);
       alert('Erreur lors du chargement de la preuve');
@@ -103,12 +109,23 @@ const PendingPaymentsPanel = () => {
         throw new Error(data.error || 'Erreur lors de la validation');
       }
 
-      alert('✅ Paiement validé ! L\'utilisateur a maintenant accès au contenu.');
+      setConfirmationMessage({
+        title: 'Paiement validé !',
+        message: 'L\'abonnement de l\'utilisateur a été activé avec succès.',
+        type: 'success'
+      });
+      setShowConfirmation(true);
+      
       await loadPendingPayments();
       setSelectedPayment(null);
     } catch (error) {
       console.error('Error approving payment:', error);
-      alert('Erreur : ' + error.message);
+      setConfirmationMessage({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la validation du paiement',
+        type: 'error'
+      });
+      setShowConfirmation(true);
     } finally {
       setProcessing(false);
     }
@@ -283,6 +300,21 @@ const PendingPaymentsPanel = () => {
           ))}
         </div>
       )}
+      
+      <ImageModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        imageUrl={currentImageUrl}
+        title="Preuve de virement"
+      />
+      
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        title={confirmationMessage.title}
+        message={confirmationMessage.message}
+        type={confirmationMessage.type}
+      />
     </div>
   );
 };
