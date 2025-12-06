@@ -369,21 +369,34 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
         return;
       }
       
-      // S'abonner aux notifications push
-      const subscription = await notificationManager.subscribeToPush();
-      
-      if (subscription) {
-        setNotifActive(true);
-        setNotifConfirmation('✅ Notifications activées avec succès !');
-        setTimeout(() => setNotifConfirmation(''), 5000);
+      // Essayer de s'abonner aux notifications push
+      try {
+        const subscription = await notificationManager.subscribeToPush();
         
-        // Envoyer une notification de test
+        if (subscription) {
+          setNotifActive(true);
+          setNotifConfirmation('✅ Notifications push activées avec succès !');
+          setTimeout(() => setNotifConfirmation(''), 5000);
+          
+          // Envoyer une notification de test
+          await notificationManager.sendLocalNotification(
+            '🔔 Notifications activées',
+            'Vous recevrez désormais les notifications de l\'application'
+          );
+        }
+      } catch (pushError) {
+        console.warn('Les notifications push ne sont pas disponibles:', pushError);
+        
+        // Même si les push notifications échouent, activer les notifications locales
+        setNotifActive(true);
+        setNotifConfirmation('✅ Notifications locales activées (les notifications push ne sont pas disponibles sur ce serveur)');
+        setTimeout(() => setNotifConfirmation(''), 7000);
+        
+        // Envoyer une notification de test locale
         await notificationManager.sendLocalNotification(
-          '🔔 Notifications activées',
-          'Vous recevrez désormais les notifications de l\'application'
+          '🔔 Notifications locales activées',
+          'Vous recevrez les notifications dans l\'application'
         );
-      } else {
-        setNotifError('Erreur lors de l\'abonnement aux notifications. Vérifiez la console pour plus de détails');
       }
     } catch (error) {
       console.error('Erreur lors de l\'activation des notifications:', error);
