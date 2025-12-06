@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Shield, Ban, CheckCircle, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { settingsService } from '../../services/settingsService';
 import './UsersTab.css';
 
 const UsersTab = () => {
@@ -15,6 +16,7 @@ const UsersTab = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+  const [pricing, setPricing] = useState({ monthly: 120, quarterly: 320, yearly: 600 });
 
   const fetchAllUsers = useCallback(async () => {
     try {
@@ -76,7 +78,19 @@ const UsersTab = () => {
 
   useEffect(() => {
     fetchAllUsers();
+    loadPricing();
   }, [fetchAllUsers]);
+
+  const loadPricing = async () => {
+    try {
+      const settings = await settingsService.getSettings();
+      if (settings?.pricing) {
+        setPricing(settings.pricing);
+      }
+    } catch (error) {
+      console.error('Erreur chargement pricing:', error);
+    }
+  };
 
   // Filtrage des utilisateurs
   useEffect(() => {
@@ -705,9 +719,9 @@ const UsersTab = () => {
                           <span className="subscription-label-v2">Type d'abonnement</span>
                           <span className={`subscription-value-v2 ${selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? 'premium' : selectedUser.subscription_status === 'trial' ? 'trial' : 'free'}`}>
                             {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
-                              ? (selectedUser.plan_type === 'monthly' ? '⭐ Premium Mensuel (120 DH/mois)'
-                                : selectedUser.plan_type === 'quarterly' ? '⭐ Premium Trimestriel (320 DH/3 mois)'
-                                : selectedUser.plan_type === 'yearly' ? '⭐ Premium Annuel (600 DH/6 mois)'
+                              ? (selectedUser.plan_type === 'monthly' ? `⭐ Premium Mensuel (${pricing.monthly} DH/mois)`
+                                : selectedUser.plan_type === 'quarterly' ? `⭐ Premium Trimestriel (${pricing.quarterly} DH/3 mois)`
+                                : selectedUser.plan_type === 'yearly' ? `⭐ Premium Annuel (${pricing.yearly} DH/6 mois)`
                                 : '⭐ Premium')
                               : selectedUser.subscription_status === 'trial' ? '🎁 Période d\'essai (7 jours)'
                               : '🆓 Abonnement gratuit'}

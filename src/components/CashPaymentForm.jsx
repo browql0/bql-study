@@ -7,6 +7,7 @@ import './CashPaymentForm.css';
 const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState({ title: '', message: '', type: 'success' });
   const [formData, setFormData] = useState({
     contactPhone: '',
     preferredDate: '',
@@ -47,6 +48,36 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         throw new Error('Utilisateur non connecté');
       }
       
+      // Vérifier s'il y a une demande récente (< 24h)
+      const oneDayAgo = new Date();
+      oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+      
+      const { data: recentPayments, error: checkError } = await supabase
+        .from('pending_payments')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'approved'])
+        .gte('created_at', oneDayAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (checkError) throw checkError;
+      
+      if (recentPayments && recentPayments.length > 0) {
+        const lastPaymentDate = new Date(recentPayments[0].created_at);
+        const hoursSince = Math.floor((new Date() - lastPaymentDate) / (1000 * 60 * 60));
+        const hoursLeft = 24 - hoursSince;
+        
+        setConfirmationMessage({
+          title: '⏰ Cooldown actif',
+          message: `Vous avez déjà une demande en cours. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
+          type: 'warning'
+        });
+        setShowConfirmation(true);
+        setLoading(false);
+        return;
+      }
+      
       // Créer le paiement en attente
       const { error } = await supabase
         .from('pending_payments')
@@ -76,6 +107,11 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         console.error('❌ Erreur notification admins:', notifError);
       }
       
+      setConfirmationMessage({
+        title: 'Demande de rendez-vous envoyée !',
+        message: 'Un administrateur vous contactera bientôt pour confirmer le lieu et l\'horaire du rendez-vous.',
+        type: 'success'
+      });
       setShowConfirmation(true);
       setTimeout(() => {
         setShowConfirmation(false);
@@ -198,11 +234,13 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         isOpen={showConfirmation}
         onClose={() => {
           setShowConfirmation(false);
-          onClose();
+          if (confirmationMessage.type !== 'warning') {
+            onClose();
+          }
         }}
-        title="Demande de rendez-vous envoyée !"
-        message="Un administrateur vous contactera bientôt pour confirmer le lieu et l'horaire du rendez-vous."
-        type="success"
+        title={confirmationMessage.title || "Demande de rendez-vous envoyée !"}
+        message={confirmationMessage.message || "Un administrateur vous contactera bientôt pour confirmer le lieu et l'horaire du rendez-vous."}
+        type={confirmationMessage.type || "success"}
       />
     </div>
   );
