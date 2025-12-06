@@ -155,38 +155,12 @@ export const notificationsService = {
             break;
         }
         
-        // Envoi notification push systeme (optionnel, ne bloque pas)
-        try {
-          // Récupérer le token d'authentification
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session) {
-            const response = await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
-              },
-              mode: 'cors',
-              body: JSON.stringify({ 
-                userIds: [userId],
-                title: pushTitle, 
-                body: pushBody
-              })
-            });
-            
-            if (!response.ok) {
-              console.warn('Notification push non envoyee:', response.status);
-            }
-          }
-        } catch (err) {
-          // Silencieux - ne pas bloquer la notification locale si le push echoue
-          console.debug('Service de notification push indisponible', err);
-        }
+        // Note: Les notifications push sont gérées côté client (AppContext)
+        // car ce service s'exécute côté serveur Supabase sans session utilisateur
+        
       } catch (err) {
         // Erreur generale, ne pas bloquer
-        console.debug('Erreur lors de la tentative envoi push');
+        console.debug('Erreur lors de la creation de notification');
       }
       return result;
     },

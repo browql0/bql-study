@@ -291,6 +291,14 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
           onSave={async (subjectId, section, quizData) => {
             await quizService.createQuiz(subjectId, section, quizData);
             setQuizKey(prev => prev + 1); // Recharger la liste
+            
+            // Notifier les spectateurs du nouveau quiz
+            try {
+              const { notifySpectators } = await import('../services/pushNotificationService');
+              await notifySpectators(subjectId, 'quiz', quizData.title || 'Nouveau quiz');
+            } catch (notifError) {
+              console.debug('Push notification failed:', notifError);
+            }
           }}
         />
       )}

@@ -17,7 +17,7 @@ import './App.css';
 
 function AppContent() {
   // usePullToRefresh(); // Désactivé pour comportement natif iOS
-  const { currentUser, subjects, loading, theme } = useApp();
+  const { currentUser, subjects, loading, theme, subscriptionWarning, setSubscriptionWarning } = useApp();
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -68,6 +68,23 @@ function AppContent() {
       if (result.success) {
         await checkSubscription();
         alert('🎉 Paiement réussi ! Vous avez maintenant accès à tout le contenu.');
+        
+        // Notifier les admins du nouveau paiement
+        try {
+          const { notifyAdmins } = await import('./services/pushNotificationService');
+          const planNames = {
+            monthly: 'Mensuel (150 DH)',
+            quarterly: 'Trimestriel (350 DH)',
+            yearly: 'Semestre (600 DH)'
+          };
+          await notifyAdmins(
+            'new_payment',
+            '💰 Nouveau paiement',
+            `${currentUser.name} - ${planNames[plan] || plan}`
+          );
+        } catch (notifError) {
+          console.debug('Push notification failed:', notifError);
+        }
       } else {
         alert('Erreur lors du paiement. Veuillez réessayer.');
       }
@@ -174,6 +191,29 @@ function AppContent() {
     <>
       <div id="pull-loader"></div>
       <div className="app">
+        {/* Alerte d'expiration d'abonnement */}
+        {subscriptionWarning?.showWarning && (
+          <div className={`subscription-warning ${subscriptionWarning.severity || 'warning'}`}>
+            <span>{subscriptionWarning.message}</span>
+            <div className="warning-actions">
+              {subscriptionWarning.severity !== 'error' && (
+                <button 
+                  className="btn-warning-action"
+                  onClick={() => setShowPayment(true)}
+                >
+                  Renouveler
+                </button>
+              )}
+              <button 
+                className="btn-warning-close"
+                onClick={() => setSubscriptionWarning(null)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        
         {showDashboard ? (
           <Dashboard />
         ) : (

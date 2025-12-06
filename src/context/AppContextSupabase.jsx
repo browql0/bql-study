@@ -7,6 +7,8 @@ import * as notesService from '../services/notesService';
 import * as photosService from '../services/photosService';
 import * as filesService from '../services/filesService';
 import { notificationsService } from '../services/notificationsService';
+import { pushNotificationService } from '../services/pushNotificationService';
+import { subscriptionExpiryService } from '../services/subscriptionExpiryService';
 import { quizService } from '../services/quizService';
 
 const AppContext = createContext();
@@ -25,6 +27,7 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionWarning, setSubscriptionWarning] = useState(null);
 
   // Charger le thème depuis localStorage
   useEffect(() => {
@@ -53,11 +56,23 @@ export const AppProvider = ({ children }) => {
           username: session.user.email,
           role: profileData?.role || 'spectator'
         });
+        
+        // Vérifier l'expiration de l'abonnement au login
+        try {
+          const expiryStatus = await subscriptionExpiryService.checkOnLogin(session.user.id);
+          if (expiryStatus.showWarning) {
+            setSubscriptionWarning(expiryStatus);
+          }
+        } catch (error) {
+          console.error('Error checking subscription expiry:', error);
+        }
+        
         // Charger les matières depuis Supabase de manière optimisée
         await loadSubjects();
       } else {
         setCurrentUser(null);
         setSubjects([]);
+        setSubscriptionWarning(null);
       }
       setLoading(false);
     });
@@ -323,6 +338,18 @@ export const AppProvider = ({ children }) => {
         }
       }
       
+      // Notifier les admins d'un nouvel utilisateur
+      try {
+        const { notifyAdmins } = await import('../services/pushNotificationService');
+        await notifyAdmins(
+          'new_user',
+          '👤 Nouvel utilisateur',
+          `${exactName} vient de s'inscrire`
+        );
+      } catch (notifError) {
+        console.debug('Push notification failed:', notifError);
+      }
+      
       return { success: true, user: data.user, message: 'Vérifiez votre email pour confirmer votre inscription' };
     } catch (error) {
       // Gérer les erreurs inattendues
@@ -455,6 +482,13 @@ export const AppProvider = ({ children }) => {
           `La note "${note.title}" a été ajoutée.`,
           { subjectId, section, noteId: newNote.id }
         );
+        
+        // Envoyer notification push aux spectateurs
+        await pushNotificationService.notifySpectators(
+          subjectId,
+          'note',
+          note.title
+        );
       }
     } catch (error) {
       console.error('Error adding note:', error);
@@ -541,6 +575,15 @@ export const AppProvider = ({ children }) => {
           }
           return subject;
         }));
+        
+        // Envoyer notification push aux spectateurs
+        if (currentUser?.id) {
+          await pushNotificationService.notifySpectators(
+            subjectId,
+            'photo',
+            photo.title
+          );
+        }
       }
     } catch (error) {
       console.error('Error adding photo:', error);
@@ -598,6 +641,15 @@ export const AppProvider = ({ children }) => {
           }
           return subject;
         }));
+        
+        // Envoyer notification push aux spectateurs
+        if (currentUser?.id) {
+          await pushNotificationService.notifySpectators(
+            subjectId,
+            'file',
+            file.title
+          );
+        }
       }
     } catch (error) {
       console.error('Error adding file:', error);
@@ -640,6 +692,8 @@ export const AppProvider = ({ children }) => {
     searchQuery,
     currentUser,
     loading,
+    subscriptionWarning,
+    setSubscriptionWarning,
     setSearchQuery,
     toggleTheme,
     login,
