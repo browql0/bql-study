@@ -15,19 +15,38 @@ const PendingPaymentsPanel = () => {
 
   const loadPendingPayments = async () => {
     try {
-      const { data, error } = await supabase
+      // Charger les paiements en attente
+      const { data: payments, error: paymentsError } = await supabase
         .from('pending_payments')
-        .select(`
-          *,
-          profiles!pending_payments_user_id_fkey(name, email)
-        `)
+        .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPendingPayments(data || []);
+      if (paymentsError) throw paymentsError;
+
+      // Charger les profils associés
+      if (payments && payments.length > 0) {
+        const userIds = payments.map(p => p.user_id);
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+
+        // Combiner les données
+        const paymentsWithProfiles = payments.map(payment => ({
+          ...payment,
+          profiles: profiles.find(p => p.id === payment.user_id)
+        }));
+
+        setPendingPayments(paymentsWithProfiles);
+      } else {
+        setPendingPayments([]);
+      }
     } catch (error) {
       console.error('Error loading pending payments:', error);
+      setPendingPayments([]);
     } finally {
       setLoading(false);
     }

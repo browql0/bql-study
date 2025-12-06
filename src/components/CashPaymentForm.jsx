@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { X, Banknote, AlertCircle, Calendar, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import ConfirmationModal from './ConfirmationModal';
 import './CashPaymentForm.css';
 
 const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     contactPhone: '',
     preferredDate: '',
@@ -72,9 +74,12 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         console.debug('Admin notification failed:', notifError);
       }
       
-      alert('✅ Votre demande de rendez-vous a été envoyée ! Un administrateur vous contactera pour confirmer.');
-      onSuccess();
-      onClose();
+      setShowConfirmation(true);
+      setTimeout(() => {
+        setShowConfirmation(false);
+        onClose();
+        if (onSuccess) onSuccess();
+      }, 3000);
       
     } catch (error) {
       console.error('Error submitting cash payment request:', error);
@@ -186,6 +191,17 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           </form>
         </div>
       </div>
+      
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        title="Demande de rendez-vous envoyée !"
+        message="Un administrateur vous contactera bientôt pour confirmer le lieu et l'horaire du rendez-vous."
+        type="success"
+      />
     </div>
   );
 };

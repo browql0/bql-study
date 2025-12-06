@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { X, Building2, Upload, AlertCircle, Check, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import ConfirmationModal from './ConfirmationModal';
 import './BankTransferForm.css';
 
 const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     accountHolderName: '',
     transferDate: '',
@@ -283,6 +285,17 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           </form>
         </div>
       </div>
+      
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        title="Demande envoyée !"
+        message="Votre preuve de virement a été envoyée avec succès. Un administrateur validera votre paiement sous peu."
+        type="success"
+      />
     </div>
   );
 };
