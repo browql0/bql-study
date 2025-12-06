@@ -34,12 +34,14 @@ export async function sendPushNotification(userIds, title, body) {
     });
     
     if (!response.ok) {
-      console.warn(`Push notification failed: ${response.status}`);
+      const errorText = await response.text();
+      console.warn(`Push notification failed: ${response.status}`, errorText);
       return false;
     }
     
     const result = await response.json();
-    console.log(`✅ Push notifications sent: ${result.sent}/${result.total}`);
+    console.log('Backend response:', result);
+    console.log(`✅ Push notifications sent: ${result.sent || 0}/${result.total || 0}`);
     return true;
     
   } catch (error) {
