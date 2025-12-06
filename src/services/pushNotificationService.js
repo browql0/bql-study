@@ -59,11 +59,18 @@ export async function notifySpectators(subjectId, contentType, contentTitle) {
       .select('user_id')
       .eq('subject_id', subjectId);
     
-    if (error || !spectators || spectators.length === 0) {
+    if (error) {
+      console.error('Error fetching spectators:', error);
+      return false;
+    }
+    
+    if (!spectators || spectators.length === 0) {
+      console.log('No spectators found for subject:', subjectId);
       return false;
     }
     
     const userIds = spectators.map(s => s.user_id);
+    console.log(`Found ${userIds.length} spectators for subject ${subjectId}`);
     
     // Construire le message selon le type
     let title = '';
