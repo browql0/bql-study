@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { pushNotificationService } from './pushNotificationService';
+import pushNotificationService from './pushNotificationService';
 
 /**
  * Service pour gérer les notifications d'expiration d'abonnement

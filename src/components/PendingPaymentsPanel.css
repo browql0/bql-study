@@ -317,6 +317,135 @@
   background: #1a1a2e;
 }
 
+/* Modal de rejet */
+.reject-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+.reject-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.reject-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.reject-modal-body {
+  padding: 24px;
+}
+
+.reject-modal-body label {
+  display: block;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.reject-modal-body textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.reject-modal-body textarea:focus {
+  outline: none;
+  border-color: #ef4444;
+}
+
+.reject-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px 24px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btn-confirm-reject {
+  padding: 10px 20px;
+  border: none;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-confirm-reject:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-cancel:disabled,
+.btn-confirm-reject:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .reject-modal {
+  background: #2a2a3e;
+}
+
+[data-theme="dark"] .reject-modal-body label {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .reject-modal-body textarea {
+  background: #1a1a2e;
+  border-color: #3a3a4e;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .reject-modal-body textarea:focus {
+  border-color: #ef4444;
+}
+
+[data-theme="dark"] .btn-cancel {
+  background: #1a1a2e;
+  border-color: #3a3a4e;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .btn-cancel:hover:not(:disabled) {
+  background: #252538;
+  border-color: #4a4a5e;
+}
+
 @media (max-width: 768px) {
   .pending-payments-panel {
     padding: 16px;
@@ -334,4 +463,18 @@
   .btn-view-proof {
     flex-basis: 100%;
   }
+
+  .reject-modal {
+    width: 95%;
+  }
+
+  .reject-modal-footer {
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-confirm-reject {
+    width: 100%;
+  }
 }
+

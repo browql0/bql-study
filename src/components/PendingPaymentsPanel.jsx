@@ -14,6 +14,9 @@ const PendingPaymentsPanel = () => {
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState({ title: '', message: '', type: 'success' });
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectPaymentId, setRejectPaymentId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     loadPendingPayments();
@@ -62,7 +65,12 @@ const PendingPaymentsPanel = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('Session expirée');
+        setConfirmationMessage({
+          title: 'Session expirée',
+          message: 'Veuillez vous reconnecter',
+          type: 'error'
+        });
+        setShowConfirmation(true);
         return;
       }
       
@@ -90,7 +98,12 @@ const PendingPaymentsPanel = () => {
       setShowImageModal(true);
     } catch (error) {
       console.error('Error viewing proof:', error);
-      alert('Erreur lors du chargement de la preuve');
+      setConfirmationMessage({
+        title: 'Erreur',
+        message: 'Erreur lors du chargement de la preuve',
+        type: 'error'
+      });
+      setShowConfirmation(true);
     }
   };
 
@@ -132,14 +145,21 @@ const PendingPaymentsPanel = () => {
   };
 
   const handleReject = async (paymentId) => {
-    const reason = prompt('Raison du refus (optionnel) :');
-    if (reason === null) return; // Annulé
+    setRejectPaymentId(paymentId);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectPaymentId) return;
 
     setProcessing(true);
+    setShowRejectModal(false);
+    
     try {
       const { data, error } = await supabase.rpc('reject_pending_payment', {
-        payment_id: paymentId,
-        rejection_reason: reason || null
+        payment_id: rejectPaymentId,
+        rejection_reason: rejectReason || null
       });
 
       if (error) throw error;
@@ -148,12 +168,25 @@ const PendingPaymentsPanel = () => {
         throw new Error(data.error || 'Erreur lors du rejet');
       }
 
-      alert('Paiement rejeté.');
+      setConfirmationMessage({
+        title: 'Paiement rejeté',
+        message: 'Le paiement a été rejeté avec succès.',
+        type: 'success'
+      });
+      setShowConfirmation(true);
+      
       await loadPendingPayments();
       setSelectedPayment(null);
+      setRejectPaymentId(null);
+      setRejectReason('');
     } catch (error) {
       console.error('Error rejecting payment:', error);
-      alert('Erreur : ' + error.message);
+      setConfirmationMessage({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du rejet du paiement',
+        type: 'error'
+      });
+      setShowConfirmation(true);
     } finally {
       setProcessing(false);
     }
@@ -307,6 +340,48 @@ const PendingPaymentsPanel = () => {
         imageUrl={currentImageUrl}
         title="Preuve de virement"
       />
+
+      {showRejectModal && (
+        <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
+          <div className="reject-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="reject-modal-header">
+              <XCircle size={24} style={{ color: '#ef4444' }} />
+              <h3>Rejeter le paiement</h3>
+            </div>
+            <div className="reject-modal-body">
+              <label htmlFor="reject-reason">Raison du refus (optionnel) :</label>
+              <textarea
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Expliquez pourquoi ce paiement est rejeté..."
+                rows={4}
+                autoFocus
+              />
+            </div>
+            <div className="reject-modal-footer">
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectPaymentId(null);
+                  setRejectReason('');
+                }}
+                disabled={processing}
+              >
+                Annuler
+              </button>
+              <button
+                className="btn-confirm-reject"
+                onClick={confirmReject}
+                disabled={processing}
+              >
+                {processing ? 'Rejet en cours...' : 'Confirmer le rejet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <ConfirmationModal
         isOpen={showConfirmation}

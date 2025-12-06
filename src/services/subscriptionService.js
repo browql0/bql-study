@@ -35,21 +35,23 @@ export const subscriptionService = {
       // Admin a toujours accès
       if (profileData?.role === 'admin') return true;
 
-      // Vérifier si premium et pas expiré
-      if (profileData?.subscription_status === 'premium') {
+      // Vérifier si active, trial ou premium et pas expiré
+      if (profileData?.subscription_status === 'active' || 
+          profileData?.subscription_status === 'trial' ||
+          profileData?.subscription_status === 'premium') {
         if (!profileData.subscription_end_date) return true; // Abonnement illimité
         const endDate = new Date(profileData.subscription_end_date);
         const now = new Date();
         const isExpired = endDate <= now;
         
-        // Si l'abonnement premium est expiré, mettre à jour le statut SYNCHRONEMENT
+        // Si l'abonnement est expiré, mettre à jour le statut SYNCHRONEMENT
         if (isExpired) {
           // Mettre à jour le statut de manière SYNCHRONE pour garantir que c'est fait avant de retourner
           try {
             const { error: updateError } = await supabase
               .from('profiles')
               .update({ 
-                subscription_status: 'free',
+                subscription_status: 'expired',
                 subscription_end_date: null,
                 updated_at: new Date().toISOString()
               })
@@ -58,7 +60,7 @@ export const subscriptionService = {
             if (updateError) {
               console.error('Erreur lors de la mise à jour du statut expiré:', updateError);
             } else {
-              console.log('Abonnement premium expiré, statut mis à jour vers free');
+              console.log('Abonnement expiré, statut mis à jour vers expired');
             }
           } catch (err) {
             console.error('Erreur lors de la mise à jour du statut expiré:', err);
@@ -70,50 +72,7 @@ export const subscriptionService = {
         return true; // Accès autorisé
       }
 
-      // Vérifier si période d'essai (trial) et pas expirée
-      if (profileData?.subscription_status === 'trial') {
-        if (!profileData.subscription_end_date) {
-          return false; // Pas de date = pas d'essai valide
-        }
-        const endDate = new Date(profileData.subscription_end_date);
-        const now = new Date();
-        const isExpired = endDate <= now;
-        
-        // Si la période d'essai est expirée, mettre à jour le statut SYNCHRONEMENT
-        if (isExpired) {
-          // Mettre à jour le statut de manière SYNCHRONE pour garantir que c'est fait avant de retourner
-          try {
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({ 
-                subscription_status: 'free',
-                subscription_end_date: null,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', userId);
-            
-            if (updateError) {
-              console.error('Erreur lors de la mise à jour du statut expiré:', updateError);
-            } else {
-              console.log('Période d\'essai expirée, statut mis à jour vers free');
-            }
-          } catch (err) {
-            console.error('Erreur lors de la mise à jour du statut expiré:', err);
-          }
-          
-          return false; // Accès refusé car expiré
-        }
-        
-        return true; // Accès autorisé
-      }
-
-      // Statut 'free', NULL, ou autre = pas d'accès
-      // IMPORTANT: Toujours retourner false pour 'free' pour garantir le blocage
-      if (profileData.subscription_status === 'free' || !profileData.subscription_status) {
-        return false;
-      }
-      
-      // Pour tout autre statut inconnu, bloquer l'accès par sécurité
+      // Statut 'expired', 'cancelled', NULL, ou autre = pas d'accès
       return false;
     } catch (error) {
       return false;
