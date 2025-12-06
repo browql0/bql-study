@@ -52,6 +52,42 @@ const PendingPaymentsPanel = () => {
     }
   };
 
+  const handleViewProof = async (proofUrl) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expirée');
+        return;
+      }
+      
+      // Extraire le path de l'URL
+      const urlParts = proofUrl.split('.r2.dev/');
+      const filePath = urlParts.length > 1 ? urlParts[1] : proofUrl;
+      
+      // Ouvrir via le worker avec auth
+      const viewUrl = `${import.meta.env.VITE_CLOUDFLARE_WORKER_URL}/view?path=${encodeURIComponent(filePath)}`;
+      
+      // Créer une requête avec le token
+      const response = await fetch(viewUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Impossible de charger l\'image');
+      }
+      
+      // Créer un blob et l'ouvrir dans un nouvel onglet
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (error) {
+      console.error('Error viewing proof:', error);
+      alert('Erreur lors du chargement de la preuve');
+    }
+  };
+
   const handleApprove = async (paymentId) => {
     if (!confirm('Confirmer la validation de ce paiement ?')) return;
 
@@ -218,7 +254,7 @@ const PendingPaymentsPanel = () => {
                 {payment.payment_method === 'bank_transfer' && payment.transfer_proof_url && (
                   <button
                     className="btn-view-proof"
-                    onClick={() => window.open(payment.transfer_proof_url, '_blank')}
+                    onClick={() => handleViewProof(payment.transfer_proof_url)}
                   >
                     <Eye size={16} />
                     Voir la preuve

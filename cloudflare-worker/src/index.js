@@ -133,6 +133,80 @@ export default {
       const pathname = url.pathname;
       const path = url.searchParams.get('path');
       
+      // Route: GET /view - Voir un fichier (pour admins seulement)
+      if (request.method === 'GET' && pathname === '/view') {
+        const filePath = url.searchParams.get('path');
+        
+        if (!filePath) {
+          return new Response(JSON.stringify({ error: 'Path parameter required' }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        }
+        
+        // Vérifier que c'est un admin
+        const userRole = user.user_metadata?.role;
+        if (userRole !== 'admin') {
+          return new Response(JSON.stringify({ error: 'Admin access required' }), {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        }
+        
+        try {
+          const decodedPath = decodeURIComponent(filePath);
+          const aws = new AwsClient({
+            accessKeyId: accessKeyId,
+            secretAccessKey: secretAccessKey,
+            service: 's3',
+            region: 'auto',
+          });
+          
+          const encodedPath = encodeR2Path(decodedPath);
+          const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
+          
+          const signedRequest = await aws.sign(r2Url, {
+            method: 'GET',
+          });
+          
+          const fileResponse = await fetch(signedRequest);
+          
+          if (!fileResponse.ok) {
+            return new Response(JSON.stringify({ error: 'File not found' }), {
+              status: 404,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            });
+          }
+          
+          // Retourner le fichier directement
+          return new Response(fileResponse.body, {
+            headers: {
+              'Content-Type': fileResponse.headers.get('Content-Type') || 'application/octet-stream',
+              'Cache-Control': 'no-cache',
+              ...corsHeaders,
+            },
+          });
+        } catch (error) {
+          console.error('Error viewing file:', error);
+          return new Response(JSON.stringify({ error: 'Failed to load file' }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        }
+      }
+      
       // Route: POST /upload - Upload avec FormData (pour BankTransferForm)
       if (request.method === 'POST' && pathname === '/upload') {
         try {
