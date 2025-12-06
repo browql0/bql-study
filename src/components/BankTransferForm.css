@@ -1,0 +1,323 @@
+/* Bank Transfer Form Styles */
+
+.bank-transfer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bank-transfer-container {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg-primary);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bank-transfer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  color: white;
+}
+
+.bank-transfer-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+}
+
+.close-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.bank-transfer-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.info-box {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.info-box svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.info-box h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-box p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.info-box strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.transfer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"] {
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 15px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.file-upload-area {
+  margin-top: 4px;
+}
+
+.file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 20px;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-upload-label:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.file-upload-label svg {
+  color: #3b82f6;
+}
+
+.file-upload-label span:first-of-type {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.file-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  transition: width 0.3s ease;
+}
+
+.upload-progress span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b82f6;
+  min-width: 40px;
+  text-align: right;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submit-btn .spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+[data-theme="dark"] .bank-transfer-container {
+  background: #1a1a2e;
+}
+
+[data-theme="dark"] .info-box {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme="dark"] .form-group input {
+  background: #2a2a3e;
+  border-color: #3a3a4e;
+}
+
+[data-theme="dark"] .file-upload-label {
+  background: #2a2a3e;
+  border-color: #3a3a4e;
+}
+
+@media (max-width: 768px) {
+  .bank-transfer-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .bank-transfer-container {
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 95vh;
+  }
+
+  .bank-transfer-content {
+    padding: 20px;
+  }
+}

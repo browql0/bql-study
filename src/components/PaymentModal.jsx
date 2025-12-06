@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Zap, Star, Crown, Gift, CreditCard, Shield, RotateCcw, Lock } from 'lucide-react';
+import { X, Check, Zap, Star, Crown, Gift, CreditCard, Shield, RotateCcw, Lock, Building2, Banknote } from 'lucide-react';
 import { settingsService } from '../services/settingsService';
 import { supabase } from '../lib/supabase';
+import BankTransferForm from './BankTransferForm';
+import CashPaymentForm from './CashPaymentForm';
 import './PaymentModal.css';
 
 const PaymentModal = ({ onClose, onPaymentSuccess, onOpenVoucher }) => {
   const [selectedPlan, setSelectedPlan] = useState('quarterly');
+  const [paymentMethod, setPaymentMethod] = useState('cmi'); // 'cmi', 'bank_transfer', 'cash'
   const [loading, setLoading] = useState(false);
+  const [showBankTransferForm, setShowBankTransferForm] = useState(false);
+  const [showCashPaymentForm, setShowCashPaymentForm] = useState(false);
   const [pricing, setPricing] = useState({
     monthly: 20,
     quarterly: 50,
@@ -84,46 +89,26 @@ const PaymentModal = ({ onClose, onPaymentSuccess, onOpenVoucher }) => {
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   const handlePayment = async () => {
-    setLoading(true);
-    try {
-      // Récupérer l'ID de l'utilisateur depuis le contexte
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Utilisateur non connecté');
-      }
-
-      // Créer la session de paiement
-      const { paymentService } = await import('../services/paymentService');
-      const result = await paymentService.createPaymentSession(user.id, selectedPlan);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Erreur lors de la création de la session de paiement');
-      }
-
-      // Si mode simulation, fermer le modal et appeler onPaymentSuccess
-      if (result.isSimulation) {
-        await onPaymentSuccess(selectedPlan);
-        onClose();
-        return;
-      }
-
-      // Rediriger vers la passerelle de paiement
-      if (result.paymentUrl) {
-        window.location.href = result.paymentUrl;
-      } else {
-        throw new Error('URL de paiement non disponible');
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert(error.message || 'Erreur lors du paiement. Veuillez réessayer.');
-      setLoading(false);
+    // Si virement bancaire, ouvrir le formulaire
+    if (paymentMethod === 'bank_transfer') {
+      setShowBankTransferForm(true);
+      return;
     }
+
+    // Si cash, ouvrir le formulaire
+    if (paymentMethod === 'cash') {
+      setShowCashPaymentForm(true);
+      return;
+    }
+
+    // Paiement CMI (à implémenter quand le compte sera ouvert)
+    alert('CMI Payment Gateway sera intégré dès que votre compte CMI sera activé');
   };
 
   return (
-    <div className="payment-modal-overlay" onClick={onClose}>
-      <div className="payment-modal-container" onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="payment-modal-overlay" onClick={onClose}>
+        <div className="payment-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header Mobile */}
         <div className="payment-header">
           <div className="payment-header-content">
@@ -241,6 +226,51 @@ const PaymentModal = ({ onClose, onPaymentSuccess, onOpenVoucher }) => {
             </div>
           </div>
 
+          {/* Payment Methods */}
+          <div className="payment-methods-section">
+            <h4 className="payment-methods-title">Mode de paiement</h4>
+            <div className="payment-methods-grid">
+              <button
+                className={`payment-method-card ${paymentMethod === 'cmi' ? 'selected' : ''}`}
+                onClick={() => setPaymentMethod('cmi')}
+                type="button"
+              >
+                <CreditCard size={20} />
+                <div className="payment-method-info">
+                  <span className="payment-method-name">Carte bancaire</span>
+                  <span className="payment-method-desc">CMI (Bientôt disponible)</span>
+                </div>
+                {paymentMethod === 'cmi' && <Check size={18} className="check-icon" />}
+              </button>
+
+              <button
+                className={`payment-method-card ${paymentMethod === 'bank_transfer' ? 'selected' : ''}`}
+                onClick={() => setPaymentMethod('bank_transfer')}
+                type="button"
+              >
+                <Building2 size={20} />
+                <div className="payment-method-info">
+                  <span className="payment-method-name">Virement bancaire</span>
+                  <span className="payment-method-desc">Tijari Bank uniquement</span>
+                </div>
+                {paymentMethod === 'bank_transfer' && <Check size={18} className="check-icon" />}
+              </button>
+
+              <button
+                className={`payment-method-card ${paymentMethod === 'cash' ? 'selected' : ''}`}
+                onClick={() => setPaymentMethod('cash')}
+                type="button"
+              >
+                <Banknote size={20} />
+                <div className="payment-method-info">
+                  <span className="payment-method-name">Paiement en espèces</span>
+                  <span className="payment-method-desc">Rendez-vous requis</span>
+                </div>
+                {paymentMethod === 'cash' && <Check size={18} className="check-icon" />}
+              </button>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="payment-actions">
             <button
@@ -255,24 +285,60 @@ const PaymentModal = ({ onClose, onPaymentSuccess, onOpenVoucher }) => {
             <button
               className="payment-btn-primary"
               onClick={handlePayment}
-              disabled={loading}
+              disabled={loading || paymentMethod === 'cmi'}
             >
               {loading ? (
                 <>
                   <div className="payment-spinner"></div>
                   <span>Traitement...</span>
                 </>
-              ) : (
+              ) : paymentMethod === 'cmi' ? (
                 <>
                   <CreditCard size={18} />
-                  <span>Payer {selectedPlanData?.price} DH</span>
+                  <span>Bientôt disponible</span>
+                </>
+              ) : paymentMethod === 'bank_transfer' ? (
+                <>
+                  <Building2 size={18} />
+                  <span>Effectuer un virement</span>
+                </>
+              ) : (
+                <>
+                  <Banknote size={18} />
+                  <span>Demander RDV</span>
                 </>
               )}
             </button>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Bank Transfer Form */}
+      {showBankTransferForm && (
+        <BankTransferForm
+          selectedPlan={selectedPlan}
+          amount={selectedPlanData?.price}
+          onClose={() => setShowBankTransferForm(false)}
+          onSuccess={() => {
+            setShowBankTransferForm(false);
+            onClose();
+          }}
+        />
+      )}
+
+      {/* Cash Payment Form */}
+      {showCashPaymentForm && (
+        <CashPaymentForm
+          selectedPlan={selectedPlan}
+          amount={selectedPlanData?.price}
+          onClose={() => setShowCashPaymentForm(false)}
+          onSuccess={() => {
+            setShowCashPaymentForm(false);
+            onClose();
+          }}
+        />
+      )}
+    </>
   );
 };
 
