@@ -24,11 +24,13 @@ app.use(bodyParser.json());
 
 // --- Configuration Supabase ---
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey =  process.env.VITE_SUPABASE_ANON_KEY;
+// Priorité à SERVICE_KEY pour bypasser RLS, sinon ANON_KEY
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseKey) {
-  console.error("🛑 Erreur: Les variables d'environnement SUPABASE_URL et SUPABASE_SERVICE_KEY (ou SUPABASE_ANON_KEY) sont requises.");
+  console.error("🛑 Erreur: Les variables d'environnement SUPABASE_URL et SUPABASE_SERVICE_KEY sont requises.");
   process.exit(1);
 }
+console.log('🔑 Supabase configuré avec:', process.env.SUPABASE_SERVICE_KEY ? 'SERVICE_KEY (bypass RLS)' : 'ANON_KEY');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- Configuration VAPID pour Web Push ---
