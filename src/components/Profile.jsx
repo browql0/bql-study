@@ -48,7 +48,8 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
 
   // Ajout de la fonction d'activation des notifications système
   const [notifActive, setNotifActive] = useState(false);
-  const [notifConfirmation, setNotifConfirmation] = useState(false);
+  const [notifConfirmation, setNotifConfirmation] = useState('');
+  const [notifError, setNotifError] = useState('');
 
   const loadSubscriptionInfo = useCallback(async (forceRefresh = false) => {
     if (currentUser?.id) {
@@ -343,12 +344,50 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
 
   // Fonction pour activer les notifications système
   const handleActiverNotifications = async () => {
-    const success = await notificationManager.requestPermission();
-    if (success) {
-      await notificationManager.subscribeToPush();
-      setNotifActive(true);
-      setNotifConfirmation(true);
-      setTimeout(() => setNotifConfirmation(false), 3000);
+    setNotifError('');
+    setNotifConfirmation('');
+    
+    try {
+      // Vérifier le statut actuel
+      const currentStatus = notificationManager.getPermissionStatus();
+      
+      if (currentStatus === 'unsupported') {
+        setNotifError('Les notifications ne sont pas supportées par votre navigateur');
+        return;
+      }
+      
+      if (currentStatus === 'denied') {
+        setNotifError('Les notifications ont été bloquées. Veuillez les autoriser dans les paramètres de votre navigateur');
+        return;
+      }
+      
+      // Demander la permission
+      const success = await notificationManager.requestPermission();
+      
+      if (!success) {
+        setNotifError('Permission refusée. Veuillez autoriser les notifications');
+        return;
+      }
+      
+      // S'abonner aux notifications push
+      const subscription = await notificationManager.subscribeToPush();
+      
+      if (subscription) {
+        setNotifActive(true);
+        setNotifConfirmation('✅ Notifications activées avec succès !');
+        setTimeout(() => setNotifConfirmation(''), 5000);
+        
+        // Envoyer une notification de test
+        await notificationManager.sendLocalNotification(
+          '🔔 Notifications activées',
+          'Vous recevrez désormais les notifications de l\'application'
+        );
+      } else {
+        setNotifError('Erreur lors de l\'abonnement aux notifications. Vérifiez la console pour plus de détails');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'activation des notifications:', error);
+      setNotifError('Une erreur est survenue. Veuillez réessayer');
     }
   };
 
@@ -708,17 +747,25 @@ const Profile = ({ onClose, onOpenPayment, onRefreshSubscription }) => {
             <div className="profile-notification-preferences">
               {/* Utilisateur */}
                    {/* Bouton d'activation des notifications système */}
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <div style={{ marginTop: 16, marginBottom: 24, textAlign: 'center' }}>
               <button
                 className="btn btn-primary"
                 onClick={handleActiverNotifications}
-                style={{ marginBottom: 8 }}
+                style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}
+                disabled={notifActive}
               >
                 <Bell size={18} style={{ marginRight: 8 }} />
-                Activer les notifications système
+                {notifActive ? 'Notifications activées' : 'Activer les notifications système'}
               </button>
               {notifConfirmation && (
-                <span style={{ color: 'green', marginLeft: 8 }}>Notifications activées !</span>
+                <div style={{ color: '#10b981', fontSize: '14px', fontWeight: '500', padding: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', marginTop: '8px' }}>
+                  {notifConfirmation}
+                </div>
+              )}
+              {notifError && (
+                <div style={{ color: '#ef4444', fontSize: '14px', fontWeight: '500', padding: '8px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', marginTop: '8px' }}>
+                  ⚠️ {notifError}
+                </div>
               )}
             </div>
               <div className="notification-preference-item">
