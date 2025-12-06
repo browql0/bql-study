@@ -6,7 +6,20 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
 const app = express();
-app.use(cors());
+
+// Configuration CORS pour autoriser Vercel et localhost
+app.use(cors({
+  origin: [
+    'https://bql-study.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:4173',
+    /\.vercel\.app$/  // Tous les domaines Vercel
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(bodyParser.json());
 
 // --- Configuration Supabase ---
@@ -26,7 +39,7 @@ if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
   console.warn("⚠️ VAPID keys non définies. Les notifications push ne fonctionneront pas.");
 } else {
   webpush.setVapidDetails(
-    'mailto:your-email@example.com', // Remplacez par votre email
+    'mailto:alihajjaj930@icloud.com', // Remplacez par votre email
     VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY
   );
@@ -136,6 +149,62 @@ app.post('/notify-all', authMiddleware, adminOnlyMiddleware, async (req, res) =>
   await Promise.all(sendPromises);
 
   res.status(200).json({ message: 'Notifications envoyées avec succès !' });
+});
+
+// Envoyer une notification à des utilisateurs spécifiques
+app.post('/notify', authMiddleware, async (req, res) => {
+  const { userIds, title, body } = req.body;
+  
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ message: 'La liste userIds est requise et doit contenir au moins un utilisateur.' });
+  }
+  
+  if (!title || !body) {
+    return res.status(400).json({ message: 'Le titre et le corps de la notification sont requis.' });
+  }
+
+  const payload = JSON.stringify({ title, body });
+
+  // Récupérer les abonnements des utilisateurs spécifiés
+  const { data: subscriptions, error } = await supabase
+    .from('push_subscriptions')
+    .select('subscription')
+    .in('user_id', userIds);
+
+  if (error) {
+    console.error("Erreur lors de la récupération des abonnements:", error);
+    return res.status(500).json({ message: 'Erreur serveur lors de la récupération des abonnements.' });
+  }
+
+  if (!subscriptions || subscriptions.length === 0) {
+    return res.status(200).json({ message: 'Aucun abonnement trouvé pour ces utilisateurs.', sent: 0 });
+  }
+
+  // Envoyer les notifications
+  let successCount = 0;
+  const sendPromises = subscriptions.map(sub => 
+    webpush.sendNotification(sub.subscription, payload)
+      .then(() => {
+        successCount++;
+      })
+      .catch(err => {
+        // Si un abonnement est expiré ou invalide, le supprimer de la base de données
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`Abonnement expiré trouvé. Suppression...`);
+          return supabase.from('push_subscriptions').delete().eq('subscription', sub.subscription);
+        } else {
+          console.error('Erreur lors de l\'envoi de la notification:', err);
+        }
+      })
+  );
+
+  await Promise.all(sendPromises);
+
+  res.status(200).json({ 
+    message: 'Notifications envoyées', 
+    sent: successCount,
+    total: subscriptions.length 
+  });
 });
 
 // Railway fournit le port via process.env.PORT

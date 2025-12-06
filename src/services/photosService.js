@@ -181,16 +181,35 @@ export async function uploadPhoto(file, photoData) {
 
     // Envoi notification push système
     try {
-      await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Nouvelle photo ajoutée',
-          body: `Une nouvelle photo "${photoData.title}" a été ajoutée.`
-        })
-      });
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Récupérer les spectateurs pour ce sujet
+        const { data: spectators } = await supabase
+          .from('spectators')
+          .select('user_id')
+          .eq('subject_id', photoData.subject_id);
+        
+        if (spectators && spectators.length > 0) {
+          const userIds = spectators.map(s => s.user_id);
+          
+          await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              userIds,
+              title: 'Nouvelle photo ajoutée',
+              body: `Une nouvelle photo "${photoData.title}" a été ajoutée.`
+            })
+          });
+        }
+      }
     } catch (err) {
-      console.warn('Erreur envoi notification push:', err);
+      console.debug('Notification push non disponible:', err);
     }
 
     return data;

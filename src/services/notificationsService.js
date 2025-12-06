@@ -157,22 +157,32 @@ export const notificationsService = {
         
         // Envoi notification push systeme (optionnel, ne bloque pas)
         try {
-          const response = await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            mode: 'cors',
-            body: JSON.stringify({ title: pushTitle, body: pushBody, icon: pushIcon })
-          });
+          // Récupérer le token d'authentification
+          const { data: { session } } = await supabase.auth.getSession();
           
-          if (!response.ok) {
-            console.warn('Notification push non envoyee:', response.status);
+          if (session) {
+            const response = await fetch('https://outstanding-upliftment-production.up.railway.app/notify', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              mode: 'cors',
+              body: JSON.stringify({ 
+                userIds: [userId],
+                title: pushTitle, 
+                body: pushBody
+              })
+            });
+            
+            if (!response.ok) {
+              console.warn('Notification push non envoyee:', response.status);
+            }
           }
         } catch (err) {
           // Silencieux - ne pas bloquer la notification locale si le push echoue
-          console.debug('Service de notification push indisponible');
+          console.debug('Service de notification push indisponible', err);
         }
       } catch (err) {
         // Erreur generale, ne pas bloquer
