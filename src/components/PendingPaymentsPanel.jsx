@@ -108,10 +108,11 @@ const PendingPaymentsPanel = () => {
   };
 
   const handleApprove = async (paymentId) => {
-    if (!confirm('Confirmer la validation de ce paiement ?')) return;
-
     setProcessing(true);
     try {
+      // Récupérer les infos du paiement avant validation
+      const payment = pendingPayments.find(p => p.id === paymentId);
+      
       const { data, error } = await supabase.rpc('approve_pending_payment', {
         payment_id: paymentId
       });
@@ -120,6 +121,20 @@ const PendingPaymentsPanel = () => {
       
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors de la validation');
+      }
+
+      // Notifier l'utilisateur
+      if (payment?.user_id) {
+        try {
+          const pushNotificationService = (await import('../services/pushNotificationService')).default;
+          await pushNotificationService.notifyUser(
+            payment.user_id,
+            '✅ Paiement validé',
+            `Votre paiement de ${payment.amount} DH a été approuvé. Votre abonnement est maintenant actif !`
+          );
+        } catch (notifError) {
+          console.debug('User notification failed:', notifError);
+        }
       }
 
       setConfirmationMessage({
@@ -157,6 +172,9 @@ const PendingPaymentsPanel = () => {
     setShowRejectModal(false);
     
     try {
+      // Récupérer les infos du paiement avant rejet
+      const payment = pendingPayments.find(p => p.id === rejectPaymentId);
+      
       const { data, error } = await supabase.rpc('reject_pending_payment', {
         payment_id: rejectPaymentId,
         rejection_reason: rejectReason || null
@@ -166,6 +184,21 @@ const PendingPaymentsPanel = () => {
       
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors du rejet');
+      }
+
+      // Notifier l'utilisateur
+      if (payment?.user_id) {
+        try {
+          const pushNotificationService = (await import('../services/pushNotificationService')).default;
+          const reasonMsg = rejectReason ? `\nRaison: ${rejectReason}` : '';
+          await pushNotificationService.notifyUser(
+            payment.user_id,
+            '❌ Paiement rejeté',
+            `Votre demande de paiement de ${payment.amount} DH a été refusée.${reasonMsg}`
+          );
+        } catch (notifError) {
+          console.debug('User notification failed:', notifError);
+        }
       }
 
       setConfirmationMessage({

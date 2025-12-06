@@ -64,7 +64,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       
       // Notifier les admins
       try {
-        const { pushNotificationService } = await import('../services/pushNotificationService');
+        const pushNotificationService = (await import('../services/pushNotificationService')).default;
         await pushNotificationService.notifyAdmins(
           'pending_payment_cash',
           '💵 Demande de paiement cash',

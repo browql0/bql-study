@@ -129,7 +129,7 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       
       // Notifier les admins
       try {
-        const { pushNotificationService } = await import('../services/pushNotificationService');
+        const pushNotificationService = (await import('../services/pushNotificationService')).default;
         await pushNotificationService.notifyAdmins(
           'pending_payment',
           '💰 Nouveau virement en attente',
@@ -139,9 +139,12 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         console.debug('Admin notification failed:', notifError);
       }
       
-      alert('✅ Votre demande a été envoyée ! Un administrateur validera votre paiement sous peu.');
-      onSuccess();
-      onClose();
+      setShowConfirmation(true);
+      setTimeout(() => {
+        setShowConfirmation(false);
+        onSuccess();
+        onClose();
+      }, 3000);
       
     } catch (error) {
       console.error('Error submitting transfer:', error);
