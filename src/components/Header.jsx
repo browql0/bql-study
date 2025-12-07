@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import NotificationsPanel from './NotificationsPanel';
 import './Header.css';
 
-const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) => {
+const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, onOpenSettings }) => {
   const { searchQuery, setSearchQuery, theme, toggleTheme, subjects, currentUser, logout, isAdmin } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -177,6 +177,15 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
               )}
 
               <button 
+                className="header-action-icon"
+                onClick={onOpenSettings}
+                title="Paramètres"
+              >
+                <Settings size={22} />
+                <span className="action-tooltip">Paramètres</span>
+              </button>
+
+              <button 
                 className="header-action-icon notification-btn"
                 onClick={() => setShowNotifications(true)}
                 title="Notifications"
@@ -237,7 +246,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
       {/* Mobile Header - Completely New Design */}
       <header className="modern-header header-mobile">
         <div className="mobile-header-container">
-          {/* Top Row: Brand + Menu Button */}
+          {/* Top Row: Brand + Action Buttons */}
           <div className="mobile-header-top">
             <div className="mobile-brand">
               <div className="mobile-brand-icon">
@@ -248,13 +257,26 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
                 <h1 className="mobile-brand-title">Bql Study</h1>
               </div>
             </div>
-            <button 
-              className="mobile-menu-btn"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Menu"
-            >
-              {menuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            <div className="mobile-header-actions">
+              {isAdmin() && (
+                <button 
+                  className="mobile-dashboard-btn"
+                  onClick={onOpenDashboard}
+                  aria-label="Dashboard"
+                  title="Dashboard"
+                >
+                  <BarChart3 size={24} />
+                </button>
+              )}
+              <button 
+                className="mobile-settings-btn"
+                onClick={onOpenSettings}
+                aria-label="Paramètres"
+                title="Paramètres"
+              >
+                <Settings size={24} />
+              </button>
+            </div>
           </div>
 
           {/* Search Bar Row */}
@@ -326,8 +348,8 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard }) 
           </div>
         )}
 
-        {/* Mobile Menu Sidebar */}
-        <div className={`mobile-menu-sidebar ${menuOpen ? 'open' : ''}`}>
+        {/* Mobile Menu Sidebar - Hidden (burger button removed) */}
+        <div className={`mobile-menu-sidebar ${menuOpen ? 'open' : ''}`} style={{ display: 'none' }}>
           <div className="mobile-menu-header">
             <div className="mobile-menu-user">
               <div className="mobile-menu-avatar">

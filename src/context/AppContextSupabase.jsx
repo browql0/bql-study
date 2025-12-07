@@ -45,7 +45,7 @@ export const AppProvider = ({ children }) => {
         // Charger le rôle depuis la table profiles au lieu de user_metadata
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('role, name')
+          .select('role, name, created_at')
           .eq('id', session.user.id)
           .single();
         
@@ -54,7 +54,8 @@ export const AppProvider = ({ children }) => {
           email: session.user.email,
           name: profileData?.name || session.user.user_metadata?.name || session.user.email,
           username: session.user.email,
-          role: profileData?.role || 'spectator'
+          role: profileData?.role || 'spectator',
+          created_at: profileData?.created_at
         });
         
         // Vérifier l'expiration de l'abonnement au login

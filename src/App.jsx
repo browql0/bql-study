@@ -12,6 +12,12 @@ import PaymentCheckout from './components/PaymentCheckout';
 import VoucherModal from './components/VoucherModal';
 import DeviceLimitModal from './components/DeviceLimitModal';
 import Login from './components/Login';
+import UserNavigation from './components/UserNavigation';
+import UserResources from './components/UserResources';
+import UserNotifications from './components/UserNotifications';
+import UserPaymentHistory from './components/UserPaymentHistory';
+import UserSettings from './components/UserSettings';
+import UserProfile from './components/UserProfile';
 import { subscriptionService } from './services/subscriptionService';
 import { deviceService } from './services/deviceService';
 import { GraduationCap } from 'lucide-react';
@@ -32,6 +38,7 @@ function AppContent() {
   const [activeSection, setActiveSection] = useState('cours');
   const [activeTab, setActiveTab] = useState('notes');
   const [deviceCheckDone, setDeviceCheckDone] = useState(false);
+  const [userView, setUserView] = useState('home'); // home, resources, notifications, payments, settings
   
   // Vérifier si on est sur une page de paiement
   const isPaymentPage = window.location.pathname.includes('/payment/');
@@ -252,31 +259,57 @@ function AppContent() {
           <Dashboard />
         ) : (
           <>
-            <Header 
-              onAddSubject={() => setShowAddModal(true)}
-              onOpenProfile={() => setShowProfile(true)}
-              onOpenSearch={() => setShowAdvancedSearch(true)}
-              onOpenDashboard={() => setShowDashboard(true)}
-            />
-            
-            <div className="main-content container">
-              {selectedSubject ? (
-                <SubjectDetail 
-                  subject={selectedSubject} 
-                  onBack={() => setSelectedSubject(null)}
-                  initialSection={activeSection}
-                  initialTab={activeTab}
-                  hasSubscription={hasSubscription}
-                  onUpgrade={() => setShowPayment(true)}
+            {/* Affichage basé sur userView pour mobile */}
+            {userView === 'resources' ? (
+              <UserResources />
+            ) : userView === 'profile' ? (
+              <UserProfile 
+                onClose={() => setUserView('home')} 
+                onOpenPayment={() => {
+                  setUserView('home');
+                  setShowPayment(true);
+                }}
+              />
+            ) : userView === 'notifications' ? (
+              <UserNotifications />
+            ) : userView === 'payments' ? (
+              <UserPaymentHistory />
+            ) : userView === 'settings' ? (
+              <UserSettings onOpenPayment={() => setShowPayment(true)} />
+            ) : (
+              <>
+                {/* Vue principale (home) */}
+                <Header 
+                  onAddSubject={() => setShowAddModal(true)}
+                  onOpenProfile={() => setShowProfile(true)}
+                  onOpenSearch={() => setShowAdvancedSearch(true)}
+                  onOpenDashboard={() => setShowDashboard(true)}
+                  onOpenSettings={() => setUserView('settings')}
                 />
-              ) : (
-                <SubjectList 
-                  onSelectSubject={setSelectedSubject}
-                  hasSubscription={hasSubscription}
-                  onUpgrade={() => setShowPayment(true)}
-                />
-              )}
-            </div>
+                
+                <div className="main-content container">
+                  {selectedSubject ? (
+                    <SubjectDetail 
+                      subject={selectedSubject} 
+                      onBack={() => setSelectedSubject(null)}
+                      initialSection={activeSection}
+                      initialTab={activeTab}
+                      hasSubscription={hasSubscription}
+                      onUpgrade={() => setShowPayment(true)}
+                    />
+                  ) : (
+                    <SubjectList 
+                      onSelectSubject={setSelectedSubject}
+                      hasSubscription={hasSubscription}
+                      onUpgrade={() => setShowPayment(true)}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Navigation mobile utilisateur */}
+            <UserNavigation activeView={userView} setActiveView={setUserView} />
 
             {showAddModal && (
               <AddSubjectModal onClose={() => setShowAddModal(false)} />

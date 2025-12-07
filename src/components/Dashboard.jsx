@@ -6,6 +6,7 @@ import VouchersTab from './dashboard/VouchersTab';
 import UsersTab from './dashboard/UsersTab';
 import SettingsTab from './dashboard/SettingsTab';
 import DevicesTab from './dashboard/DevicesTab';
+import ResourcesTab from './dashboard/ResourcesTab';
 import PendingPaymentsPanel from './PendingPaymentsPanel';
 import './Dashboard.css';
 
@@ -20,6 +21,7 @@ const Dashboard = () => {
       case 'vouchers': return 'Codes Promo';
       case 'manage-users': return 'Utilisateurs';
       case 'devices': return 'Appareils Connectés';
+      case 'resources': return 'Bibliothèque';
       case 'settings': return 'Paramètres';
       default: return 'Dashboard';
     }
@@ -43,6 +45,7 @@ const Dashboard = () => {
           {activeTab === 'vouchers' && <VouchersTab />}
           {activeTab === 'manage-users' && <UsersTab />}
           {activeTab === 'devices' && <DevicesTab />}
+          {activeTab === 'resources' && <ResourcesTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
       </main>

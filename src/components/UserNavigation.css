@@ -1,0 +1,114 @@
+/* ============================================
+   USER NAVIGATION - MOBILE NAVBAR
+   ============================================ */
+
+.user-nav {
+  display: none;
+}
+
+/* ============================================
+   MOBILE ONLY
+   ============================================ */
+@media (max-width: 768px) {
+  .user-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 75px !important;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+    z-index: 9999;
+    padding: 0 8px;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .user-nav-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: none !important;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: none !important;
+  }
+
+  .user-nav-item svg {
+    width: 24px;
+    height: 24px;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+    stroke-width: 2;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Badge bleu uniquement pour l'état actif */
+  .user-nav-item.active::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #4f8ff0 0%, #5a9fff 100%);
+    border-radius: 18px;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+  }
+
+  .user-nav-item.active svg {
+    color: white !important;
+    transform: scale(1.1);
+  }
+
+  /* Hover léger */
+  .user-nav-item:hover:not(.active) svg {
+    color: #4f8ff0;
+    transform: scale(1.05);
+  }
+
+  /* Tap responsive */
+  .user-nav-item:active {
+    transform: scale(0.96);
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+[data-theme="dark"] .user-nav {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border-top-color: rgba(51, 65, 85, 0.8);
+}
+
+[data-theme="dark"] .user-nav-item svg {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .user-nav-item:hover:not(.active) svg {
+  color: #818cf8;
+}
