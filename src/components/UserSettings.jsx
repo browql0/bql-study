@@ -37,7 +37,7 @@ const UserSettings = ({ onOpenPayment }) => {
   useEffect(() => {
     const loadNotificationPreferences = async () => {
       if (!currentUser?.id) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -77,7 +77,7 @@ const UserSettings = ({ onOpenPayment }) => {
   // Sauvegarder les préférences de notifications
   const handleSaveNotificationPreferences = async (prefs) => {
     if (!currentUser?.id) return;
-    
+
     setLoadingPreferences(true);
     try {
       const { error } = await supabase
@@ -97,20 +97,20 @@ const UserSettings = ({ onOpenPayment }) => {
   const handleRequestPushPermission = async () => {
     setNotifError('');
     setNotifConfirmation('');
-    
+
     try {
       const currentStatus = notificationManager.getPermissionStatus();
-      
+
       if (currentStatus === 'unsupported') {
         setNotifError('Les notifications ne sont pas supportées par votre navigateur');
         return;
       }
-      
+
       if (currentStatus === 'denied') {
         setNotifError('Les notifications ont été bloquées. Veuillez les autoriser dans les paramètres de votre navigateur');
         return;
       }
-      
+
       if (currentStatus === 'granted') {
         try {
           const subscription = await notificationManager.subscribeToPush();
@@ -124,23 +124,23 @@ const UserSettings = ({ onOpenPayment }) => {
         }
         return;
       }
-      
+
       const success = await notificationManager.requestPermission();
-      
+
       if (!success) {
         setNotifError('Permission refusée. Veuillez autoriser les notifications');
         checkPushNotificationStatus();
         return;
       }
-      
+
       try {
         const subscription = await notificationManager.subscribeToPush();
-        
+
         if (subscription) {
           setNotifConfirmation('✅ Notifications push activées avec succès !');
           setTimeout(() => setNotifConfirmation(''), 5000);
           checkPushNotificationStatus();
-          
+
           await notificationManager.sendLocalNotification(
             '🔔 Notifications activées',
             'Vous recevrez désormais les notifications de l\'application'
@@ -159,12 +159,16 @@ const UserSettings = ({ onOpenPayment }) => {
   return (
     <div className="user-settings-container">
       {/* Header Bar */}
-      <div className="settings-header-bar">
-        <div className="header-left">
-          <Settings size={24} className="header-icon" />
-          <div className="header-text">
-            <h1>Paramètres</h1>
-            <p>Gérez vos préférences et votre compte</p>
+      <div className="list-header">
+        <div className="section-title-wrapper">
+          <div className="section-title-icon">
+            <Settings size={28} strokeWidth={2.5} />
+          </div>
+          <div className="section-title-text">
+            <h2 className="section-title">
+              <span className="main-title">Paramètres</span>
+              <span className="subtitle">Gérez vos préférences et votre compte</span>
+            </h2>
           </div>
         </div>
       </div>
@@ -176,7 +180,7 @@ const UserSettings = ({ onOpenPayment }) => {
             <CreditCard size={20} />
             <h2>Abonnement</h2>
           </div>
-          
+
           <div className="settings-card">
             <div className="subscription-info">
               <div className="subscription-status">
@@ -210,7 +214,7 @@ const UserSettings = ({ onOpenPayment }) => {
             {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
             <h2>Apparence</h2>
           </div>
-          
+
           <div className="settings-card">
             <div className="setting-item">
               <div className="setting-label">
@@ -219,7 +223,7 @@ const UserSettings = ({ onOpenPayment }) => {
                   Choisissez votre thème préféré
                 </span>
               </div>
-              <button 
+              <button
                 className={`theme-toggle ${theme}`}
                 onClick={toggleTheme}
               >
@@ -245,7 +249,7 @@ const UserSettings = ({ onOpenPayment }) => {
             <Bell size={20} />
             <h2>Notifications</h2>
           </div>
-          
+
           <div className="settings-card">
             {/* Autorisation notifications push */}
             <div className="setting-item push-permission-item">
@@ -267,7 +271,7 @@ const UserSettings = ({ onOpenPayment }) => {
                     <span>Bloquées</span>
                   </div>
                 ) : (
-                  <button 
+                  <button
                     className="setting-btn primary small"
                     onClick={handleRequestPushPermission}
                   >
@@ -305,15 +309,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.new_files ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, new_files: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.new_files ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, new_files: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -328,15 +332,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.new_photos ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, new_photos: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.new_photos ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, new_photos: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -351,15 +355,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.new_notes ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, new_notes: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.new_notes ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, new_notes: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -374,15 +378,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.new_quiz ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, new_quiz: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.new_quiz ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, new_quiz: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -397,15 +401,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.subscription_expiry ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, subscription_expiry: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.subscription_expiry ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, subscription_expiry: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -420,15 +424,15 @@ const UserSettings = ({ onOpenPayment }) => {
                   </div>
                 </div>
                 <label className="notification-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={notificationPreferences.custom_admin ?? true} 
-                    onChange={(e) => { 
-                      const newPrefs = { ...notificationPreferences, custom_admin: e.target.checked }; 
-                      setNotificationPreferences(newPrefs); 
-                      handleSaveNotificationPreferences(newPrefs); 
-                    }} 
-                    disabled={loadingPreferences} 
+                  <input
+                    type="checkbox"
+                    checked={notificationPreferences.custom_admin ?? true}
+                    onChange={(e) => {
+                      const newPrefs = { ...notificationPreferences, custom_admin: e.target.checked };
+                      setNotificationPreferences(newPrefs);
+                      handleSaveNotificationPreferences(newPrefs);
+                    }}
+                    disabled={loadingPreferences}
                   />
                   <span className="notification-toggle-slider"></span>
                 </label>
@@ -443,7 +447,7 @@ const UserSettings = ({ onOpenPayment }) => {
             <LogOut size={20} />
             <h2>Déconnexion</h2>
           </div>
-          
+
           <div className="settings-card">
             <p className="danger-text">
               Vous serez déconnecté de votre compte. Vous devrez vous reconnecter pour accéder à vos données.

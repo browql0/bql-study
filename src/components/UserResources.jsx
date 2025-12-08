@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { BookOpen, Video, Globe, FileText, Search, ExternalLink, Star, Filter, TrendingUp, Award, Zap, Library } from 'lucide-react';
+import { 
+  BookOpen, Video, Globe, FileText, Search, ExternalLink, 
+  Star, Filter, TrendingUp, Award, Library, X 
+} from 'lucide-react';
 import './UserResources.css';
 
 const UserResources = () => {
@@ -69,15 +72,15 @@ const UserResources = () => {
 
   const filteredResources = resources.filter(resource => {
     const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+                          resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          resource.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          resource.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesType = filterType === 'all' || resource.type === filterType;
     const matchesFeatured = !filterFeatured || resource.is_featured;
     return matchesSearch && matchesType && matchesFeatured;
   });
 
-  // Statistiques
+  // Statistiques pour les filtres
   const stats = {
     total: resources.length,
     books: resources.filter(r => r.type === 'book').length,
@@ -99,27 +102,40 @@ const UserResources = () => {
 
   return (
     <div className="user-resources-page">
-      {/* Header Bar */}
-      <div className="resources-header-bar">
-        <div className="header-left">
-          <Library size={24} className="header-icon" />
-          <div className="header-text">
-            <h1>Bibliothèque</h1>
-            <p>{resources.length} ressource{resources.length > 1 ? 's' : ''} disponible{resources.length > 1 ? 's' : ''}</p>
+      {/* 1. Header Bar (Titre uniquement) */}
+      <div className="list-header">
+        <div className="section-title-wrapper">
+          <div className="section-title-icon">
+            <Library size={28} strokeWidth={2.5} />
           </div>
-        </div>
-        <div className="header-search">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Rechercher..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <div className="section-title-text">
+            <h2 className="section-title">
+              <span className="main-title">Bibliothèque</span>
+              <span className="subtitle">{resources.length} ressource{resources.length > 1 ? 's' : ''} disponible{resources.length > 1 ? 's' : ''}</span>
+            </h2>
+          </div>
         </div>
       </div>
 
-      {/* Filtres Pills */}
+      {/* 2. Section Recherche Centrale (Nouveau) */}
+      <div className="search-section-container">
+        <div className="main-search-box">
+          <Search size={20} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Rechercher un livre, une vidéo, un sujet..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button className="clear-search" onClick={() => setSearchTerm('')}>
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Filtres Pills */}
       <div className="resources-filters">
         <div className="filter-pills">
           <button 
@@ -167,7 +183,7 @@ const UserResources = () => {
         </div>
       </div>
 
-      {/* Liste des ressources */}
+      {/* 4. Liste des ressources */}
       {filteredResources.length === 0 ? (
         <div className="no-resources-modern">
           <div className="no-resources-icon">
@@ -187,7 +203,7 @@ const UserResources = () => {
         <div className="resources-grid-modern">
           {filteredResources.map(resource => (
             <div key={resource.id} className="resource-card-modern">
-              {/* Thumbnail avec overlay gradient */}
+              {/* Thumbnail */}
               <div 
                 className="resource-thumbnail-modern"
                 style={{ 

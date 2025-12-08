@@ -115,19 +115,25 @@ const UserNotifications = () => {
   return (
     <div className="user-notifications-container">
       {/* Header */}
-      <div className="notifications-header-bar">
-        <div className="header-left">
-          <Bell size={24} className="header-icon" />
-          <div className="header-text">
-            <h1>Notifications</h1>
-            <p>{notifications.length} notification{notifications.length > 1 ? 's' : ''} • {unreadCount} non lue{unreadCount > 1 ? 's' : ''}</p>
+      <div className="list-header">
+        <div className="section-title-wrapper">
+          <div className="section-title-icon">
+            <Bell size={28} strokeWidth={2.5} />
+          </div>
+          <div className="section-title-text">
+            <h2 className="section-title">
+              <span className="main-title">Notifications</span>
+              <span className="subtitle">{notifications.length} notification{notifications.length > 1 ? 's' : ''} • {unreadCount} non lue{unreadCount > 1 ? 's' : ''}</span>
+            </h2>
           </div>
         </div>
         {unreadCount > 0 && (
-          <button className="mark-all-btn" onClick={markAllAsRead}>
-            <Check size={18} />
-            Tout marquer comme lu
-          </button>
+          <div className="list-actions">
+            <button className="mark-all-btn" onClick={markAllAsRead}>
+              <Check size={18} />
+              Tout marquer comme lu
+            </button>
+          </div>
         )}
       </div>
 

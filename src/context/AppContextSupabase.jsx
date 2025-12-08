@@ -711,7 +711,8 @@ export const AppProvider = ({ children }) => {
     addPhoto,
     deletePhoto,
     addFile,
-    deleteFile
+    deleteFile,
+    loadSubjects
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

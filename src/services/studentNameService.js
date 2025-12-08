@@ -55,7 +55,14 @@ export const findExactName = (name) => {
  * Récupère toutes les informations d'un étudiant depuis le JSON (matricule, groupe, sous-groupe)
  */
 export const getStudentInfo = (name) => {
-  if (!name || !name.trim()) return null;
+  if (!name || !name.trim()) {
+    return null;
+  }
+  
+  // Ne pas chercher si c'est un email
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+/.test(name)) {
+    return null;
+  }
   
   const normalizedInput = normalizeName(name);
   
@@ -64,7 +71,26 @@ export const getStudentInfo = (name) => {
     return normalizedStudentName === normalizedInput;
   });
   
-  if (!found) return null;
+  if (!found) {
+    // Essayer une recherche partielle si la recherche exacte échoue
+    const nameParts = normalizedInput.split(' ').filter(p => p.length > 2);
+    if (nameParts.length > 0) {
+      const partialMatch = etudiantsData.find(etudiant => {
+        const normalizedStudentName = normalizeName(etudiant.nom);
+        return nameParts.some(part => normalizedStudentName.includes(part));
+      });
+      
+      if (partialMatch) {
+        return {
+          nom: partialMatch.nom,
+          matricule: partialMatch.matricule,
+          groupe: partialMatch.gp,
+          sousGroupe: partialMatch.sgp
+        };
+      }
+    }
+    return null;
+  }
   
   return {
     nom: found.nom,

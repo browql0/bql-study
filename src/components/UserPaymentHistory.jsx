@@ -171,12 +171,16 @@ const UserPaymentHistory = () => {
   return (
     <div className="user-payment-history-container">
       {/* Header Bar */}
-      <div className="payment-header-bar">
-        <div className="header-left">
-          <CreditCard size={24} className="header-icon" />
-          <div className="header-text">
-            <h1>Historique des Paiements</h1>
-            <p>{payments.length} transaction{payments.length > 1 ? 's' : ''} enregistrée{payments.length > 1 ? 's' : ''}</p>
+      <div className="list-header">
+        <div className="section-title-wrapper">
+          <div className="section-title-icon">
+            <CreditCard size={28} strokeWidth={2.5} />
+          </div>
+          <div className="section-title-text">
+            <h2 className="section-title">
+              <span className="main-title">Historique des Paiements</span>
+              <span className="subtitle">{payments.length} transaction{payments.length > 1 ? 's' : ''} enregistrée{payments.length > 1 ? 's' : ''}</span>
+            </h2>
           </div>
         </div>
       </div>

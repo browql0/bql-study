@@ -176,14 +176,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 </button>
               )}
 
-              <button 
-                className="header-action-icon"
-                onClick={onOpenSettings}
-                title="Paramètres"
-              >
-                <Settings size={22} />
-                <span className="action-tooltip">Paramètres</span>
-              </button>
+    
 
               <button 
                 className="header-action-icon notification-btn"
@@ -268,14 +261,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                   <BarChart3 size={24} />
                 </button>
               )}
-              <button 
-                className="mobile-settings-btn"
-                onClick={onOpenSettings}
-                aria-label="Paramètres"
-                title="Paramètres"
-              >
-                <Settings size={24} />
-              </button>
+
             </div>
           </div>
 

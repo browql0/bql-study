@@ -11,7 +11,7 @@ import {
   Scissors, Hammer, Wrench, Key, Lock, Unlock, Bell, Clock, Calendar, Mail, Phone,
   MessageSquare, Video, Radio, Tv, Monitor, Laptop, Tablet, Smartphone, Printer,
   Folder, FolderOpen, Archive, Search, Settings, Cog, BarChart, PieChart, TrendingUp,
-  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart
+  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw
 } from 'lucide-react';
 import ProtectedContent from './ProtectedContent';
 import './SubjectList.css';
@@ -32,10 +32,11 @@ const ICON_MAP = {
 };
 
 const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
-  const { subjects, searchQuery, deleteSubject, isAdmin } = useApp();
+  const { subjects, searchQuery, deleteSubject, isAdmin, loadSubjects } = useApp();
   const [sortBy, setSortBy] = useState('recent');
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Ajouter/retirer la classe modal-open au body quand le modal de confirmation est ouvert
   useEffect(() => {
@@ -102,6 +103,19 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
     setDeleteConfirm(null);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadSubjects();
+      // Attendre un peu pour que l'animation soit visible
+      await new Promise(resolve => setTimeout(resolve, 800));
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (subjects.length === 0) {
     return (
       <div className="empty-state scale-in">
@@ -134,6 +148,19 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
           </div>
         </div>
         <div className="list-actions">
+          <button 
+            className={`btn-icon refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRefresh();
+            }}
+            title="Rafraîchir"
+            type="button"
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={18} className={isRefreshing ? 'spinning' : ''} />
+          </button>
           <button 
             className={`btn-icon filter-btn ${showFilters ? 'active' : ''}`}
             onClick={(e) => {
@@ -279,6 +306,23 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
       {filteredSubjects.length === 0 && searchQuery && (
         <div className="empty-state fade-in">
           <p>Aucun résultat pour "{searchQuery}"</p>
+        </div>
+      )}
+
+      {isRefreshing && (
+        <div className="refresh-loading-overlay">
+          <div className="refresh-loading-container">
+            <div className="refresh-loading-icon">
+              <RefreshCw size={48} className="spinning" />
+            </div>
+            <h3 className="refresh-loading-title">Actualisation...</h3>
+            <p className="refresh-loading-text">Chargement des matières</p>
+            <div className="refresh-loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
         </div>
       )}
 
