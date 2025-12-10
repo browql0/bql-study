@@ -77,19 +77,20 @@ export const registerDevice = async () => {
       .eq('user_id', user.id)
       .eq('device_fingerprint', fingerprint)
       .single();
-    
+
     if (existing) {
-      // Mettre à jour la dernière connexion
-      const { error: updateError } = await supabase
+      // Mettre à jour la dernière connexion et réactiver si besoin
+      const { data: updated, error: updateError } = await supabase
         .from('user_devices')
         .update({ 
           last_login_at: new Date().toISOString(),
           is_active: true
         })
-        .eq('id', existing.id);
-      
+        .eq('id', existing.id)
+        .select()
+        .single();
       if (updateError) throw updateError;
-      return { success: true, device: existing };
+      return { success: true, device: updated };
     }
     
     // Compter les appareils actifs
@@ -160,14 +161,13 @@ export const getUserDevices = async () => {
 // Supprimer un appareil (se déconnecter)
 export const removeDevice = async (deviceId) => {
   try {
+    // Désactiver uniquement l'appareil courant
     const { error } = await supabase
       .from('user_devices')
       .update({ is_active: false })
       .eq('id', deviceId);
-    
     if (error) throw error;
     return { success: true };
-    
   } catch (error) {
     console.error('Error removing device:', error);
     return { success: false, error: error.message };

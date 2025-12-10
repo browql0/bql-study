@@ -16,12 +16,13 @@ const UsersTab = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
+  const [durationModal, setDurationModal] = useState({ show: false, userId: null });
   const [pricing, setPricing] = useState({ monthly: 120, quarterly: 320, yearly: 600 });
 
   const fetchAllUsers = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Récupérer les utilisateurs avec toutes les infos
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
@@ -51,8 +52,8 @@ const UsersTab = () => {
         const userPayments = paymentsData?.filter(p => p.user_id === user.id) || [];
         const userManualPayments = manualPayments?.filter(p => p.user_id === user.id) || [];
         const allPayments = [...userPayments, ...userManualPayments];
-        
-        const lastPayment = allPayments.sort((a, b) => 
+
+        const lastPayment = allPayments.sort((a, b) =>
           new Date(b.created_at) - new Date(a.created_at)
         )[0];
 
@@ -131,25 +132,31 @@ const UsersTab = () => {
     notification.className = `custom-notification notification-${type}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => notification.classList.add('show'), 10);
     setTimeout(() => {
       notification.classList.remove('show');
       setTimeout(() => notification.remove(), 300);
     }, 3000);
   };
+  const now = new Date();
+  // const endDate = new Date();
+  // endDate.setMonth(endDate.getMonth() + 1);
 
   const handleGrantTrial = async (userId) => {
     try {
       // Donner un essai gratuit de 7 jours
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 7);
-      
+
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           subscription_status: 'trial',
-          subscription_end_date: trialEndDate.toISOString()
+          plan_type: 'monthly',
+          payment_amount: 0,
+          subscription_end_date: trialEndDate.toISOString(),
+          last_payment_date: now.toISOString()
         })
         .eq('id', userId);
 
@@ -162,19 +169,44 @@ const UsersTab = () => {
     }
   };
 
-  const handleGrantPremium = async (userId) => {
+  const handleGrantPremium = (userId) => {
+    // Ouvrir le modal de sélection de durée
+    setDurationModal({ show: true, userId: userId });
+  };
+
+  const handleGrantPremiumWithDuration = async (userId, months) => {
     try {
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + months);
+
+      // Déterminer le type de plan et le montant
+      let planType, paymentAmount;
+      if (months === 1) {
+        planType = 'monthly';
+        paymentAmount = pricing.monthly || 120;
+      } else if (months === 3) {
+        planType = 'quarterly';
+        paymentAmount = pricing.quarterly || 320;
+      } else if (months === 6) {
+        planType = 'yearly';
+        paymentAmount = pricing.yearly || 600;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           subscription_status: 'premium',
-          subscription_end_date: null  // Premium illimité
+          plan_type: planType,
+          payment_amount: paymentAmount,
+          subscription_end_date: endDate.toISOString(),
+          last_payment_date: new Date().toISOString()
         })
         .eq('id', userId);
 
       if (error) throw error;
       await fetchAllUsers();
-      showNotification('Accès premium mensuel accordé !', 'success');
+      showNotification(`Accès premium ${months} mois accordé !`, 'success');
+      setDurationModal({ show: false, userId: null });
     } catch (error) {
       console.error('Erreur:', error);
       showNotification('Erreur lors de l\'attribution du premium', 'error');
@@ -190,7 +222,7 @@ const UsersTab = () => {
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({ 
+            .update({
               subscription_status: 'expired',
               subscription_end_date: null
             })
@@ -211,7 +243,7 @@ const UsersTab = () => {
   const handleToggleAdmin = async (userId, currentRole) => {
     const isAdmin = currentRole === 'admin';
     const action = isAdmin ? 'rétrograder en spectateur' : 'promouvoir administrateur';
-    
+
     setConfirmModal({
       show: true,
       title: isAdmin ? '⬇️ Rétrograder l\'utilisateur' : '⬆️ Promouvoir administrateur',
@@ -220,19 +252,19 @@ const UsersTab = () => {
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({ 
+            .update({
               role: isAdmin ? 'spectator' : 'admin',
               updated_at: new Date().toISOString()
             })
             .eq('id', userId);
 
           if (error) throw error;
-          
+
           // Forcer le rafraîchissement des données
           await fetchAllUsers();
-          
+
           showNotification(
-            isAdmin ? 'Utilisateur rétrogradé en spectateur !' : 'Utilisateur promu administrateur !', 
+            isAdmin ? 'Utilisateur rétrogradé en spectateur !' : 'Utilisateur promu administrateur !',
             'success'
           );
         } catch (error) {
@@ -284,25 +316,25 @@ const UsersTab = () => {
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let aVal = a[sortBy];
     let bVal = b[sortBy];
-    
+
     // Gestion des dates
     if (sortBy === 'created_at') {
       aVal = new Date(aVal).getTime();
       bVal = new Date(bVal).getTime();
     }
-    
+
     // Gestion des valeurs numériques (dépenses, paiements)
     if (sortBy === 'total_spent' || sortBy === 'total_payments') {
       aVal = aVal || 0;
       bVal = bVal || 0;
     }
-    
+
     // Gestion des chaînes de caractères (nom, email)
     if (sortBy === 'name' || sortBy === 'email') {
       aVal = (aVal || '').toLowerCase();
       bVal = (bVal || '').toLowerCase();
     }
-    
+
     if (sortOrder === 'asc') {
       return aVal > bVal ? 1 : -1;
     } else {
@@ -362,12 +394,12 @@ const UsersTab = () => {
           <div className="search-icon-wrapper">
             <Search size={20} />
           </div>
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="search-input-v2"
-            placeholder="Rechercher un utilisateur par nom ou email..." 
+            placeholder="Rechercher un utilisateur par nom ou email..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)} 
+            onChange={e => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
             <button className="search-clear" onClick={() => setSearchTerm('')}>×</button>
@@ -400,8 +432,8 @@ const UsersTab = () => {
               <option value="email">📧 Email</option>
               <option value="total_spent">💰 Dépenses</option>
             </select>
-            <button 
-              className={`sort-order-btn-v2 ${sortOrder}`} 
+            <button
+              className={`sort-order-btn-v2 ${sortOrder}`}
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               title={sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
             >
@@ -439,10 +471,10 @@ const UsersTab = () => {
             const isPremium = user.subscription_status === 'premium';
             const isAdmin = user.role === 'admin';
             const userInitial = user.name?.charAt(0).toUpperCase() || 'U';
-            
+
             return (
-              <div 
-                key={user.id} 
+              <div
+                key={user.id}
                 className="user-card-v2"
                 style={{ '--card-index': index }}
               >
@@ -452,17 +484,17 @@ const UsersTab = () => {
                     <div className="avatar-letter-v2">{userInitial}</div>
                     <div className={`avatar-status-indicator ${user.subscription_active ? 'active' : 'inactive'}`}></div>
                   </div>
-                  
+
                   <div className="user-main-info-v2">
                     <h4 className="user-card-name">{user.name || 'Utilisateur'}</h4>
                     <p className="user-card-email">{user.email}</p>
-                    
+
                     <div className="user-badges-v2">
                       <span className={`badge-v2-mini badge-role-${user.role}`}>
                         {isAdmin ? <Shield size={12} /> : <Eye size={12} />}
                         <span>{isAdmin ? 'Admin' : 'Spectateur'}</span>
                       </span>
-                      
+
                       {isPremium && (
                         <span className="badge-v2-mini badge-premium">
                           ⭐ <span>Premium</span>
@@ -481,9 +513,9 @@ const UsersTab = () => {
                       <span className="stat-label-card">Dépensé</span>
                     </div>
                   </div>
-                  
+
                   <div className="stat-divider-v2"></div>
-                  
+
                   <div className="stat-item-v2">
                     <div className="stat-icon-v2">🧾</div>
                     <div className="stat-content-v2">
@@ -491,9 +523,9 @@ const UsersTab = () => {
                       <span className="stat-label-card">Paiements</span>
                     </div>
                   </div>
-                  
+
                   <div className="stat-divider-v2"></div>
-                  
+
                   <div className="stat-item-v2">
                     <div className="stat-icon-v2">📅</div>
                     <div className="stat-content-v2">
@@ -505,7 +537,7 @@ const UsersTab = () => {
 
                 {/* Card Actions */}
                 <div className="user-card-actions-v2">
-                  <button 
+                  <button
                     className="card-action-btn view-details-btn"
                     onClick={() => handleViewDetails(user)}
                     title="Voir les détails complets"
@@ -513,33 +545,33 @@ const UsersTab = () => {
                     <Eye size={18} />
                     <span>Détails</span>
                   </button>
-                  
+
                   <div className="quick-actions-v2">
-                    <button 
+                    <button
                       className="quick-action-btn trial-action"
                       onClick={() => handleGrantTrial(user.id)}
                       title="Donner essai gratuit (7 jours)"
                     >
                       🎁
                     </button>
-                    
-                    <button 
+
+                    <button
                       className="quick-action-btn premium-action"
                       onClick={() => handleGrantPremium(user.id)}
                       title="Accorder Premium mensuel"
                     >
                       <CheckCircle size={16} />
                     </button>
-                    
-                    <button 
+
+                    <button
                       className="quick-action-btn revoke-action"
                       onClick={() => handleRevokeAccess(user.id)}
                       title="Révoquer l'accès"
                     >
                       <Ban size={16} />
                     </button>
-                    
-                    <button 
+
+                    <button
                       className={`quick-action-btn ${isAdmin ? 'demote-action' : 'admin-action'}`}
                       onClick={() => handleToggleAdmin(user.id, user.role)}
                       title={isAdmin ? 'Rétrograder en spectateur' : 'Promouvoir administrateur'}
@@ -558,7 +590,7 @@ const UsersTab = () => {
       {showUserModal && selectedUser && (
         <div className="user-modal-overlay-v2" onClick={() => setShowUserModal(false)}>
           <div className="user-modal-wrapper" onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Floating Particles Background */}
             <div className="modal-particles">
               <div className="particle"></div>
@@ -574,7 +606,7 @@ const UsersTab = () => {
               <button className="btn-close-v2" onClick={() => setShowUserModal(false)}>
                 <span className="close-icon">×</span>
               </button>
-              
+
               <div className="header-content-v2">
                 {/* Avatar avec effet 3D */}
                 <div className="avatar-container-v2">
@@ -589,7 +621,7 @@ const UsersTab = () => {
                 <div className="user-info-header-v2">
                   <h2 className="user-name-v2">{selectedUser.name || 'Utilisateur'}</h2>
                   <p className="user-email-v2">{selectedUser.email}</p>
-                  
+
                   {/* Badges Premium */}
                   <div className="badges-container-v2">
                     <div className={`badge-v2 badge-role ${selectedUser.role}`}>
@@ -604,10 +636,10 @@ const UsersTab = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Modal Body - Redesigned */}
             <div className="modal-body-v2">
-              
+
               {/* Stats Overview Cards */}
               <div className="stats-overview-v2">
                 <div className="stat-card-v2 stat-payments">
@@ -636,19 +668,19 @@ const UsersTab = () => {
                   </div>
                 </div>
 
-                  <div className="stat-card-v2 stat-plan">
+                <div className="stat-card-v2 stat-plan">
                   <div className="stat-icon-v2">
                     <Shield size={24} />
                   </div>
                   <div className="stat-data-v2">
                     <span className="stat-value-v2">
-                      {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' 
+                      {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
                         ? (selectedUser.plan_type === 'monthly' ? '📅 Mensuel'
                           : selectedUser.plan_type === 'quarterly' ? '📆 Trimestriel'
-                          : selectedUser.plan_type === 'yearly' ? '🗓️ Annuel'
-                          : 'Premium')
+                            : selectedUser.plan_type === 'yearly' ? '🗓️ Annuel'
+                              : 'Premium')
                         : selectedUser.subscription_status === 'trial' ? '🎁 Essai'
-                        : 'Gratuit'}
+                          : 'Gratuit'}
                     </span>
                     <span className="stat-label-v2">Type de Plan</span>
                   </div>
@@ -660,7 +692,7 @@ const UsersTab = () => {
 
               {/* Information Sections */}
               <div className="info-sections-v2">
-                
+
                 {/* General Information */}
                 <div className="info-section-v2">
                   <div className="section-header-v2">
@@ -681,10 +713,10 @@ const UsersTab = () => {
                         <div className="info-item-icon">📅</div>
                         <div className="info-item-content">
                           <span className="info-label-v2">Date d'inscription</span>
-                          <span className="info-value-v2">{new Date(selectedUser.created_at).toLocaleDateString('fr-FR', { 
-                            day: 'numeric', 
-                            month: 'long', 
-                            year: 'numeric' 
+                          <span className="info-value-v2">{new Date(selectedUser.created_at).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
                           })}</span>
                         </div>
                       </div>
@@ -712,7 +744,7 @@ const UsersTab = () => {
                     <div className="subscription-details-v2">
                       <div className="subscription-card-v2 primary">
                         <div className="subscription-icon-v2">
-                          {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' ? '⭐' 
+                          {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' ? '⭐'
                             : selectedUser.subscription_status === 'trial' ? '🎁' : '🆓'}
                         </div>
                         <div className="subscription-info-v2">
@@ -721,10 +753,10 @@ const UsersTab = () => {
                             {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
                               ? (selectedUser.plan_type === 'monthly' ? `⭐ Premium Mensuel (${pricing.monthly} DH/mois)`
                                 : selectedUser.plan_type === 'quarterly' ? `⭐ Premium Trimestriel (${pricing.quarterly} DH/3 mois)`
-                                : selectedUser.plan_type === 'yearly' ? `⭐ Premium Annuel (${pricing.yearly} DH/6 mois)`
-                                : '⭐ Premium')
+                                  : selectedUser.plan_type === 'yearly' ? `⭐ Premium Annuel (${pricing.yearly} DH/6 mois)`
+                                    : '⭐ Premium')
                               : selectedUser.subscription_status === 'trial' ? '🎁 Période d\'essai (7 jours)'
-                              : '🆓 Abonnement gratuit'}
+                                : '🆓 Abonnement gratuit'}
                           </span>
                         </div>
                       </div>
@@ -862,17 +894,146 @@ const UsersTab = () => {
               <p className="confirm-modal-message">{confirmModal.message}</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn cancel-btn" 
+              <button
+                className="confirm-btn cancel-btn"
                 onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}
               >
                 ✕ Annuler
               </button>
-              <button 
-                className="confirm-btn confirm-btn-primary" 
+              <button
+                className="confirm-btn confirm-btn-primary"
                 onClick={confirmModal.onConfirm}
               >
                 ✓ Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duration Selection Modal */}
+      {durationModal.show && (
+        <div className="user-modal-overlay-v2" onClick={() => setDurationModal({ show: false, userId: null })}>
+          <div className="confirm-modal-wrapper duration-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="confirm-modal-header">
+              <h3 className="confirm-modal-title">🎁 Choisir la durée Premium</h3>
+              <p style={{ fontSize: '14px', marginTop: '8px', color: 'var(--text-secondary)' }}>
+                Sélectionnez la durée d'accès premium pour cet utilisateur
+              </p>
+            </div>
+            <div className="duration-options" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '16px',
+              padding: '24px'
+            }}>
+              <div
+                className="duration-card"
+                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 1)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  border: '2px solid #e2e8f0',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease',
+                  background: 'var(--card-bg, white)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#4f8ff0';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 143, 240, 0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📅</div>
+                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>1 Mois</h4>
+                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.monthly || 120} DH</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Mensuel</p>
+              </div>
+
+              <div
+                className="duration-card popular"
+                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 3)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  border: '2px solid #4f8ff0',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease',
+                  background: 'linear-gradient(135deg, rgba(79, 143, 240, 0.08), rgba(100, 181, 246, 0.08))',
+                  position: 'relative'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(79, 143, 240, 0.2)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: '-12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(135deg, #4f8ff0, #64b5f6)',
+                  color: 'white',
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 4px 12px rgba(79, 143, 240, 0.3)'
+                }}>Populaire</div>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📆</div>
+                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>3 Mois</h4>
+                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.quarterly || 320} DH</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Trimestriel</p>
+              </div>
+
+              <div
+                className="duration-card"
+                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 6)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  border: '2px solid #e2e8f0',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease',
+                  background: 'var(--card-bg, white)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#4f8ff0';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 143, 240, 0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗓️</div>
+                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>6 Mois</h4>
+                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.yearly || 600} DH</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Semestriel</p>
+              </div>
+            </div>
+            <div className="confirm-modal-actions">
+              <button
+                className="confirm-btn cancel-btn"
+                onClick={() => setDurationModal({ show: false, userId: null })}
+              >
+                ✕ Annuler
               </button>
             </div>
           </div>

@@ -29,7 +29,7 @@ import './SettingsTab.css';
 
 const SettingsTab = () => {
   const [settings, setSettings] = useState({
-    pricing: { monthly: 5, quarterly: 13, yearly: 45 },
+    pricing: { monthly: 25, quarterly: 60, yearly: 100 },
     features: {
       dark_mode: false,
       notifications: true,
@@ -282,25 +282,25 @@ const SettingsTab = () => {
               </label>
               <input
                 type="number"
-                value={settings.pricing?.monthly || 5}
+                value={settings.pricing?.monthly || 25}
                 onChange={(e) => handlePriceChange('monthly', e.target.value)}
                 min="0"
-                step="0.01"
-                placeholder="5.00"
+                step="1"
+                placeholder="25.00"
               />
             </div>
             <div className="pricing-input-group">
               <label>
                 <TrendingUp size={18} />
-                <span>Trimestriel (€)</span>
+                <span>Trimestriel </span>
               </label>
               <input
                 type="number"
-                value={settings.pricing?.quarterly || 13}
+                value={settings.pricing?.quarterly || 65}
                 onChange={(e) => handlePriceChange('quarterly', e.target.value)}
                 min="0"
-                step="0.01"
-                placeholder="13.00"
+                step="1"
+                placeholder="60.00"
               />
             </div>
             <div className="pricing-input-group">
@@ -310,10 +310,10 @@ const SettingsTab = () => {
               </label>
               <input
                 type="number"
-                value={settings.pricing?.yearly || 45}
+                value={settings.pricing?.yearly || 100}
                 onChange={(e) => handlePriceChange('yearly', e.target.value)}
                 min="0"
-                step="0.01"
+                step="1"
                 placeholder="45.00"
               />
             </div>

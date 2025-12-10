@@ -61,7 +61,6 @@ function AppContent() {
       checkSubscription(true);
       
       // Vérifier aussi toutes les 10 secondes pour détecter l'expiration plus rapidement
-      // et s'assurer que le blocage reste actif
       const interval = setInterval(() => {
         checkSubscription(true); // Toujours forcer le rafraîchissement
       }, 10000); // 10 secondes au lieu de 30 pour une détection plus rapide
@@ -174,28 +173,34 @@ function AppContent() {
     }
   }, [theme]);
 
+  // --- NOUVELLE STRUCTURE DE CHARGEMENT ULTRA STYLISÉE ---
   if (loading) {
     return (
       <div className="app-loading">
-        <div className="loading-container">
-          <div className="loading-brand">
-            <div className="loading-icon">
-              <GraduationCap size={48} />
+        <div className="loading-content">
+          <div className="loading-logo-wrapper">
+            {/* Les cercles animés */}
+            <div className="loading-rings">
+              <div className="ring ring-1"></div>
+              <div className="ring ring-2"></div>
+              <div className="ring ring-3"></div>
+              <div className="ring-glow"></div>
             </div>
+            
+            {/* L'icône centrale */}
+            <div className="loading-icon-center">
+              <GraduationCap size={44} strokeWidth={1.5} />
+            </div>
+          </div>
+          
+          <div className="loading-text-wrapper">
             <h2 className="loading-title">Study Space</h2>
-          </div>
-          <div className="loading-spinner-wrapper">
-            <div className="loading-spinner">
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
-              <div className="spinner-ring"></div>
+            <div className="loading-status">
+              <span>Préparation de votre espace</span>
+              <div className="typing-dots">
+                <span>.</span><span>.</span><span>.</span>
+              </div>
             </div>
-          </div>
-          <p className="loading-text">Chargement de votre espace...</p>
-          <div className="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
           </div>
         </div>
       </div>
@@ -284,7 +289,6 @@ function AppContent() {
                   onOpenProfile={() => setShowProfile(true)}
                   onOpenSearch={() => setShowAdvancedSearch(true)}
                   onOpenDashboard={() => setShowDashboard(true)}
-                  onOpenSettings={() => setUserView('settings')}
                 />
                 
                 <div className="main-content container">

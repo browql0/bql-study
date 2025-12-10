@@ -126,7 +126,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <BookOpen size={18} />
           <span>Cours</span>
-          <span className="badge">{(currentSubject.cours?.notes?.length || 0) + (currentSubject.cours?.photos?.length || 0)}</span>
+          <span className="badge">{(currentSubject.cours?.notes?.length || 0) + (currentSubject.cours?.photos?.length || 0) + (currentSubject.cours?.files?.length || 0)}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'exercices' ? 'active' : ''}`}
@@ -134,7 +134,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <Edit size={18} />
           <span>Exercices</span>
-          <span className="badge">{(currentSubject.exercices?.notes?.length || 0) + (currentSubject.exercices?.photos?.length || 0)}</span>
+          <span className="badge">{(currentSubject.exercices?.notes?.length || 0) + (currentSubject.exercices?.photos?.length || 0) + (currentSubject.exercices?.files?.length || 0)}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'corrections' ? 'active' : ''}`}
@@ -142,7 +142,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <CheckSquare size={18} />
           <span>Corrections</span>
-          <span className="badge">{(currentSubject.corrections?.notes?.length || 0) + (currentSubject.corrections?.photos?.length || 0)}</span>
+          <span className="badge">{(currentSubject.corrections?.notes?.length || 0) + (currentSubject.corrections?.photos?.length || 0) + (currentSubject.corrections?.files?.length || 0)}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'td' ? 'active' : ''}`}
@@ -150,7 +150,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <FileCheck size={18} />
           <span>TD</span>
-          <span className="badge">{(currentSubject.td?.notes?.length || 0) + (currentSubject.td?.photos?.length || 0)}</span>
+          <span className="badge">{(currentSubject.td?.notes?.length || 0) + (currentSubject.td?.photos?.length || 0) + (currentSubject.td?.files?.length || 0)}</span>
         </button>
       </div>
 
@@ -286,6 +286,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
       {showAddQuiz && (
         <AddQuizModal
           subjectId={currentSubject.id}
+          subjectName={currentSubject.name}
           section={activeSection}
           onClose={() => setShowAddQuiz(false)}
           onSave={async (subjectId, section, quizData) => {
@@ -295,7 +296,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
             // Notifier les spectateurs du nouveau quiz
             try {
               const { notifySpectators } = await import('../services/pushNotificationService');
-              await notifySpectators(subjectId, 'quiz', quizData.title || 'Nouveau quiz');
+              await notifySpectators(subjectId, 'quiz dans ' , subjectName, quizData.title || 'Nouveau quiz');
             } catch (notifError) {
               console.debug('Push notification failed:', notifError);
             }
