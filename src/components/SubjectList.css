@@ -1689,7 +1689,7 @@
 .compact-card .card-title {
   font-size: 15px;
 }
-}
+
 
 @media (max-width: 480px) {
   .list-header {
@@ -1848,7 +1848,6 @@
   border: 3px solid transparent;
   background: linear-gradient(#fff, #fff) padding-box,
     conic-gradient(from 0deg, transparent, var(--primary) 50%, #8a60e4 80%, transparent) border-box;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   animation: spin-premium 1s linear infinite;
