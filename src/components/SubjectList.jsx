@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContextSupabase';
-import { 
-  BookOpen, FileText, Image, Trash2, SortAsc, Filter, AlertTriangle, X, File, 
+import {
+  BookOpen, FileText, Image, Trash2, SortAsc, Filter, AlertTriangle, X, File,
   GraduationCap, Calculator, FlaskConical, Dna, Globe, BookText, Atom, Brain,
   Music, Palette, Code, Languages, Microscope, Beaker, Lightbulb, PenTool, Compass,
   Map, Camera, Film, Headphones, Gamepad2, Zap, Target, Heart, Star, Trophy, Award,
@@ -11,7 +11,7 @@ import {
   Scissors, Hammer, Wrench, Key, Lock, Unlock, Bell, Clock, Calendar, Mail, Phone,
   MessageSquare, Video, Radio, Tv, Monitor, Laptop, Tablet, Smartphone, Printer,
   Folder, FolderOpen, Archive, Search, Settings, Cog, BarChart, PieChart, TrendingUp,
-  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw
+  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw, Check
 } from 'lucide-react';
 import ProtectedContent from './ProtectedContent';
 import './SubjectList.css';
@@ -37,6 +37,7 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Ajouter/retirer la classe modal-open au body quand le modal de confirmation est ouvert
   useEffect(() => {
@@ -45,7 +46,7 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
     } else {
       document.body.classList.remove('modal-open');
     }
-    
+
     return () => {
       document.body.classList.remove('modal-open');
     };
@@ -54,16 +55,16 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
   const filteredSubjects = subjects.filter(subject => {
     const query = searchQuery.toLowerCase();
     const nameMatch = subject.name.toLowerCase().includes(query);
-    
+
     // Rechercher dans toutes les sections
     const sections = ['cours', 'exercices', 'corrections'];
-    const notesMatch = sections.some(section => 
-      subject[section]?.notes?.some(note => 
-        note.title.toLowerCase().includes(query) || 
+    const notesMatch = sections.some(section =>
+      subject[section]?.notes?.some(note =>
+        note.title.toLowerCase().includes(query) ||
         note.content.toLowerCase().includes(query)
       )
     );
-    
+
     return nameMatch || notesMatch;
   });
 
@@ -105,14 +106,19 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setIsSuccess(false);
     try {
       await loadSubjects();
-      // Attendre un peu pour que l'animation soit visible
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Attendre un peu pour l'animation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsSuccess(true);
+      // Laisser le message de succès affiché un moment
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error('Erreur lors du rafraîchissement:', error);
     } finally {
       setIsRefreshing(false);
+      setTimeout(() => setIsSuccess(false), 300);
     }
   };
 
@@ -127,237 +133,241 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
   }
 
   return (
-    <ProtectedContent 
+    <ProtectedContent
       hasAccess={hasSubscription || isAdmin}
       onUpgrade={onUpgrade}
       message="Abonnez-vous pour accéder à toutes les matières et contenus"
     >
       <div className="subject-list">
-      <div className="list-header">
-        <div className="section-title-wrapper">
-          <div className="section-title-icon">
-            <BookOpen size={28} strokeWidth={2.5} />
-          </div>
-          <div className="section-title-text">
-            <h2 className="section-title">
-              <span className="main-title">Mes Matières</span>
-              {searchQuery && (
-                <span className="subtitle">{sortedSubjects.length} résultat{sortedSubjects.length > 1 ? 's' : ''}</span>
-              )}
-            </h2>
-          </div>
-        </div>
-        <div className="list-actions">
-          <button 
-            className={`btn-icon refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleRefresh();
-            }}
-            title="Rafraîchir"
-            type="button"
-            disabled={isRefreshing}
-          >
-            <RefreshCw size={18} className={isRefreshing ? 'spinning' : ''} />
-          </button>
-          <button 
-            className={`btn-icon filter-btn ${showFilters ? 'active' : ''}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowFilters(!showFilters);
-            }}
-            title="Filtres et tri"
-            type="button"
-          >
-            <Filter size={18} />
-          </button>
-        </div>
-      </div>
-
-      {showFilters && (
-        <>
-          <div className="filters-overlay" onClick={() => setShowFilters(false)} />
-          <div className="filters-panel">
-            <div className="filter-panel-header">
-              <h3 className="filter-panel-title">
-                <Filter size={20} />
-                Filtres et Tri
-              </h3>
-              <button 
-                className="filter-close-btn"
-                onClick={() => setShowFilters(false)}
-                type="button"
-              >
-                <X size={18} />
-              </button>
+        <div className="list-header">
+          <div className="section-title-wrapper">
+            <div className="section-title-icon">
+              <BookOpen size={28} strokeWidth={2.5} />
             </div>
-            <div className="filter-group">
-              <label>
-                <SortAsc size={16} />
-                Trier par
-              </label>
-              <div className="filter-options">
-                <button 
-                  className={`filter-option ${sortBy === 'recent' ? 'active' : ''}`}
-                  onClick={() => setSortBy('recent')}
-                  type="button"
-                >
-                  <span>Plus récent</span>
-                </button>
-                <button 
-                  className={`filter-option ${sortBy === 'name' ? 'active' : ''}`}
-                  onClick={() => setSortBy('name')}
-                  type="button"
-                >
-                  <span>Nom A-Z</span>
-                </button>
-                <button 
-                  className={`filter-option ${sortBy === 'notes' ? 'active' : ''}`}
-                  onClick={() => setSortBy('notes')}
-                  type="button"
-                >
-                  <span>Plus de notes</span>
-                </button>
-                <button 
-                  className={`filter-option ${sortBy === 'photos' ? 'active' : ''}`}
-                  onClick={() => setSortBy('photos')}
-                  type="button"
-                >
-                  <span>Plus de photos</span>
-                </button>
-              </div>
+            <div className="section-title-text">
+              <h2 className="section-title">
+                <span className="main-title">Mes Matières</span>
+                {searchQuery && (
+                  <span className="subtitle">{sortedSubjects.length} résultat{sortedSubjects.length > 1 ? 's' : ''}</span>
+                )}
+              </h2>
             </div>
           </div>
-        </>
-      )}
-      
-      <div className="subjects-grid">
-        {sortedSubjects.map((subject, index) => {
-          const SubjectIcon = ICON_MAP[subject.icon] || BookOpen;
-          const accent = subject.color || '#4f8ff0';
-          const notesCount = ['cours','exercices','corrections','td'].reduce((acc, sec) => acc + (subject[sec]?.notes?.length || 0), 0);
-          const photosCount = ['cours','exercices','corrections','td'].reduce((acc, sec) => acc + (subject[sec]?.photos?.length || 0), 0);
-          const filesCount = ['cours','exercices','corrections','td'].reduce((acc, sec) => acc + (subject[sec]?.files?.length || 0), 0);
-          // Compter tous les quizzes et flashcards
-          const quizzesCount = subject.quizzes?.length || 0;
-
-          return (
-            <article
-              key={subject.id}
-              className="subject-card compact-card"
-              onClick={() => onSelectSubject(subject)}
-              style={{ animationDelay: `${index * 0.04}s`, '--accent-color': accent }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') onSelectSubject(subject); }}
-              aria-label={`Ouvrir la matière ${subject.name}`}
+          <div className="list-actions">
+            <button
+              className={`btn-icon refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRefresh();
+              }}
+              title="Rafraîchir"
+              type="button"
+              disabled={isRefreshing}
             >
-              <div className="card-accent" style={{ background: accent }} aria-hidden="true" />
-              
-              {isAdmin() && (
+              <RefreshCw size={18} className={isRefreshing ? 'spinning' : ''} />
+            </button>
+            <button
+              className={`btn-icon filter-btn ${showFilters ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowFilters(!showFilters);
+              }}
+              title="Filtres et tri"
+              type="button"
+            >
+              <Filter size={18} />
+            </button>
+          </div>
+        </div>
+
+        {showFilters && (
+          <>
+            <div className="filters-overlay" onClick={() => setShowFilters(false)} />
+            <div className="filters-panel">
+              <div className="filter-panel-header">
+                <h3 className="filter-panel-title">
+                  <Filter size={20} />
+                  Filtres et Tri
+                </h3>
                 <button
-                  className="delete-small"
-                  onClick={(e) => handleDelete(e, subject.id)}
-                  title="Supprimer"
-                  aria-label={`Supprimer ${subject.name}`}
+                  className="filter-close-btn"
+                  onClick={() => setShowFilters(false)}
+                  type="button"
                 >
-                  <Trash2 size={16} />
+                  <X size={18} />
                 </button>
-              )}
-
-              <div className="card-main">
-                <div className="card-left">
-                  <div className="icon-circle" style={{ boxShadow: `0 6px 18px ${accent}33` }}>
-                    <SubjectIcon size={28} style={{ color: accent }} />
-                  </div>
-                </div>
-
-                <div className="card-center">
-                  <h3 className="card-title">{subject.name}</h3>
-                  <p className="card-sub">{subject.description || `${notesCount} notes • ${photosCount} photos`}</p>
-                  <div className="card-chips">
-                    <span className="chip">
-                      <FileText size={16} />
-                      <span>{notesCount}</span>
-                    </span>
-                    <span className="chip">
-                      <Image size={16} />
-                      <span>{photosCount}</span>
-                    </span>
-                    <span className="chip">
-                      <File size={16} />
-                      <span>{filesCount}</span>
-                    </span>
-                    <span className="chip">
-                      <Brain size={16} />
-                      <span>{quizzesCount}</span>
-                    </span>
-                  </div>
-                </div>
-
               </div>
-            </article>
-          );
-        })}
+              <div className="filter-group">
+                <label>
+                  <SortAsc size={16} />
+                  Trier par
+                </label>
+                <div className="filter-options">
+                  <button
+                    className={`filter-option ${sortBy === 'recent' ? 'active' : ''}`}
+                    onClick={() => setSortBy('recent')}
+                    type="button"
+                  >
+                    <span>Plus récent</span>
+                  </button>
+                  <button
+                    className={`filter-option ${sortBy === 'name' ? 'active' : ''}`}
+                    onClick={() => setSortBy('name')}
+                    type="button"
+                  >
+                    <span>Nom A-Z</span>
+                  </button>
+                  <button
+                    className={`filter-option ${sortBy === 'notes' ? 'active' : ''}`}
+                    onClick={() => setSortBy('notes')}
+                    type="button"
+                  >
+                    <span>Plus de notes</span>
+                  </button>
+                  <button
+                    className={`filter-option ${sortBy === 'photos' ? 'active' : ''}`}
+                    onClick={() => setSortBy('photos')}
+                    type="button"
+                  >
+                    <span>Plus de photos</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="subjects-grid">
+          {sortedSubjects.map((subject, index) => {
+            const SubjectIcon = ICON_MAP[subject.icon] || BookOpen;
+            const accent = subject.color || '#4f8ff0';
+            const notesCount = ['cours', 'exercices', 'corrections', 'td'].reduce((acc, sec) => acc + (subject[sec]?.notes?.length || 0), 0);
+            const photosCount = ['cours', 'exercices', 'corrections', 'td'].reduce((acc, sec) => acc + (subject[sec]?.photos?.length || 0), 0);
+            const filesCount = ['cours', 'exercices', 'corrections', 'td'].reduce((acc, sec) => acc + (subject[sec]?.files?.length || 0), 0);
+            // Compter tous les quizzes et flashcards
+            const quizzesCount = subject.quizzes?.length || 0;
+
+            return (
+              <article
+                key={subject.id}
+                className="subject-card compact-card"
+                onClick={() => onSelectSubject(subject)}
+                style={{ animationDelay: `${index * 0.04}s`, '--accent-color': accent }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') onSelectSubject(subject); }}
+                aria-label={`Ouvrir la matière ${subject.name}`}
+              >
+                <div className="card-accent" style={{ background: accent }} aria-hidden="true" />
+
+                {isAdmin() && (
+                  <button
+                    className="delete-small"
+                    onClick={(e) => handleDelete(e, subject.id)}
+                    title="Supprimer"
+                    aria-label={`Supprimer ${subject.name}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+
+                <div className="card-main">
+                  <div className="card-left">
+                    <div className="icon-circle" style={{ boxShadow: `0 6px 18px ${accent}33` }}>
+                      <SubjectIcon size={28} style={{ color: accent }} />
+                    </div>
+                  </div>
+
+                  <div className="card-center">
+                    <h3 className="card-title">{subject.name}</h3>
+                    <p className="card-sub">{subject.description || `${notesCount} notes • ${photosCount} photos`}</p>
+                    <div className="card-chips">
+                      <span className="chip">
+                        <FileText size={16} />
+                        <span>{notesCount}</span>
+                      </span>
+                      <span className="chip">
+                        <Image size={16} />
+                        <span>{photosCount}</span>
+                      </span>
+                      <span className="chip">
+                        <File size={16} />
+                        <span>{filesCount}</span>
+                      </span>
+                      <span className="chip">
+                        <Brain size={16} />
+                        <span>{quizzesCount}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {filteredSubjects.length === 0 && searchQuery && (
+          <div className="empty-state fade-in">
+            <p>Aucun résultat pour "{searchQuery}"</p>
+          </div>
+        )}
+
+        {isRefreshing && (
+          <div className="refresh-loading-overlay">
+            <div className="refresh-loading-container">
+              <div className="premium-spinner-wrapper">
+                <div className="premium-spinner-ring" />
+                <div className="premium-spinner-icon">
+                  <RefreshCw size={32} />
+                </div>
+                {isSuccess && (
+                  <div className="premium-spinner-success">
+                    <Check size={32} strokeWidth={3} />
+                  </div>
+                )}
+              </div>
+              <h3 className="refresh-loading-title">
+                {isSuccess ? 'À jour !' : 'Actualisation...'}
+              </h3>
+            </div>
+          </div>
+        )}
+
+        {deleteConfirm && (
+          <div className="modal-overlay mobile-modal-overlay" onClick={cancelDelete}>
+            <div className="modal mobile-modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header mobile-modal-header">
+                <h2>Confirmer la suppression</h2>
+                <button className="btn-icon mobile-close-btn" onClick={cancelDelete}>
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="modal-body mobile-modal-body">
+                <div className="confirm-content">
+                  <div className="alert-icon">
+                    <AlertTriangle size={56} strokeWidth={2.5} />
+                  </div>
+                  <div className="confirm-text">
+                    <p className="confirm-question">Supprimer cette matière ?</p>
+                    <p className="warning-text">Toutes les notes et photos associées seront définitivement supprimées.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer mobile-modal-footer">
+                <button className="btn btn-secondary mobile-btn" onClick={cancelDelete}>
+                  Annuler
+                </button>
+                <button className="btn btn-danger mobile-btn" onClick={confirmDelete}>
+                  Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      {filteredSubjects.length === 0 && searchQuery && (
-        <div className="empty-state fade-in">
-          <p>Aucun résultat pour "{searchQuery}"</p>
-        </div>
-      )}
-
-      {isRefreshing && (
-        <div className="refresh-loading-overlay">
-          <div className="refresh-loading-container">
-            <div className="refresh-loading-icon">
-              <RefreshCw size={48} className="spinning" />
-            </div>
-            <h3 className="refresh-loading-title">Actualisation...</h3>
-            <p className="refresh-loading-text">Chargement des matières</p>
-            <div className="refresh-loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteConfirm && (
-        <div className="modal-overlay mobile-modal-overlay" onClick={cancelDelete}>
-          <div className="modal mobile-modal confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header mobile-modal-header">
-              <h2>Confirmer la suppression</h2>
-              <button className="btn-icon mobile-close-btn" onClick={cancelDelete}>
-                <X size={24} />
-              </button>
-            </div>
-            <div className="modal-body mobile-modal-body">
-              <div className="confirm-content">
-                <div className="alert-icon">
-                  <AlertTriangle size={56} strokeWidth={2.5} />
-                </div>
-                <div className="confirm-text">
-                  <p className="confirm-question">Supprimer cette matière ?</p>
-                  <p className="warning-text">Toutes les notes et photos associées seront définitivement supprimées.</p>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer mobile-modal-footer">
-              <button className="btn btn-secondary mobile-btn" onClick={cancelDelete}>
-                Annuler
-              </button>
-              <button className="btn btn-danger mobile-btn" onClick={confirmDelete}>
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
     </ProtectedContent>
   );
 };
