@@ -12,6 +12,7 @@ import PaymentCheckout from './components/PaymentCheckout';
 import VoucherModal from './components/VoucherModal';
 
 import Login from './components/Login';
+import DeviceLimitModal from './components/DeviceLimitModal';
 import { Loader } from 'lucide-react';
 import UserNavigation from './components/UserNavigation';
 import UserResources from './components/UserResources';
@@ -25,7 +26,7 @@ import './App.css';
 
 function AppContent() {
   // usePullToRefresh(); // Désactivé pour comportement natif iOS
-  const { currentUser, subjects, loading, theme, subscriptionWarning, setSubscriptionWarning } = useApp();
+  const { currentUser, subjects, loading, theme, subscriptionWarning, setSubscriptionWarning, deviceLimitError, setDeviceLimitError } = useApp();
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -70,6 +71,45 @@ function AppContent() {
       setHasSubscription(false);
     }
   }, [currentUser, checkSubscription]);
+
+  // Vérifier périodiquement si l'appareil est toujours autorisé
+  React.useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const checkDeviceAuthorization = async () => {
+      try {
+        const { deviceService } = await import('./services/deviceService');
+        const authResult = await deviceService.checkDeviceAuthorization();
+        
+        if (!authResult.authorized && authResult.reason === 'device_not_registered') {
+          // L'appareil n'est plus autorisé (probablement supprimé par un admin)
+          console.log('Appareil non autorisé, déconnexion...');
+          const { supabase } = await import('./lib/supabase');
+          await supabase.auth.signOut();
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de l\'autorisation de l\'appareil:', error);
+      }
+    };
+
+    // Vérifier toutes les 30 secondes
+    const interval = setInterval(checkDeviceAuthorization, 30000);
+    
+    // Vérifier aussi lors des interactions utilisateur importantes (clics, touches)
+    const handleUserInteraction = () => {
+      checkDeviceAuthorization();
+    };
+
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('keydown', handleUserInteraction, { once: true });
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [currentUser]);
 
 
 
@@ -187,6 +227,24 @@ function AppContent() {
 
   if (!currentUser) {
     return <Login />;
+  }
+
+  // Si erreur de limite d'appareils, afficher le modal et bloquer l'accès
+  if (deviceLimitError) {
+    return (
+      <>
+        <DeviceLimitModal
+          isOpen={true}
+          devices={deviceLimitError.devices}
+          onLogout={async () => {
+            const { supabase } = await import('./lib/supabase');
+            await supabase.auth.signOut();
+            setDeviceLimitError(null);
+            window.location.reload();
+          }}
+        />
+      </>
+    );
   }
 
   const handleSearchResult = (result) => {

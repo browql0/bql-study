@@ -300,6 +300,128 @@
   color: #d1d5db;
 }
 
+/* Styles pour la liste des appareils dans le modal */
+.devices-list-modal {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.device-item-modal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.device-item-modal:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.device-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.device-icon-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 10px;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.device-details-modal {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-details-modal h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  color: #111827;
+  font-weight: 600;
+}
+
+.device-details-modal p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.device-details-modal .device-date {
+  margin-top: 4px;
+  font-size: 0.813rem;
+  color: #9ca3af;
+}
+
+.remove-device-btn-modal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.remove-device-btn-modal:hover:not(:disabled) {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+.remove-device-btn-modal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .device-item-modal {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+[data-theme="dark"] .device-icon-modal {
+  background: #1f2937;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .device-details-modal h4 {
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] .device-details-modal p {
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .remove-device-btn-modal {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .remove-device-btn-modal:hover:not(:disabled) {
+  background: #991b1b;
+}
+
 @media (max-width: 768px) {
   .device-limit-modal {
     margin: 20px;
@@ -315,5 +437,16 @@
 
   .message-content p {
     font-size: 0.938rem;
+  }
+
+  .device-item-modal {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .remove-device-btn-modal {
+    width: 100%;
+    justify-content: center;
   }
 }

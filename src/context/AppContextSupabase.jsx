@@ -28,6 +28,7 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscriptionWarning, setSubscriptionWarning] = useState(null);
+  const [deviceLimitError, setDeviceLimitError] = useState(null);
 
   // Charger le thème depuis localStorage
   useEffect(() => {
@@ -68,12 +69,35 @@ export const AppProvider = ({ children }) => {
           console.error('Error checking subscription expiry:', error);
         }
         
+        // Enregistrer l'appareil lors de la connexion
+        try {
+          const { deviceService } = await import('../services/deviceService');
+          const deviceResult = await deviceService.registerDevice();
+          
+          if (!deviceResult.success && deviceResult.error === 'device_limit') {
+            // Limite d'appareils atteinte - stocker l'erreur pour afficher le modal
+            console.warn('Limite d\'appareils atteinte');
+            setDeviceLimitError({
+              devices: deviceResult.devices || []
+            });
+            // Ne pas déconnecter immédiatement, laisser le modal gérer
+            return;
+          } else {
+            // Réinitialiser l'erreur si l'enregistrement réussit
+            setDeviceLimitError(null);
+          }
+        } catch (error) {
+          console.error('Error registering device:', error);
+          // Ne pas bloquer la connexion si l'enregistrement de l'appareil échoue
+        }
+        
         // Charger les matières depuis Supabase de manière optimisée
         await loadSubjects();
       } else {
         setCurrentUser(null);
         setSubjects([]);
         setSubscriptionWarning(null);
+        setDeviceLimitError(null);
       }
       setLoading(false);
     });
@@ -695,6 +719,8 @@ export const AppProvider = ({ children }) => {
     loading,
     subscriptionWarning,
     setSubscriptionWarning,
+    deviceLimitError,
+    setDeviceLimitError,
     setSearchQuery,
     toggleTheme,
     login,
