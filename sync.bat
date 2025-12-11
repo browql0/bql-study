@@ -17,99 +17,6 @@ echo  5. Quitter
 echo ============================================
 set /p choice=Choix : 
 
-:: ================================
-:: Détection automatique branche
-:: ================================
-for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do (
-    set branch=%%b
-)
-
-if "%branch%"=="" (
-    echo ❌ Impossible de détecter la branche.
-    pause
-    exit /b
-)
-
-:: =========================================================
-:: Fonction PUSH (avec message demandé + date/heure optionnelle)
-:: =========================================================
-:pushFunction
-echo.
-set /p commitmsg=✏️  Message du commit : 
-
-if "%commitmsg%"=="" (
-    echo ❌ Message vide → Annulation.
-    pause
-    exit /b
-)
-
-set addDateTime=0
-set /p addDateTime=Ajouter date/heure au commit ? (1=oui / 0=non) : 
-
-if "%addDateTime%"=="1" (
-    for /f "tokens=1-3 delims=/ " %%a in ("%date%") do (
-        set today=%%c-%%b-%%a
-    )
-    for /f "tokens=1-2 delims=: " %%a in ("%time%") do (
-        set now=%%a-%%b
-    )
-    set commitmsg=%commitmsg% (%today%_%now%)
-)
-
-echo.
-echo 🚀 Push en cours sur la branche "%branch%"...
-git add .
-git commit -m "%commitmsg%"
-git push origin %branch%
-
-echo.
-echo ✔ Push terminé !
-pause
-exit /b
-
-
-:: ================================
-:: Fonction PULL
-:: ================================
-:pullFunction
-echo.
-echo 📥 Pull sur la branche "%branch%"...
-git pull origin %branch%
-echo ✔ Pull terminé !
-pause
-exit /b
-
-
-:: ================================
-:: Fonction STATUS
-:: ================================
-:statusFunction
-echo.
-git status
-pause
-exit /b
-
-
-:: ================================
-:: Mode automatique
-:: ================================
-:autoSync
-echo.
-echo 🔍 Analyse des changements locaux...
-
-set changes=
-
-for /f "delims=" %%i in ('git status --porcelain') do (
-    set changes=1
-)
-
-if defined changes (
-    echo ✨ Changements détectés → PUSH automatique.
-    goto pushFunction
-) else (
-    echo 🔄 Aucun changement local → PULL automatique.
-    goto pullFunction
-)
 
 :: ================================
 :: MENU
@@ -123,3 +30,91 @@ if "%choice%"=="5" exit /b
 echo ❌ Choix invalide.
 pause
 exit /b
+
+:: ================================
+:: Détection automatique branche (utilisé dans chaque fonction)
+:: ================================
+:detectBranch
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do (
+    set branch=%%b
+)
+if "%branch%"=="" (
+    echo ❌ Impossible de détecter la branche.
+    pause
+    goto:eof
+)
+goto:eof
+
+:: =========================================================
+:: Fonction PUSH (avec message demandé + date/heure optionnelle)
+:: =========================================================
+:pushFunction
+call :detectBranch
+echo.
+set /p commitmsg=✏️  Message du commit : 
+if "%commitmsg%"=="" (
+    echo ❌ Message vide → Annulation.
+    pause
+    goto:eof
+)
+set addDateTime=0
+set /p addDateTime=Ajouter date/heure au commit ? (1=oui / 0=non) : 
+if "%addDateTime%"=="1" (
+    for /f "tokens=1-3 delims=/ " %%a in ("%date%") do (
+        set today=%%c-%%b-%%a
+    )
+    for /f "tokens=1-2 delims=: " %%a in ("%time%") do (
+        set now=%%a-%%b
+    )
+    set commitmsg=%commitmsg% (%today%_%now%)
+)
+echo.
+echo 🚀 Push en cours sur la branche "%branch%"...
+git add .
+git commit -m "%commitmsg%"
+git push origin %branch%
+echo.
+echo ✔ Push terminé !
+pause
+goto:eof
+
+:: ================================
+:: Fonction PULL
+:: ================================
+:pullFunction
+call :detectBranch
+echo.
+echo 📥 Pull sur la branche "%branch%"...
+git pull origin %branch%
+echo ✔ Pull terminé !
+pause
+goto:eof
+
+:: ================================
+:: Fonction STATUS
+:: ================================
+:statusFunction
+echo.
+git status
+pause
+goto:eof
+
+:: ================================
+:: Mode automatique
+:: ================================
+:autoSync
+call :detectBranch
+echo.
+echo 🔍 Analyse des changements locaux...
+set changes=
+for /f "delims=" %%i in ('git status --porcelain') do (
+    set changes=1
+)
+if defined changes (
+    echo ✨ Changements détectés → PUSH automatique.
+    goto pushFunction
+) else (
+    echo 🔄 Aucun changement local → PULL automatique.
+    goto pullFunction
+)
+goto:eof

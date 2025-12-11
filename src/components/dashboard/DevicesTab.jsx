@@ -9,19 +9,19 @@ const DevicesTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [removing, setRemoving] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ 
-    show: false, 
-    deviceId: null, 
-    userName: '', 
-    deviceName: '' 
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    deviceId: null,
+    userName: '',
+    deviceName: ''
   });
-  const [successModal, setSuccessModal] = useState({ 
-    show: false, 
-    message: '' 
+  const [successModal, setSuccessModal] = useState({
+    show: false,
+    message: ''
   });
-  const [errorModal, setErrorModal] = useState({ 
-    show: false, 
-    message: '' 
+  const [errorModal, setErrorModal] = useState({
+    show: false,
+    message: ''
   });
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const DevicesTab = () => {
       if (showLoading) {
         setLoading(true);
       }
-      
+
       // Récupérer tous les appareils
       const { data: devicesData, error: devicesError } = await supabase
         .from('user_devices')
@@ -112,10 +112,10 @@ const DevicesTab = () => {
     // Sauvegarder les valeurs avant de fermer le modal
     const deviceIdToDelete = confirmModal.deviceId;
     const userNameToDelete = confirmModal.userName;
-    
+
     setRemoving(deviceIdToDelete);
     setConfirmModal({ show: false, deviceId: null, userName: '', deviceName: '' });
-    
+
     try {
       // Vérifier que l'utilisateur est admin
       if (currentUserRole !== 'admin') {
@@ -145,12 +145,12 @@ const DevicesTab = () => {
       // Essayer d'abord avec une fonction RPC qui bypass les RLS (si elle existe)
       let updateData = null;
       let updateError = null;
-      
+
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc('admin_deactivate_device', {
           device_id: deviceIdToDelete
         });
-        
+
         if (!rpcError && rpcData) {
           // La fonction RPC a fonctionné
           updateData = [{ id: deviceIdToDelete }];
@@ -171,7 +171,7 @@ const DevicesTab = () => {
           .eq('id', deviceIdToDelete)
           .eq('is_active', true)
           .select('id');
-        
+
         updateData = result.data;
         updateError = result.error;
       }
@@ -184,12 +184,12 @@ const DevicesTab = () => {
           details: updateError.details,
           hint: updateError.hint
         });
-        
+
         // Si l'erreur est liée aux permissions RLS
         if (updateError.code === '42501' || updateError.message?.includes('permission') || updateError.message?.includes('policy')) {
           throw new Error('Permissions insuffisantes. Les politiques RLS empêchent cette action. Veuillez créer la fonction RPC admin_deactivate_device dans Supabase (voir le fichier SQL fourni).');
         }
-        
+
         throw updateError;
       }
 
@@ -206,11 +206,11 @@ const DevicesTab = () => {
         const filtered = prevDevices.filter(device => device.id !== deviceIdToDelete);
         return filtered;
       });
-      
+
       // Afficher le message de succès immédiatement
-      setSuccessModal({ 
-        show: true, 
-        message: `L'appareil de ${userNameToDelete} a été supprimé avec succès.` 
+      setSuccessModal({
+        show: true,
+        message: `L'appareil de ${userNameToDelete} a été supprimé avec succès.`
       });
 
       // Recharger les données en arrière-plan après un court délai pour s'assurer de la cohérence
@@ -219,15 +219,15 @@ const DevicesTab = () => {
         try {
           // Forcer un rechargement complet
           await loadDevices(false);
-          
+
           // Vérifier que l'appareil a bien été supprimé
           const { data: verifyData } = await supabase
             .from('user_devices')
             .select('id')
             .eq('id', deviceIdToDelete)
             .eq('is_active', true)
-            .single();
-          
+            .maybeSingle();
+
           if (verifyData) {
             console.warn('L\'appareil est toujours actif après la suppression. Nouvelle tentative...');
             // Réessayer la suppression
@@ -235,7 +235,7 @@ const DevicesTab = () => {
               .from('user_devices')
               .update({ is_active: false })
               .eq('id', deviceIdToDelete);
-            
+
             // Recharger à nouveau
             await loadDevices(false);
           }
@@ -247,9 +247,9 @@ const DevicesTab = () => {
       console.error('Erreur suppression:', error);
       // En cas d'erreur, recharger pour restaurer l'état correct (sans afficher le loader)
       await loadDevices(false);
-      setErrorModal({ 
-        show: true, 
-        message: 'Erreur lors de la suppression de l\'appareil. Veuillez réessayer.' 
+      setErrorModal({
+        show: true,
+        message: 'Erreur lors de la suppression de l\'appareil. Veuillez réessayer.'
       });
     } finally {
       setRemoving(null);
@@ -320,6 +320,28 @@ const DevicesTab = () => {
 
   return (
     <div className="devices-tab">
+      <div className="devices-header-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ margin: 0 }}>Gestion des appareils</h2>
+        <button
+          onClick={() => loadDevices(true)}
+          className="refresh-btn"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+            fontWeight: 500
+          }}
+        >
+          <RefreshCw size={18} />
+          Rafraîchir
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="devices-stats">
         <div className="device-stat-card">
@@ -471,14 +493,14 @@ const DevicesTab = () => {
               <p className="confirm-modal-warning">Cette action est irréversible.</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn cancel-btn" 
+              <button
+                className="confirm-btn cancel-btn"
                 onClick={() => setConfirmModal({ show: false, deviceId: null, userName: '', deviceName: '' })}
               >
                 Annuler
               </button>
-              <button 
-                className="confirm-btn confirm-btn-danger" 
+              <button
+                className="confirm-btn confirm-btn-danger"
                 onClick={confirmDeleteDevice}
               >
                 Supprimer
@@ -502,8 +524,8 @@ const DevicesTab = () => {
               <p className="confirm-modal-message">{successModal.message}</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn confirm-btn-primary" 
+              <button
+                className="confirm-btn confirm-btn-primary"
                 onClick={() => setSuccessModal({ show: false, message: '' })}
               >
                 D'accord
@@ -527,8 +549,8 @@ const DevicesTab = () => {
               <p className="confirm-modal-message">{errorModal.message}</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn confirm-btn-primary" 
+              <button
+                className="confirm-btn confirm-btn-primary"
                 onClick={() => setErrorModal({ show: false, message: '' })}
               >
                 Fermer

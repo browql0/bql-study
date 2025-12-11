@@ -10,7 +10,7 @@ import Dashboard from './components/Dashboard';
 import PaymentModal from './components/PaymentModal';
 import PaymentCheckout from './components/PaymentCheckout';
 import VoucherModal from './components/VoucherModal';
-import DeviceLimitModal from './components/DeviceLimitModal';
+
 import Login from './components/Login';
 import { Loader } from 'lucide-react';
 import UserNavigation from './components/UserNavigation';
@@ -20,7 +20,6 @@ import UserPaymentHistory from './components/UserPaymentHistory';
 import UserSettings from './components/UserSettings';
 import UserProfile from './components/UserProfile';
 import { subscriptionService } from './services/subscriptionService';
-import { deviceService } from './services/deviceService';
 import { GraduationCap } from 'lucide-react';
 import './App.css';
 
@@ -34,11 +33,10 @@ function AppContent() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showVoucher, setShowVoucher] = useState(false);
-  const [showDeviceLimitModal, setShowDeviceLimitModal] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [activeSection, setActiveSection] = useState('cours');
   const [activeTab, setActiveTab] = useState('notes');
-  const [deviceCheckDone, setDeviceCheckDone] = useState(false);
+
   const [userView, setUserView] = useState('home'); // home, resources, notifications, payments, settings
 
   // Vérifier si on est sur une page de paiement
@@ -73,29 +71,7 @@ function AppContent() {
     }
   }, [currentUser, checkSubscription]);
 
-  // Vérifier et enregistrer l'appareil au chargement
-  useEffect(() => {
-    const checkDevice = async () => {
-      if (currentUser?.id && !deviceCheckDone) {
-        try {
-          const result = await deviceService.registerDevice(currentUser.id);
 
-          if (!result.success && result.error === 'device_limit') {
-            // Limite d'appareils atteinte
-            setShowDeviceLimitModal(true);
-            // On ne déconnecte plus automatiquement l'utilisateur
-          }
-
-          setDeviceCheckDone(true);
-        } catch (error) {
-          console.error('Erreur vérification appareil:', error);
-          setDeviceCheckDone(true);
-        }
-      }
-    };
-
-    checkDevice();
-  }, [currentUser, deviceCheckDone]);
 
   const handlePaymentSuccess = async (plan) => {
     if (currentUser?.id) {
@@ -207,17 +183,7 @@ function AppContent() {
     return <PaymentCheckout />;
   }
 
-  // Afficher un loader pendant la vérification de l'appareil
-  if (currentUser?.id && !deviceCheckDone) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="flex flex-col items-center">
-          <Loader className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-          <p className="text-gray-600">Vérification de l'appareil...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (!currentUser) {
     return <Login />;
@@ -360,16 +326,7 @@ function AppContent() {
               />
             )}
 
-            {showDeviceLimitModal && (
-              <DeviceLimitModal
-                isOpen={true}
-                onLogout={async () => {
-                  const { supabase } = await import('./lib/supabase');
-                  await supabase.auth.signOut();
-                  window.location.reload();
-                }}
-              />
-            )}
+
           </>
         )}
       </div>
