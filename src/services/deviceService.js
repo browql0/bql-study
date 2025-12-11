@@ -307,21 +307,46 @@ export const registerDevice = async () => {
 
     if (insertError) {
       // Si c'est une erreur de limite d'appareils du trigger PostgreSQL (P0001)
+      // Vérifier d'abord si l'utilisateur est admin (les admins ne devraient pas être bloqués)
       if (insertError.code === 'P0001' || insertError.message?.includes('Limite d\'appareils')) {
-        // Récupérer les appareils actifs pour l'affichage
-        const { data: allDevices } = await supabase
-          .from('user_devices')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .order('last_login_at', { ascending: false });
+        // Re-vérifier le rôle admin (au cas où le trigger bloque aussi les admins)
+        let role = user.user_metadata?.role;
+        if (!role) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile) role = profile.role;
+        }
+        
+        const isAdmin = role === 'admin';
+        
+        if (isAdmin) {
+          // Admin bloqué par le trigger - retourner une erreur spécifique
+          // Le trigger côté serveur devrait idéalement vérifier le rôle aussi
+          console.warn('Admin bloqué par le trigger PostgreSQL. Le trigger devrait être modifié pour bypasser les admins.');
+          return {
+            success: false,
+            error: 'admin_trigger_error',
+            message: 'Erreur de configuration: le trigger PostgreSQL bloque les admins. Contactez le développeur.'
+          };
+        } else {
+          // Non-admin bloqué - normal
+          const { data: allDevices } = await supabase
+            .from('user_devices')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('last_login_at', { ascending: false });
 
-        return {
-          success: false,
-          error: 'device_limit',
-          message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
-          devices: allDevices || []
-        };
+          return {
+            success: false,
+            error: 'device_limit',
+            message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
+            devices: allDevices || []
+          };
+        }
       }
       throw insertError;
     }
@@ -336,19 +361,45 @@ export const registerDevice = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: allDevices } = await supabase
-            .from('user_devices')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .order('last_login_at', { ascending: false });
+          // Vérifier si l'utilisateur est admin
+          let role = user.user_metadata?.role;
+          if (!role) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .maybeSingle();
+            if (profile) role = profile.role;
+          }
+          
+          const isAdmin = role === 'admin';
+          
+          if (isAdmin) {
+            // Admin bloqué par le trigger - c'est un problème de configuration côté serveur
+            console.error('ERREUR: Un admin a été bloqué par le trigger PostgreSQL. Le trigger devrait bypasser les admins.');
+            // Pour l'instant, on retourne une erreur générique pour l'admin
+            // L'admin devra contacter le développeur pour corriger le trigger
+            return {
+              success: false,
+              error: 'admin_trigger_error',
+              message: 'Erreur de configuration: le trigger PostgreSQL bloque les admins. Contactez le développeur.'
+            };
+          } else {
+            // Non-admin bloqué - normal
+            const { data: allDevices } = await supabase
+              .from('user_devices')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .order('last_login_at', { ascending: false });
 
-          return {
-            success: false,
-            error: 'device_limit',
-            message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
-            devices: allDevices || []
-          };
+            return {
+              success: false,
+              error: 'device_limit',
+              message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
+              devices: allDevices || []
+            };
+          }
         }
       } catch (fetchError) {
         console.error('Error fetching devices for limit error:', fetchError);

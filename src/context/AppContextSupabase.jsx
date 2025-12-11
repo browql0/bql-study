@@ -408,10 +408,23 @@ export const AppProvider = ({ children }) => {
   // Logout avec Supabase
   const logout = async () => {
     try {
+      // Désactiver l'appareil actuel avant la déconnexion pour libérer une place
+      try {
+        const { deviceService } = await import('../services/deviceService');
+        await deviceService.deactivateCurrentDevice();
+      } catch (deviceError) {
+        console.warn('Erreur lors de la désactivation de l\'appareil:', deviceError);
+        // Continuer la déconnexion même si la désactivation échoue
+      }
+      
       const { error } = await authSignOut();
       if (error) {
         return { success: false, error };
       }
+      
+      // Réinitialiser l'erreur de limite d'appareils lors de la déconnexion
+      setDeviceLimitError(null);
+      
       setCurrentUser(null);
       setSubjects([]);
       return { success: true };
