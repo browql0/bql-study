@@ -113,6 +113,9 @@ export const registerDevice = async () => {
     const deviceInfo = getDeviceInfo();
 
     // Vérifier si l'appareil existe déjà (actif ou inactif)
+    // IMPORTANT: Le fingerprint est basé sur l'appareil physique, pas le navigateur
+    // Donc un même appareil peut utiliser plusieurs navigateurs (Chrome, Firefox, etc.)
+    // et ils seront tous reconnus comme le même appareil
     // Cela permet de réactiver un appareil après déconnexion/reconnexion
     const { data: existing, error: checkError } = await supabase
       .from('user_devices')
@@ -122,14 +125,16 @@ export const registerDevice = async () => {
       .maybeSingle();
 
     if (existing) {
-      // Mettre à jour la dernière connexion, réactiver et mettre à jour les infos du navigateur
+      // Appareil existant trouvé (même appareil physique, peut-être avec un navigateur différent)
+      // Réactiver l'appareil et mettre à jour les infos du navigateur
       // Cela permet de suivre les différents navigateurs utilisés sur le même appareil
+      // et de se reconnecter/déconnecter sans problème
       const { data: updated, error: updateError } = await supabase
         .from('user_devices')
         .update({
           last_login_at: new Date().toISOString(),
           is_active: true,
-          device_name: deviceInfo.deviceName,
+          device_name: deviceInfo.deviceName, // Mettre à jour avec le navigateur actuel
           browser: deviceInfo.browser,
           os: deviceInfo.os,
           device_type: deviceInfo.deviceType
@@ -138,6 +143,7 @@ export const registerDevice = async () => {
         .select()
         .maybeSingle();
       if (updateError) throw updateError;
+      // Retourner succès sans vérifier la limite car c'est une réactivation, pas un nouvel appareil
       return { success: true, device: updated };
     }
 
@@ -158,8 +164,10 @@ export const registerDevice = async () => {
     console.log('Device Check - User:', user.id, 'Role:', role, 'IsAdmin:', isAdmin);
 
     if (!isAdmin) {
+      // NOUVEL APPAREIL DÉTECTÉ - Vérifier la limite de 2 appareils
       // Compter uniquement les appareils actifs avec des fingerprints uniques
-      // Cela garantit qu'un même appareil physique compte comme un seul appareil
+      // IMPORTANT: On compte les appareils physiques (fingerprints), pas les navigateurs
+      // Un même appareil peut utiliser Chrome, Firefox, Edge, etc. et comptera comme 1 seul appareil
       const { data: devices, error: countError } = await supabase
         .from('user_devices')
         .select('device_fingerprint')
@@ -168,11 +176,13 @@ export const registerDevice = async () => {
 
       if (countError) throw countError;
 
-      // Compter les fingerprints uniques (au cas où il y aurait des doublons)
+      // Compter les fingerprints uniques (appareils physiques distincts)
+      // Si l'utilisateur a déjà 2 appareils actifs, on bloque l'accès
       const uniqueFingerprints = new Set(devices?.map(d => d.device_fingerprint) || []);
       
       if (uniqueFingerprints.size >= 2) {
-        // Récupérer les appareils complets pour l'affichage
+        // LIMITE ATTEINTE: L'utilisateur a déjà 2 appareils actifs
+        // Récupérer les appareils complets pour l'affichage (optionnel, pour info)
         const { data: allDevices } = await supabase
           .from('user_devices')
           .select('*')
@@ -180,7 +190,7 @@ export const registerDevice = async () => {
           .eq('is_active', true)
           .order('last_login_at', { ascending: false });
 
-        // Limite atteinte - retourner les appareils existants
+        // Retourner une erreur qui déclenchera l'affichage du modal de limite
         return {
           success: false,
           error: 'device_limit',
@@ -252,6 +262,36 @@ export const removeDevice = async (deviceId) => {
   }
 };
 
+// Désactiver l'appareil actuel lors de la déconnexion
+// Cette fonction est appelée quand l'utilisateur se déconnecte
+// pour libérer une place dans la limite de 2 appareils
+export const deactivateCurrentDevice = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    const fingerprint = await getDeviceFingerprint();
+    
+    // Désactiver l'appareil actuel s'il existe et est actif
+    // Si l'appareil n'existe pas (cas du 3ème appareil bloqué), c'est normal
+    const { error } = await supabase
+      .from('user_devices')
+      .update({ is_active: false })
+      .eq('user_id', user.id)
+      .eq('device_fingerprint', fingerprint)
+      .eq('is_active', true);
+    
+    // Si aucune ligne n'a été mise à jour (appareil non trouvé), ce n'est pas une erreur
+    // Cela peut arriver si l'appareil n'a jamais été enregistré (cas du 3ème appareil)
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Error deactivating current device:', error);
+    // Ne pas faire échouer la déconnexion si la désactivation de l'appareil échoue
+    return { success: false, error: error.message };
+  }
+};
+
 // Vérifier si l'appareil actuel est autorisé
 export const checkDeviceAuthorization = async () => {
   try {
@@ -309,6 +349,7 @@ export const deviceService = {
   registerDevice,
   getUserDevices,
   removeDevice,
+  deactivateCurrentDevice,
   checkDeviceAuthorization,
   getDeviceFingerprint,
   getDeviceInfo

@@ -26,6 +26,15 @@ const UserSettings = ({ onOpenPayment }) => {
 
   const handleLogout = async () => {
     try {
+      // Désactiver l'appareil actuel avant la déconnexion
+      try {
+        const { deviceService } = await import('../services/deviceService');
+        await deviceService.deactivateCurrentDevice();
+      } catch (deviceError) {
+        console.warn('Erreur lors de la désactivation de l\'appareil:', deviceError);
+        // Continuer la déconnexion même si la désactivation échoue
+      }
+      
       await supabase.auth.signOut();
       window.location.reload();
     } catch (error) {

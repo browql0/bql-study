@@ -235,12 +235,24 @@ function AppContent() {
       <>
         <DeviceLimitModal
           isOpen={true}
-          devices={deviceLimitError.devices}
           onLogout={async () => {
-            const { supabase } = await import('./lib/supabase');
-            await supabase.auth.signOut();
-            setDeviceLimitError(null);
-            window.location.reload();
+            try {
+              // Désactiver l'appareil actuel avant la déconnexion
+              try {
+                const { deviceService } = await import('./services/deviceService');
+                await deviceService.deactivateCurrentDevice();
+              } catch (deviceError) {
+                console.warn('Erreur lors de la désactivation de l\'appareil:', deviceError);
+                // Continuer la déconnexion même si la désactivation échoue
+              }
+              
+              const { supabase } = await import('./lib/supabase');
+              await supabase.auth.signOut();
+              setDeviceLimitError(null);
+              window.location.reload();
+            } catch (error) {
+              console.error('Erreur lors de la déconnexion:', error);
+            }
           }}
         />
       </>
