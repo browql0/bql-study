@@ -78,7 +78,7 @@ function AppContent() {
     const checkDevice = async () => {
       if (currentUser?.id && !deviceCheckDone) {
         try {
-          const result = await deviceService.registerDevice(currentUser.id);
+          const result = await deviceService.registerDevice();
 
           if (!result.success && result.error === 'device_limit') {
             // Limite d'appareils atteinte
@@ -95,6 +95,44 @@ function AppContent() {
     };
 
     checkDevice();
+  }, [currentUser, deviceCheckDone]);
+
+  // Vérifier périodiquement si l'appareil est toujours autorisé
+  useEffect(() => {
+    if (!currentUser?.id || !deviceCheckDone) return;
+
+    const checkDeviceAuthorization = async () => {
+      try {
+        const authResult = await deviceService.checkDeviceAuthorization();
+        
+        if (!authResult.authorized && authResult.reason === 'device_not_registered') {
+          // L'appareil n'est plus autorisé (probablement supprimé par un admin)
+          console.log('Appareil non autorisé, déconnexion...');
+          const { supabase } = await import('./lib/supabase');
+          await supabase.auth.signOut();
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de l\'autorisation de l\'appareil:', error);
+      }
+    };
+
+    // Vérifier toutes les 30 secondes
+    const interval = setInterval(checkDeviceAuthorization, 30000);
+    
+    // Vérifier aussi lors des interactions utilisateur (clics, touches)
+    const handleUserInteraction = () => {
+      checkDeviceAuthorization();
+    };
+
+    window.addEventListener('click', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
   }, [currentUser, deviceCheckDone]);
 
   const handlePaymentSuccess = async (plan) => {

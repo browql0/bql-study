@@ -122,10 +122,10 @@ const DevicesTab = () => {
         throw new Error('Seuls les administrateurs peuvent supprimer des appareils.');
       }
 
-      // Récupérer l'appareil pour vérifier son état
+      // Récupérer l'appareil pour vérifier son état et obtenir l'userId
       const { data: deviceData, error: deviceError } = await supabase
         .from('user_devices')
-        .select('id, is_active')
+        .select('id, is_active, user_id')
         .eq('id', deviceIdToDelete)
         .maybeSingle();
 
@@ -141,6 +141,8 @@ const DevicesTab = () => {
       if (!deviceData) {
         throw new Error('Appareil introuvable');
       }
+
+      const userIdToDisconnect = deviceData.user_id;
 
       // Essayer d'abord avec une fonction RPC qui bypass les RLS (si elle existe)
       let updateData = null;
@@ -201,6 +203,19 @@ const DevicesTab = () => {
         }
       }
 
+      // Envoyer une notification push à l'utilisateur pour le déconnecter
+      try {
+        const { notifyUser } = await import('../../services/pushNotificationService');
+        await notifyUser(
+          userIdToDisconnect,
+          '🔒 Appareil déconnecté',
+          'Votre appareil a été déconnecté par un administrateur. Vous devrez vous reconnecter.'
+        );
+      } catch (notifError) {
+        console.warn('Erreur lors de l\'envoi de la notification push:', notifError);
+        // Ne pas faire échouer la suppression si la notification échoue
+      }
+
       // Mise à jour optimiste : retirer l'appareil de la liste immédiatement
       setDevices(prevDevices => {
         const filtered = prevDevices.filter(device => device.id !== deviceIdToDelete);
@@ -210,7 +225,7 @@ const DevicesTab = () => {
       // Afficher le message de succès immédiatement
       setSuccessModal({ 
         show: true, 
-        message: `L'appareil de ${userNameToDelete} a été supprimé avec succès.` 
+        message: `L'appareil de ${userNameToDelete} a été supprimé avec succès. L'utilisateur sera déconnecté lors de sa prochaine action.` 
       });
 
       // Recharger les données en arrière-plan après un court délai pour s'assurer de la cohérence
