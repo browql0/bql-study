@@ -5,30 +5,39 @@ import { supabase } from '../lib/supabase';
  */
 
 // Générer un identifiant unique basé sur le matériel (Cross-browser compatible)
+// Fonctionne sur PC, Mac, Linux, Android, iOS (téléphones et tablettes)
 // Utilise uniquement des caractéristiques matérielles stables pour qu'un même appareil
 // soit reconnu comme un seul appareil, peu importe le navigateur ou la session
 export const getDeviceFingerprint = async () => {
   try {
     // 1. Informations de l'écran (Résolution + Profondeur de couleur)
-    // Ces valeurs sont stables pour un même appareil physique
+    // Ces valeurs sont stables pour un même appareil physique (PC, mobile, tablette)
     const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
 
     // 2. Pixel Ratio (souvent unique par type d'écran/scaling)
+    // Très utile pour différencier les appareils mobiles (iPhone, Android, etc.)
     const pixelRatio = window.devicePixelRatio || 1;
 
     // 3. Plateforme (OS) - stable pour un même appareil
+    // Exemples: "Win32", "MacIntel", "Linux x86_64", "iPhone", "Linux armv7l" (Android)
     const platform = navigator.platform || 'unknown';
 
     // 4. WebGL Renderer (Carte graphique - très discriminant et stable)
+    // Fonctionne sur PC, Mac, et la plupart des mobiles modernes
     // C'est la caractéristique la plus fiable pour identifier un appareil physique
     let webglRenderer = 'no-webgl';
     try {
       const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') || canvas.getContext('webgl2');
       if (gl) {
         const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
         if (debugInfo) {
           webglRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        } else {
+          // Fallback: utiliser le vendor et renderer de base
+          const vendor = gl.getParameter(gl.VENDOR) || 'unknown-vendor';
+          const renderer = gl.getParameter(gl.RENDERER) || 'unknown-renderer';
+          webglRenderer = `${vendor}-${renderer}`;
         }
       }
     } catch (e) {
@@ -36,22 +45,40 @@ export const getDeviceFingerprint = async () => {
     }
 
     // 5. Nombre de processeurs logiques (caractéristique matérielle stable)
+    // Fonctionne sur tous les appareils (PC, mobile, tablette)
+    // Exemples: 4, 6, 8 (PC), 6, 8 (iPhone), 4, 8 (Android)
     const hardwareConcurrency = navigator.hardwareConcurrency || 0;
 
     // 6. Mémoire maximale (si disponible)
+    // Supporté sur Chrome/Edge (PC et Android), pas toujours sur Safari/iOS
+    // Si non disponible, vaut 0 (ce qui est OK, on a d'autres caractéristiques)
     const maxMemory = navigator.deviceMemory || 0;
+
+    // 7. Orientation de l'écran (utile pour mobile/tablette)
+    // Peut changer mais la capacité est stable
+    const screenOrientation = screen.orientation ? screen.orientation.angle : (window.orientation || 0);
+
+    // 8. Nombre de touches tactiles simultanées (mobile/tablette)
+    // Très utile pour différencier les appareils mobiles
+    let maxTouchPoints = 0;
+    if ('maxTouchPoints' in navigator) {
+      maxTouchPoints = navigator.maxTouchPoints || 0;
+    }
 
     // Combinaison des signaux matériels uniquement
     // On exclut le UserAgent, Canvas fingerprinting et autres caractéristiques
     // qui peuvent varier entre navigateurs pour garantir qu'un même appareil
     // physique soit toujours identifié comme un seul appareil
+    // Cette combinaison fonctionne sur PC, Mac, Linux, Android, iOS
     const fingerprintString = [
       screenInfo,
       pixelRatio,
       platform,
       webglRenderer,
       hardwareConcurrency,
-      maxMemory
+      maxMemory,
+      screenOrientation,
+      maxTouchPoints
     ].join('||');
 
     // Hachage SHA-256
@@ -66,7 +93,9 @@ export const getDeviceFingerprint = async () => {
   } catch (error) {
     console.error('Error generating device fingerprint:', error);
     // Fallback simple basé sur des caractéristiques matérielles
-    return `fallback-${window.screen.width}x${window.screen.height}-${navigator.platform}-${navigator.hardwareConcurrency || 0}`;
+    // Fonctionne même si certaines APIs ne sont pas disponibles
+    const fallback = `fallback-${window.screen.width}x${window.screen.height}-${navigator.platform}-${navigator.hardwareConcurrency || 0}-${navigator.maxTouchPoints || 0}`;
+    return fallback;
   }
 };
 
@@ -170,17 +199,79 @@ export const registerDevice = async () => {
       // Un même appareil peut utiliser Chrome, Firefox, Edge, etc. et comptera comme 1 seul appareil
       const { data: devices, error: countError } = await supabase
         .from('user_devices')
-        .select('device_fingerprint')
+        .select('device_fingerprint, id, last_login_at')
         .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('last_login_at', { ascending: false });
 
       if (countError) throw countError;
 
       // Compter les fingerprints uniques (appareils physiques distincts)
-      // Si l'utilisateur a déjà 2 appareils actifs, on bloque l'accès
       const uniqueFingerprints = new Set(devices?.map(d => d.device_fingerprint) || []);
       
-      if (uniqueFingerprints.size >= 2) {
+      // Si l'utilisateur a plus de 2 appareils actifs (cas d'erreur ou contournement)
+      // Désactiver automatiquement les appareils les plus anciens pour ne garder que 2
+      if (uniqueFingerprints.size > 2) {
+        console.warn(`Utilisateur ${user.id} a ${uniqueFingerprints.size} appareils actifs, nettoyage en cours...`);
+        
+        // Grouper les appareils par fingerprint et garder seulement le plus récent de chaque fingerprint
+        const fingerprintGroups = {};
+        devices?.forEach(device => {
+          if (!fingerprintGroups[device.device_fingerprint]) {
+            fingerprintGroups[device.device_fingerprint] = device;
+          } else {
+            // Garder le plus récent
+            if (new Date(device.last_login_at) > new Date(fingerprintGroups[device.device_fingerprint].last_login_at)) {
+              fingerprintGroups[device.device_fingerprint] = device;
+            }
+          }
+        });
+
+        // Trier par last_login_at et garder seulement les 2 plus récents
+        const sortedDevices = Object.values(fingerprintGroups)
+          .sort((a, b) => new Date(b.last_login_at) - new Date(a.last_login_at))
+          .slice(0, 2);
+
+        const devicesToKeep = new Set(sortedDevices.map(d => d.id));
+        
+        // Désactiver tous les appareils sauf les 2 plus récents
+        const devicesToDeactivate = devices?.filter(d => !devicesToKeep.has(d.id));
+        if (devicesToDeactivate && devicesToDeactivate.length > 0) {
+          const deviceIdsToDeactivate = devicesToDeactivate.map(d => d.id);
+          await supabase
+            .from('user_devices')
+            .update({ is_active: false })
+            .in('id', deviceIdsToDeactivate);
+          
+          console.log(`Désactivation de ${deviceIdsToDeactivate.length} appareils en trop`);
+        }
+        
+        // Recompter après nettoyage
+        const { data: devicesAfterCleanup } = await supabase
+          .from('user_devices')
+          .select('device_fingerprint')
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+        
+        const uniqueFingerprintsAfterCleanup = new Set(devicesAfterCleanup?.map(d => d.device_fingerprint) || []);
+        
+        if (uniqueFingerprintsAfterCleanup.size >= 2) {
+          // Toujours 2 appareils ou plus après nettoyage
+          const { data: allDevices } = await supabase
+            .from('user_devices')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('last_login_at', { ascending: false });
+
+          return {
+            success: false,
+            error: 'device_limit',
+            message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
+            devices: allDevices || []
+          };
+        }
+      } else if (uniqueFingerprints.size >= 2) {
         // LIMITE ATTEINTE: L'utilisateur a déjà 2 appareils actifs
         // Récupérer les appareils complets pour l'affichage (optionnel, pour info)
         const { data: allDevices } = await supabase
@@ -214,12 +305,56 @@ export const registerDevice = async () => {
       .select()
       .maybeSingle();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      // Si c'est une erreur de limite d'appareils du trigger PostgreSQL (P0001)
+      if (insertError.code === 'P0001' || insertError.message?.includes('Limite d\'appareils')) {
+        // Récupérer les appareils actifs pour l'affichage
+        const { data: allDevices } = await supabase
+          .from('user_devices')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('last_login_at', { ascending: false });
+
+        return {
+          success: false,
+          error: 'device_limit',
+          message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
+          devices: allDevices || []
+        };
+      }
+      throw insertError;
+    }
 
     return { success: true, device: newDevice };
 
   } catch (error) {
     console.error('Error registering device:', error);
+    
+    // Gérer aussi les erreurs de limite qui peuvent venir du trigger
+    if (error.code === 'P0001' || error.message?.includes('Limite d\'appareils')) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: allDevices } = await supabase
+            .from('user_devices')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('last_login_at', { ascending: false });
+
+          return {
+            success: false,
+            error: 'device_limit',
+            message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
+            devices: allDevices || []
+          };
+        }
+      } catch (fetchError) {
+        console.error('Error fetching devices for limit error:', fetchError);
+      }
+    }
+    
     return { success: false, error: error.message };
   }
 };

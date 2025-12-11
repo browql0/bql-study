@@ -74,21 +74,37 @@ export const AppProvider = ({ children }) => {
           const { deviceService } = await import('../services/deviceService');
           const deviceResult = await deviceService.registerDevice();
           
-          if (!deviceResult.success && deviceResult.error === 'device_limit') {
-            // Limite d'appareils atteinte - stocker l'erreur pour afficher le modal
-            console.warn('Limite d\'appareils atteinte');
-            setDeviceLimitError({
-              devices: deviceResult.devices || []
-            });
-            // Ne pas déconnecter immédiatement, laisser le modal gérer
-            return;
+          if (!deviceResult.success) {
+            // Vérifier si c'est une erreur de limite d'appareils
+            if (deviceResult.error === 'device_limit' || 
+                deviceResult.error?.includes('Limite d\'appareils') ||
+                deviceResult.error?.includes('P0001')) {
+              // Limite d'appareils atteinte - stocker l'erreur pour afficher le modal
+              console.warn('Limite d\'appareils atteinte');
+              setDeviceLimitError({
+                devices: deviceResult.devices || []
+              });
+              // Ne pas déconnecter immédiatement, laisser le modal gérer
+              return;
+            } else {
+              // Autre erreur - logger mais ne pas bloquer la connexion
+              console.error('Erreur lors de l\'enregistrement de l\'appareil:', deviceResult.error);
+            }
           } else {
             // Réinitialiser l'erreur si l'enregistrement réussit
             setDeviceLimitError(null);
           }
         } catch (error) {
           console.error('Error registering device:', error);
-          // Ne pas bloquer la connexion si l'enregistrement de l'appareil échoue
+          
+          // Vérifier si c'est une erreur de limite d'appareils du trigger PostgreSQL
+          if (error.code === 'P0001' || error.message?.includes('Limite d\'appareils')) {
+            setDeviceLimitError({
+              devices: []
+            });
+            return;
+          }
+          // Ne pas bloquer la connexion si l'enregistrement de l'appareil échoue pour d'autres raisons
         }
         
         // Charger les matières depuis Supabase de manière optimisée
