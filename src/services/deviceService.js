@@ -5,18 +5,22 @@ import { supabase } from '../lib/supabase';
  */
 
 // Générer un identifiant unique basé sur le matériel (Cross-browser compatible)
+// Utilise uniquement des caractéristiques matérielles stables pour qu'un même appareil
+// soit reconnu comme un seul appareil, peu importe le navigateur ou la session
 export const getDeviceFingerprint = async () => {
   try {
     // 1. Informations de l'écran (Résolution + Profondeur de couleur)
+    // Ces valeurs sont stables pour un même appareil physique
     const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
 
     // 2. Pixel Ratio (souvent unique par type d'écran/scaling)
     const pixelRatio = window.devicePixelRatio || 1;
 
-    // 3. Plateforme (OS)
+    // 3. Plateforme (OS) - stable pour un même appareil
     const platform = navigator.platform || 'unknown';
 
-    // 4. WebGL Renderer (Carte graphique - très discriminant)
+    // 4. WebGL Renderer (Carte graphique - très discriminant et stable)
+    // C'est la caractéristique la plus fiable pour identifier un appareil physique
     let webglRenderer = 'no-webgl';
     try {
       const canvas = document.createElement('canvas');
@@ -31,45 +35,23 @@ export const getDeviceFingerprint = async () => {
       console.warn('WebGL detection failed', e);
     }
 
-    // 5. Canvas Fingerprinting (Dessin invisible pour détecter le moteur de rendu)
-    // Note: Peut varier légèrement entre navigateurs, mais on essaie de rester stable
-    let canvasHash = 'no-canvas';
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        canvas.width = 200;
-        canvas.height = 50;
+    // 5. Nombre de processeurs logiques (caractéristique matérielle stable)
+    const hardwareConcurrency = navigator.hardwareConcurrency || 0;
 
-        // Formes géométriques (plus stable que le texte entre navigateurs)
-        ctx.fillStyle = '#f60';
-        ctx.fillRect(10, 10, 50, 50);
-        ctx.fillStyle = '#069';
-        ctx.beginPath();
-        ctx.arc(100, 25, 20, 0, Math.PI * 2);
-        ctx.fill();
+    // 6. Mémoire maximale (si disponible)
+    const maxMemory = navigator.deviceMemory || 0;
 
-        // Texte simple (risque de variation cross-browser, mais demandé)
-        ctx.textBaseline = 'top';
-        ctx.font = '14px Arial'; // Police standard
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText('StudySpace', 2, 2);
-
-        canvasHash = canvas.toDataURL();
-      }
-    } catch (e) {
-      console.warn('Canvas fingerprinting failed', e);
-    }
-
-    // Combinaison des signaux
-    // On exclut le UserAgent car il change entre Chrome/Firefox
-    // On exclut les plugins/mimetype car trop variables
+    // Combinaison des signaux matériels uniquement
+    // On exclut le UserAgent, Canvas fingerprinting et autres caractéristiques
+    // qui peuvent varier entre navigateurs pour garantir qu'un même appareil
+    // physique soit toujours identifié comme un seul appareil
     const fingerprintString = [
       screenInfo,
       pixelRatio,
       platform,
       webglRenderer,
-      canvasHash
+      hardwareConcurrency,
+      maxMemory
     ].join('||');
 
     // Hachage SHA-256
@@ -83,8 +65,8 @@ export const getDeviceFingerprint = async () => {
 
   } catch (error) {
     console.error('Error generating device fingerprint:', error);
-    // Fallback simple
-    return `fallback-${window.screen.width}x${window.screen.height}-${navigator.userAgent.length}`;
+    // Fallback simple basé sur des caractéristiques matérielles
+    return `fallback-${window.screen.width}x${window.screen.height}-${navigator.platform}-${navigator.hardwareConcurrency || 0}`;
   }
 };
 
@@ -130,7 +112,8 @@ export const registerDevice = async () => {
     const fingerprint = await getDeviceFingerprint();
     const deviceInfo = getDeviceInfo();
 
-    // Vérifier si l'appareil existe déjà
+    // Vérifier si l'appareil existe déjà (actif ou inactif)
+    // Cela permet de réactiver un appareil après déconnexion/reconnexion
     const { data: existing, error: checkError } = await supabase
       .from('user_devices')
       .select('*')
@@ -139,12 +122,17 @@ export const registerDevice = async () => {
       .maybeSingle();
 
     if (existing) {
-      // Mettre à jour la dernière connexion et réactiver si besoin
+      // Mettre à jour la dernière connexion, réactiver et mettre à jour les infos du navigateur
+      // Cela permet de suivre les différents navigateurs utilisés sur le même appareil
       const { data: updated, error: updateError } = await supabase
         .from('user_devices')
         .update({
           last_login_at: new Date().toISOString(),
-          is_active: true
+          is_active: true,
+          device_name: deviceInfo.deviceName,
+          browser: deviceInfo.browser,
+          os: deviceInfo.os,
+          device_type: deviceInfo.deviceType
         })
         .eq('id', existing.id)
         .select()
@@ -170,21 +158,34 @@ export const registerDevice = async () => {
     console.log('Device Check - User:', user.id, 'Role:', role, 'IsAdmin:', isAdmin);
 
     if (!isAdmin) {
+      // Compter uniquement les appareils actifs avec des fingerprints uniques
+      // Cela garantit qu'un même appareil physique compte comme un seul appareil
       const { data: devices, error: countError } = await supabase
         .from('user_devices')
-        .select('*')
+        .select('device_fingerprint')
         .eq('user_id', user.id)
         .eq('is_active', true);
 
       if (countError) throw countError;
 
-      if (devices && devices.length >= 2) {
+      // Compter les fingerprints uniques (au cas où il y aurait des doublons)
+      const uniqueFingerprints = new Set(devices?.map(d => d.device_fingerprint) || []);
+      
+      if (uniqueFingerprints.size >= 2) {
+        // Récupérer les appareils complets pour l'affichage
+        const { data: allDevices } = await supabase
+          .from('user_devices')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('last_login_at', { ascending: false });
+
         // Limite atteinte - retourner les appareils existants
         return {
           success: false,
           error: 'device_limit',
           message: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.',
-          devices: devices
+          devices: allDevices || []
         };
       }
     }
