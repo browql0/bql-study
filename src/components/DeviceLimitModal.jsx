@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Smartphone, Monitor, Tablet, AlertCircle } from 'lucide-react';
 import './DeviceLimitModal.css';
 
-const DeviceLimitModal = ({ isOpen, onClose }) => {
+const DeviceLimitModal = ({ isOpen, onLogout }) => {
 
   if (!isOpen) return null;
 
@@ -14,7 +14,7 @@ const DeviceLimitModal = ({ isOpen, onClose }) => {
             <AlertCircle size={32} className="alert-icon" />
             <div>
               <h2>Limite d'appareils atteinte</h2>
-              <p>Vous êtes déjà connecté sur 2 appareils</p>
+              <p>Vous ne pouvez pas vous connecter sur plus de 2 appareils</p>
             </div>
           </div>
         </div>
@@ -37,8 +37,8 @@ const DeviceLimitModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="device-limit-footer">
-          <button className="close-btn-footer" onClick={onClose}>
-            J'ai compris
+          <button className="close-btn-footer" onClick={onLogout}>
+            Se déconnecter
           </button>
         </div>
       </div>

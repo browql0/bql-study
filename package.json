@@ -14,7 +14,6 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
-    "@fingerprintjs/fingerprintjs": "^5.0.1",
     "@supabase/supabase-js": "^2.84.0",
     "body-parser": "^2.2.1",
     "cors": "^2.8.5",

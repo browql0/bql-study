@@ -39,7 +39,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('notes');
   const [deviceCheckDone, setDeviceCheckDone] = useState(false);
   const [userView, setUserView] = useState('home'); // home, resources, notifications, payments, settings
-  
+
   // Vérifier si on est sur une page de paiement
   const isPaymentPage = window.location.pathname.includes('/payment/');
 
@@ -59,12 +59,12 @@ function AppContent() {
     if (currentUser?.id) {
       // Forcer le rafraîchissement au chargement pour s'assurer que l'expiration est détectée
       checkSubscription(true);
-      
+
       // Vérifier aussi toutes les 10 secondes pour détecter l'expiration plus rapidement
       const interval = setInterval(() => {
         checkSubscription(true); // Toujours forcer le rafraîchissement
       }, 10000); // 10 secondes au lieu de 30 pour une détection plus rapide
-      
+
       return () => clearInterval(interval);
     } else {
       // Si pas d'utilisateur, s'assurer que hasSubscription est false
@@ -78,19 +78,13 @@ function AppContent() {
       if (currentUser?.id && !deviceCheckDone) {
         try {
           const result = await deviceService.registerDevice(currentUser.id);
-          
-          if (!result.success) {
+
+          if (!result.success && result.error === 'device_limit') {
             // Limite d'appareils atteinte
             setShowDeviceLimitModal(true);
-            
-            // Déconnecter après 5 secondes
-            setTimeout(async () => {
-              const { supabase } = await import('./lib/supabase');
-              await supabase.auth.signOut();
-              window.location.reload();
-            }, 5000);
+            // On ne déconnecte plus automatiquement l'utilisateur
           }
-          
+
           setDeviceCheckDone(true);
         } catch (error) {
           console.error('Erreur vérification appareil:', error);
@@ -108,7 +102,7 @@ function AppContent() {
       if (result.success) {
         await checkSubscription();
         alert('🎉 Paiement réussi ! Vous avez maintenant accès à tout le contenu.');
-        
+
         // Notifier les admins du nouveau paiement
         try {
           const { notifyAdmins } = await import('./services/pushNotificationService');
@@ -186,13 +180,13 @@ function AppContent() {
               <div className="ring ring-3"></div>
               <div className="ring-glow"></div>
             </div>
-            
+
             {/* L'icône centrale */}
             <div className="loading-icon-center">
               <GraduationCap size={44} strokeWidth={1.5} />
             </div>
           </div>
-          
+
           <div className="loading-text-wrapper">
             <h2 className="loading-title">Study Space</h2>
             <div className="loading-status">
@@ -243,14 +237,14 @@ function AppContent() {
             <span>{subscriptionWarning.message}</span>
             <div className="warning-actions">
               {subscriptionWarning.severity !== 'error' && (
-                <button 
+                <button
                   className="btn-warning-action"
                   onClick={() => setShowPayment(true)}
                 >
                   Renouveler
                 </button>
               )}
-              <button 
+              <button
                 className="btn-warning-close"
                 onClick={() => setSubscriptionWarning(null)}
               >
@@ -259,7 +253,7 @@ function AppContent() {
             </div>
           </div>
         )}
-        
+
         {showDashboard ? (
           <Dashboard />
         ) : (
@@ -268,8 +262,8 @@ function AppContent() {
             {userView === 'resources' ? (
               <UserResources />
             ) : userView === 'profile' ? (
-              <UserProfile 
-                onClose={() => setUserView('home')} 
+              <UserProfile
+                onClose={() => setUserView('home')}
                 onOpenPayment={() => {
                   setUserView('home');
                   setShowPayment(true);
@@ -284,17 +278,17 @@ function AppContent() {
             ) : (
               <>
                 {/* Vue principale (home) */}
-                <Header 
+                <Header
                   onAddSubject={() => setShowAddModal(true)}
                   onOpenProfile={() => setShowProfile(true)}
                   onOpenSearch={() => setShowAdvancedSearch(true)}
                   onOpenDashboard={() => setShowDashboard(true)}
                 />
-                
+
                 <div className="main-content container">
                   {selectedSubject ? (
-                    <SubjectDetail 
-                      subject={selectedSubject} 
+                    <SubjectDetail
+                      subject={selectedSubject}
                       onBack={() => setSelectedSubject(null)}
                       initialSection={activeSection}
                       initialTab={activeTab}
@@ -302,7 +296,7 @@ function AppContent() {
                       onUpgrade={() => setShowPayment(true)}
                     />
                   ) : (
-                    <SubjectList 
+                    <SubjectList
                       onSelectSubject={setSelectedSubject}
                       hasSubscription={hasSubscription}
                       onUpgrade={() => setShowPayment(true)}
@@ -320,22 +314,22 @@ function AppContent() {
             )}
 
             {showProfile && (
-              <Profile 
-                onClose={() => setShowProfile(false)} 
+              <Profile
+                onClose={() => setShowProfile(false)}
                 onOpenPayment={() => setShowPayment(true)}
                 onRefreshSubscription={checkSubscription}
               />
             )}
 
             {showAdvancedSearch && (
-              <AdvancedSearch 
+              <AdvancedSearch
                 onClose={() => setShowAdvancedSearch(false)}
                 onSelectResult={handleSearchResult}
               />
             )}
 
             {showPayment && (
-              <PaymentModal 
+              <PaymentModal
                 onClose={() => setShowPayment(false)}
                 onPaymentSuccess={handlePaymentSuccess}
                 onOpenVoucher={() => {
@@ -346,7 +340,7 @@ function AppContent() {
             )}
 
             {showVoucher && (
-              <VoucherModal 
+              <VoucherModal
                 onClose={() => setShowVoucher(false)}
                 userId={currentUser?.id}
                 onSuccess={handleVoucherSuccess}
@@ -354,7 +348,14 @@ function AppContent() {
             )}
 
             {showDeviceLimitModal && (
-              <DeviceLimitModal onClose={() => setShowDeviceLimitModal(false)} />
+              <DeviceLimitModal
+                isOpen={true}
+                onLogout={async () => {
+                  const { supabase } = await import('./lib/supabase');
+                  await supabase.auth.signOut();
+                  window.location.reload();
+                }}
+              />
             )}
           </>
         )}
