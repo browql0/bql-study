@@ -4,31 +4,87 @@ import { supabase } from '../lib/supabase';
  * Service pour gérer les appareils autorisés (max 2 par utilisateur)
  */
 
-// Générer un ID unique pour l'appareil et le stocker dans le localStorage
+// Générer un identifiant unique basé sur le matériel (Cross-browser compatible)
 export const getDeviceFingerprint = async () => {
   try {
-    const STORAGE_KEY = 'study_notes_device_id';
-    let deviceId = localStorage.getItem(STORAGE_KEY);
+    // 1. Informations de l'écran (Résolution + Profondeur de couleur)
+    const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
 
-    if (!deviceId) {
-      // Générer un nouvel ID si aucun n'existe
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        deviceId = crypto.randomUUID();
-      } else {
-        // Fallback pour les anciens navigateurs
-        deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
+    // 2. Pixel Ratio (souvent unique par type d'écran/scaling)
+    const pixelRatio = window.devicePixelRatio || 1;
+
+    // 3. Plateforme (OS)
+    const platform = navigator.platform || 'unknown';
+
+    // 4. WebGL Renderer (Carte graphique - très discriminant)
+    let webglRenderer = 'no-webgl';
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          webglRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        }
       }
-      localStorage.setItem(STORAGE_KEY, deviceId);
+    } catch (e) {
+      console.warn('WebGL detection failed', e);
     }
 
-    return deviceId;
+    // 5. Canvas Fingerprinting (Dessin invisible pour détecter le moteur de rendu)
+    // Note: Peut varier légèrement entre navigateurs, mais on essaie de rester stable
+    let canvasHash = 'no-canvas';
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = 200;
+        canvas.height = 50;
+
+        // Formes géométriques (plus stable que le texte entre navigateurs)
+        ctx.fillStyle = '#f60';
+        ctx.fillRect(10, 10, 50, 50);
+        ctx.fillStyle = '#069';
+        ctx.beginPath();
+        ctx.arc(100, 25, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Texte simple (risque de variation cross-browser, mais demandé)
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial'; // Police standard
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillText('StudySpace', 2, 2);
+
+        canvasHash = canvas.toDataURL();
+      }
+    } catch (e) {
+      console.warn('Canvas fingerprinting failed', e);
+    }
+
+    // Combinaison des signaux
+    // On exclut le UserAgent car il change entre Chrome/Firefox
+    // On exclut les plugins/mimetype car trop variables
+    const fingerprintString = [
+      screenInfo,
+      pixelRatio,
+      platform,
+      webglRenderer,
+      canvasHash
+    ].join('||');
+
+    // Hachage SHA-256
+    const msgBuffer = new TextEncoder().encode(fingerprintString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Retourne les 16 premiers caractères pour un ID court mais unique
+    return hashHex.substring(0, 16);
+
   } catch (error) {
-    console.error('Error generating device ID:', error);
-    // Fallback en cas d'erreur (ex: localStorage désactivé)
-    return `${navigator.userAgent}-${screen.width}x${screen.height}`;
+    console.error('Error generating device fingerprint:', error);
+    // Fallback simple
+    return `fallback-${window.screen.width}x${window.screen.height}-${navigator.userAgent.length}`;
   }
 };
 

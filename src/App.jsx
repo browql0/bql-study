@@ -12,6 +12,7 @@ import PaymentCheckout from './components/PaymentCheckout';
 import VoucherModal from './components/VoucherModal';
 import DeviceLimitModal from './components/DeviceLimitModal';
 import Login from './components/Login';
+import { Loader } from 'lucide-react';
 import UserNavigation from './components/UserNavigation';
 import UserResources from './components/UserResources';
 import UserNotifications from './components/UserNotifications';
@@ -204,6 +205,18 @@ function AppContent() {
   // Afficher la page de checkout de paiement si nécessaire
   if (isPaymentPage) {
     return <PaymentCheckout />;
+  }
+
+  // Afficher un loader pendant la vérification de l'appareil
+  if (currentUser?.id && !deviceCheckDone) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex flex-col items-center">
+          <Loader className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+          <p className="text-gray-600">Vérification de l'appareil...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) {
