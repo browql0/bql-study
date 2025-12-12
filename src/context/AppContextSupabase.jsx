@@ -11,6 +11,23 @@ import { pushNotificationService } from '../services/pushNotificationService';
 import { subscriptionExpiryService } from '../services/subscriptionExpiryService';
 import { quizService } from '../services/quizService';
 
+// Helper to sync auth role
+const syncAuthRoleWithProfile = async (sessionUser, profileRole) => {
+  if (!sessionUser?.id || !profileRole) return;
+  const metadata = sessionUser.user_metadata || {};
+  if (metadata.role === profileRole) return;
+  try {
+    await supabase.auth.updateUser({
+      data: {
+        ...metadata,
+        role: profileRole
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to sync auth role with profile role:', error);
+  }
+};
+
 const AppContext = createContext();
 
 export const useApp = () => {
@@ -30,22 +47,6 @@ export const AppProvider = ({ children }) => {
   const [subscriptionWarning, setSubscriptionWarning] = useState(null);
   const [deviceLimitError, setDeviceLimitError] = useState(null);
 
-  const syncAuthRoleWithProfile = useCallback(async (sessionUser, profileRole) => {
-    if (!sessionUser?.id || !profileRole) return;
-    const metadata = sessionUser.user_metadata || {};
-    if (metadata.role === profileRole) return;
-    try {
-      await supabase.auth.updateUser({
-        data: {
-          ...metadata,
-          role: profileRole
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to sync auth role with profile role:', error);
-    }
-  }, [syncAuthRoleWithProfile]);
-
   // Charger le thème depuis localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -53,7 +54,7 @@ export const AppProvider = ({ children }) => {
       setTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
     }
-  }, [syncAuthRoleWithProfile]);
+  }, []);
 
   // Écouter les changements d'authentification
   useEffect(() => {
@@ -166,7 +167,7 @@ export const AppProvider = ({ children }) => {
       }
       window.removeEventListener('auth-expired', handleAuthExpired);
     };
-  }, [syncAuthRoleWithProfile]);
+  }, []);
 
   // Écouter les changements de profil en temps réel
   useEffect(() => {

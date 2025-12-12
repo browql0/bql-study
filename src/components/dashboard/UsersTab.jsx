@@ -4,6 +4,25 @@ import { supabase } from '../../lib/supabase';
 import { settingsService } from '../../services/settingsService';
 import './UsersTab.css';
 
+// Helper to sync logged in user role
+const syncLoggedInUserRole = async (targetUserId, nextRole) => {
+  try {
+    if (!targetUserId || !nextRole) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== targetUserId) return;
+    const metadata = user.user_metadata || {};
+    if (metadata.role === nextRole) return;
+    await supabase.auth.updateUser({
+      data: {
+        ...metadata,
+        role: nextRole
+      }
+    });
+  } catch (error) {
+    console.warn('Impossible de synchroniser le rôle auth:', error);
+  }
+};
+
 const UsersTab = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -18,24 +37,6 @@ const UsersTab = () => {
   const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null });
   const [durationModal, setDurationModal] = useState({ show: false, userId: null });
   const [pricing, setPricing] = useState({ monthly: 120, quarterly: 320, yearly: 600 });
-
-  const syncLoggedInUserRole = useCallback(async (targetUserId, nextRole) => {
-    try {
-      if (!targetUserId || !nextRole) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.id !== targetUserId) return;
-      const metadata = user.user_metadata || {};
-      if (metadata.role === nextRole) return;
-      await supabase.auth.updateUser({
-        data: {
-          ...metadata,
-          role: nextRole
-        }
-      });
-    } catch (error) {
-      console.warn('Impossible de synchroniser le rôle auth:', error);
-    }
-  }, []);
 
   const fetchAllUsers = useCallback(async () => {
     try {
