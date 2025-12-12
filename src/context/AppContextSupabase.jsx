@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { signIn as authSignIn, signUp as authSignUp, signOut as authSignOut, onAuthStateChange, updateProfile as authUpdateProfile, updatePassword as authUpdatePassword } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import * as subjectsService from '../services/subjectsService';
@@ -30,6 +30,22 @@ export const AppProvider = ({ children }) => {
   const [subscriptionWarning, setSubscriptionWarning] = useState(null);
   const [deviceLimitError, setDeviceLimitError] = useState(null);
 
+  const syncAuthRoleWithProfile = useCallback(async (sessionUser, profileRole) => {
+    if (!sessionUser?.id || !profileRole) return;
+    const metadata = sessionUser.user_metadata || {};
+    if (metadata.role === profileRole) return;
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          ...metadata,
+          role: profileRole
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to sync auth role with profile role:', error);
+    }
+  }, [syncAuthRoleWithProfile]);
+
   // Charger le thème depuis localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -37,7 +53,7 @@ export const AppProvider = ({ children }) => {
       setTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
     }
-  }, []);
+  }, [syncAuthRoleWithProfile]);
 
   // Écouter les changements d'authentification
   useEffect(() => {
@@ -58,6 +74,8 @@ export const AppProvider = ({ children }) => {
           role: profileData?.role || 'spectator',
           created_at: profileData?.created_at
         };
+
+        await syncAuthRoleWithProfile(session.user, userData.role);
 
         // Vérifier l'expiration de l'abonnement au login
         try {
@@ -148,7 +166,7 @@ export const AppProvider = ({ children }) => {
       }
       window.removeEventListener('auth-expired', handleAuthExpired);
     };
-  }, []);
+  }, [syncAuthRoleWithProfile]);
 
   // Écouter les changements de profil en temps réel
   useEffect(() => {
