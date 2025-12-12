@@ -225,10 +225,6 @@ function AppContent() {
 
 
 
-  if (!currentUser) {
-    return <Login />;
-  }
-
   // Si erreur de limite d'appareils, afficher le modal et bloquer l'accès
   if (deviceLimitError) {
     return (
@@ -257,6 +253,10 @@ function AppContent() {
         />
       </>
     );
+  }
+
+  if (!currentUser) {
+    return <Login />;
   }
 
   const handleSearchResult = (result) => {

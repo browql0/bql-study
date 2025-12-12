@@ -4,6 +4,7 @@ import cors from 'cors';
 import webpush from 'web-push';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const app = express();
 
@@ -154,7 +155,9 @@ app.post('/notify-all', authMiddleware, adminOnlyMiddleware, async (req, res) =>
 });
 
 // Envoyer une notification à des utilisateurs spécifiques
-app.post('/notify', authMiddleware, async (req, res) => {
+
+// FIX: Zidna adminOnlyMiddleware bach ntejanbou notifications bla idn
+app.post('/notify', authMiddleware, adminOnlyMiddleware, async (req, res) => {
   const { userIds, title, body } = req.body;
   
   if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -209,7 +212,66 @@ app.post('/notify', authMiddleware, async (req, res) => {
   });
 });
 
+// Fonctions utilitaires pour le hash
+const generateHash = (data) => {
+  return crypto.createHash('sha256').update(data).digest('hex');
+};
+
+// Endpoint pour signer les paiements (CMI et Tijari)
+// Had l-endpoint kay-signer les paiements bach nkhbbiw les secrets
+app.post('/sign-payment', authMiddleware, async (req, res) => {
+  try {
+    const { gateway, params } = req.body;
+    
+    if (!gateway || !params) {
+      return res.status(400).json({ error: 'Gateway and params required' });
+    }
+    
+    if (gateway === 'cmi') {
+      const storeKey = process.env.VITE_CMI_STORE_KEY;
+      const storeId = process.env.VITE_CMI_STORE_ID;
+      
+      if (!storeKey || !storeId) {
+        return res.status(500).json({ error: 'CMI configuration missing on server' });
+      }
+      
+      // Reconstruct hash string exactly as client did
+      // storeId + oid + amount + okUrl + failUrl + callbackUrl + storeKey
+      // NOTE: amount should be formatted by client or here. Client sends fixed string usually?
+      // In paymentService.js: amount: amount.toFixed(2)
+      // We assume params.amount is already formatted correctly by client
+      const hashString = `${storeId}${params.oid}${params.amount}${params.okUrl}${params.failUrl}${params.callbackurl}${storeKey}`;
+      const hash = generateHash(hashString);
+      
+      return res.json({ hash });
+      
+    } else if (gateway === 'tijari') {
+      const apiKey = process.env.VITE_TIJARI_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Tijari configuration missing on server' });
+      }
+      
+      // Sort params and sign
+      const sortedParams = Object.keys(params)
+        .sort()
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+      
+      const signatureString = `${sortedParams}&key=${apiKey}`;
+      const signature = generateHash(signatureString);
+      
+      return res.json({ signature });
+      
+    } else {
+      return res.status(400).json({ error: 'Invalid gateway' });
+    }
+  } catch (error) {
+    console.error('Error signing payment:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Railway fournit le port via process.env.PORT
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`🚀 Push backend sécurisé démarré sur le port ${PORT}`));
-    
