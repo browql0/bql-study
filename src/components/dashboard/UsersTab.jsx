@@ -12,13 +12,14 @@ const syncLoggedInUserRole = async (targetUserId, nextRole) => {
     if (!user || user.id !== targetUserId) return;
     const metadata = user.user_metadata || {};
     if (metadata.role === nextRole) return;
-    await supabase.auth.updateUser({
-      data: {
-        ...metadata,
-        role: nextRole
-      }
-    });
-  } catch (error) {
+      await supabase.auth.updateUser({
+        data: {
+          ...metadata,
+          role: nextRole
+        }
+      });
+      await supabase.auth.refreshSession();
+    } catch (error) {
     console.warn('Impossible de synchroniser le rôle auth:', error);
   }
 };
@@ -49,6 +50,8 @@ const UsersTab = () => {
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
+      
+      console.log('Users fetch result:', { count: usersData?.length, role: (await supabase.auth.getUser()).data.user?.user_metadata?.role });
 
       // Récupérer les paiements pour chaque utilisateur
       const { data: paymentsData, error: paymentsError } = await supabase
