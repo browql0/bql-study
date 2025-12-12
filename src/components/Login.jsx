@@ -138,7 +138,6 @@ const Login = () => {
         if (
           !validations.minLength ||
           !validations.hasNumber ||
-          !validations.hasLetter ||
           !validations.hasUpper ||
           !validations.hasLower
         ) {
@@ -232,7 +231,7 @@ const Login = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="Entrez votre nom complet"
+                  placeholder="Entrez votre nom complet (suivant la liste des participants)"
                   required
                   autoComplete="off"
                 />

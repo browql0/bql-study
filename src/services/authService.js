@@ -94,7 +94,7 @@ export const signUp = async (email, password, name) => {
       // Messages d'erreur plus clairs
       if (error.message?.includes('already registered') || 
           error.message?.includes('already exists') ||
-          error.message?.includes('User already registered')) {
+          error.message?.includes('User already registered')) {http://192.168.1.107:5173/
         errorMessage = 'Cet email est déjà utilisé par un autre compte';
       } else if (error.message?.includes('Invalid email')) {
         errorMessage = 'Format d\'email invalide';

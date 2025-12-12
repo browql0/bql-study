@@ -10,7 +10,7 @@
 import { AwsClient } from 'aws4fetch';
 
 /**
- * Vérifie l'authentification Supabase
+ * Vérifie l'authentification Supabase user.user_metadata.role
  */
 async function verifySupabaseAuth(token, supabaseUrl, supabaseAnonKey) {
   try {
