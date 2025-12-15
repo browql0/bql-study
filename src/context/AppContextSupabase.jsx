@@ -66,7 +66,7 @@ export const AppProvider = ({ children }) => {
           .select('role, name, created_at')
           .eq('id', session.user.id)
           .single();
-        
+
         const userData = {
           id: session.user.id,
           email: session.user.email,
@@ -87,28 +87,28 @@ export const AppProvider = ({ children }) => {
         } catch (error) {
           console.error('Error checking subscription expiry:', error);
         }
-        
+
         // Enregistrer l'appareil lors de la connexion
         try {
           const { deviceService } = await import('../services/deviceService');
           const deviceResult = await deviceService.registerDevice();
-          
+
           if (!deviceResult.success) {
             // Vérifier si c'est une erreur de limite d'appareils
-            if (deviceResult.error === 'device_limit' || 
-                deviceResult.error?.includes('Limite d\'appareils') ||
-                deviceResult.error?.includes('P0001')) {
+            if (deviceResult.error === 'device_limit' ||
+              deviceResult.error?.includes('Limite d\'appareils') ||
+              deviceResult.error?.includes('P0001')) {
               // Limite d'appareils atteinte
               console.warn('Limite d\'appareils atteinte');
               setDeviceLimitError({
                 devices: deviceResult.devices || []
               });
-              
+
               // NE PAS définir currentUser pour éviter le "flash" du dashboard
               // L'utilisateur sera déconnecté par authService ou devra gérer la modale
               // Si authService a déjà fait le signOut, on ne devrait même pas être ici ou le prochain event le nettoiera
               setLoading(false);
-              return; 
+              return;
             } else {
               // Autre erreur - logger mais ne pas bloquer la connexion
               console.error('Erreur lors de l\'enregistrement de l\'appareil:', deviceResult.error);
@@ -119,7 +119,7 @@ export const AppProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Error registering device:', error);
-          
+
           // Vérifier si c'est une erreur de limite d'appareils du trigger PostgreSQL
           if (error.code === 'P0001' || error.message?.includes('Limite d\'appareils')) {
             setDeviceLimitError({
@@ -130,10 +130,10 @@ export const AppProvider = ({ children }) => {
           }
           // Ne pas bloquer la connexion si l'enregistrement de l'appareil échoue pour d'autres raisons
         }
-        
+
         // Si tout est OK, on définit l'utilisateur
         setCurrentUser(userData);
-        
+
         // Charger les matières depuis Supabase de manière optimisée
         await loadSubjects();
       } else {
@@ -186,7 +186,7 @@ export const AppProvider = ({ children }) => {
         },
         async (payload) => {
           console.log('Profil mis à jour en temps réel:', payload);
-          
+
           // Mettre à jour le rôle si il a changé
           if (payload.new.role !== currentUser.role) {
             setCurrentUser(prev => ({
@@ -194,7 +194,7 @@ export const AppProvider = ({ children }) => {
               role: payload.new.role,
               name: payload.new.name || prev.name
             }));
-            
+
             // Recharger la page pour appliquer les changements de permission
             window.location.reload();
           }
@@ -211,7 +211,7 @@ export const AppProvider = ({ children }) => {
   const loadSubjects = async () => {
     try {
       const data = await subjectsService.getAllSubjects();
-      
+
       // Transformer les dates de snake_case à camelCase (fonctions réutilisables)
       const transformNote = (note) => ({
         ...note,
@@ -292,7 +292,7 @@ export const AppProvider = ({ children }) => {
           createdAt: subject.created_at || subject.createdAt
         };
       }));
-      
+
       setSubjects(transformedSubjects);
     } catch (error) {
       console.error('Erreur lors du chargement des matières:', error);
@@ -318,62 +318,62 @@ export const AppProvider = ({ children }) => {
     try {
       // Normaliser l'email
       const normalizedEmail = email.toLowerCase().trim();
-      
+
       // Vérifier si l'email est déjà utilisé
       const { isEmailAlreadyUsed } = await import('../services/authService');
       const emailExists = await isEmailAlreadyUsed(normalizedEmail);
       if (emailExists) {
         return { success: false, error: 'Cet email est déjà utilisé par un autre compte' };
       }
-      
+
       // Importer le service de validation des noms
       const { validateAndCheckName } = await import('../services/studentNameService');
-      
+
       // Valider le nom avant l'inscription
       const nameValidation = await validateAndCheckName(name);
-      
+
       if (!nameValidation.valid) {
         return { success: false, error: nameValidation.error };
       }
-      
+
       if (!nameValidation.available) {
         return { success: false, error: nameValidation.error };
       }
-      
+
       // Utiliser le nom exact du JSON pour l'enregistrement
       const exactName = nameValidation.exactName || name;
-      
+
       // VÉRIFICATION FINALE juste avant l'inscription pour éviter les race conditions
       const { isNameAlreadyUsed } = await import('../services/studentNameService');
       const nameStillUsed = await isNameAlreadyUsed(exactName);
       if (nameStillUsed) {
         return { success: false, error: 'Ce nom est déjà utilisé par un autre compte. Veuillez réessayer.' };
       }
-      
+
       const { data, error } = await authSignUp(normalizedEmail, password, exactName);
       if (error) {
         // Le message d'erreur est déjà amélioré dans authService
         return { success: false, error };
       }
-      
+
       // Vérifier et créer le profil avec trial si nécessaire
       if (data?.user?.id) {
         try {
           // Attendre un peu pour que le trigger s'exécute
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
+
           // Vérifier si le profil existe et a le trial
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('id, subscription_status, subscription_end_date')
             .eq('id', data.user.id)
             .single();
-          
+
           // Si le profil n'existe pas ou n'a pas le trial, le créer/corriger
           if (profileError || !profile || profile.subscription_status !== 'trial') {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 7);
-            
+
             const { error: upsertError } = await supabase
               .from('profiles')
               .upsert({
@@ -395,7 +395,7 @@ export const AppProvider = ({ children }) => {
               }, {
                 onConflict: 'id'
               });
-            
+
             if (upsertError) {
               console.warn('Erreur lors de la création/correction du profil avec trial:', upsertError);
             }
@@ -405,9 +405,19 @@ export const AppProvider = ({ children }) => {
           // On continue quand même car l'inscription a réussi
         }
       }
-      
-      // Notifier les admins d'un nouvel utilisateur
+
+      // Notifier les admins d'un nouvel utilisateur (In-App + Push)
       try {
+        // Notification In-App
+        const { notificationsService } = await import('../services/notificationsService');
+        await notificationsService.notifyAllAdmins(
+          'new_user',
+          'Nouvel utilisateur inscrit',
+          `${exactName} vient de s'inscrire`,
+          { newUserId: data.user.id }
+        );
+
+        // Notification Push
         const { notifyAdmins } = await import('../services/pushNotificationService');
         await notifyAdmins(
           'new_user',
@@ -415,19 +425,19 @@ export const AppProvider = ({ children }) => {
           `${exactName} vient de s'inscrire`
         );
       } catch (notifError) {
-        console.debug('Push notification failed:', notifError);
+        console.debug('Notification failed:', notifError);
       }
-      
+
       return { success: true, user: data.user, message: 'Vérifiez votre email pour confirmer votre inscription' };
     } catch (error) {
       // Gérer les erreurs inattendues
       let errorMessage = error.message || 'Une erreur est survenue lors de l\'inscription';
-      
-      if (error.message?.includes('already registered') || 
-          error.message?.includes('already exists')) {
+
+      if (error.message?.includes('already registered') ||
+        error.message?.includes('already exists')) {
         errorMessage = 'Cet email est déjà utilisé par un autre compte';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
@@ -443,15 +453,15 @@ export const AppProvider = ({ children }) => {
         console.warn('Erreur lors de la désactivation de l\'appareil:', deviceError);
         // Continuer la déconnexion même si la désactivation échoue
       }
-      
+
       const { error } = await authSignOut();
       if (error) {
         return { success: false, error };
       }
-      
+
       // Réinitialiser l'erreur de limite d'appareils lors de la déconnexion
       setDeviceLimitError(null);
-      
+
       setCurrentUser(null);
       setSubjects([]);
       return { success: true };
@@ -563,7 +573,7 @@ export const AppProvider = ({ children }) => {
           `La note "${note.title}" a été ajoutée.`,
           { subjectId, section, noteId: newNote.id }
         );
-        
+
         // Envoyer notification push aux spectateurs
         await pushNotificationService.notifySpectators(
           subjectId,
@@ -656,7 +666,7 @@ export const AppProvider = ({ children }) => {
           }
           return subject;
         }));
-        
+
         // Envoyer notification push aux spectateurs
         if (currentUser?.id) {
           await pushNotificationService.notifySpectators(
@@ -722,7 +732,7 @@ export const AppProvider = ({ children }) => {
           }
           return subject;
         }));
-        
+
         // Envoyer notification push aux spectateurs
         if (currentUser?.id) {
           await pushNotificationService.notifySpectators(

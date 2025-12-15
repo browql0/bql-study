@@ -20,11 +20,11 @@ async function verifySupabaseAuth(token, supabaseUrl, supabaseAnonKey) {
         'apikey': supabaseAnonKey
       }
     });
-    
+
     if (!response.ok) {
       return null;
     }
-    
+
     const user = await response.json();
     return user;
   } catch (error) {
@@ -36,24 +36,38 @@ async function verifySupabaseAuth(token, supabaseUrl, supabaseAnonKey) {
 /**
  * Vérifie si l'utilisateur a un abonnement actif
  */
-async function hasActiveSubscription(userId, supabaseUrl, supabaseAnonKey) {
+async function hasActiveSubscription(userId, supabaseUrl, supabaseAnonKey, token) {
   try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/has_active_subscription`, {
-      method: 'POST',
+    // Vérifier directement dans la table profiles au lieu d'utiliser RPC
+    const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status,subscription_end_date`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`
-      },
-      body: JSON.stringify({ user_id: userId })
+        'Authorization': `Bearer ${token}` // Utiliser le token utilisateur pour respecter RLS
+      }
     });
-    
+
     if (!response.ok) {
+      console.error('Error fetching profile:', await response.text());
       return false;
     }
-    
-    const result = await response.json();
-    return result === true;
+
+    const data = await response.json();
+    if (!data || data.length === 0) return false;
+
+    const profile = data[0];
+
+    // Si statut actif ou trial
+    if (profile.subscription_status === 'active' || profile.subscription_status === 'trial') {
+      // Vérifier la date si elle existe
+      if (profile.subscription_end_date) {
+        return new Date(profile.subscription_end_date) > new Date();
+      }
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('Error checking subscription:', error);
     return false;
@@ -81,11 +95,11 @@ async function getUserRoleFromProfile(userId, supabaseUrl, supabaseAnonKey) {
         'Authorization': `Bearer ${supabaseAnonKey}`
       }
     });
-    
+
     if (!response.ok) {
       return null;
     }
-    
+
     const data = await response.json();
     if (data && data.length > 0) {
       return data[0].role;
@@ -109,7 +123,7 @@ export default {
     const bucketName = env.R2_BUCKET_NAME;
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseAnonKey = env.SUPABASE_ANON_KEY;
-    
+
     // Vérifier que tous les secrets sont configurés
     if (!accountId || !accessKeyId || !secretAccessKey || !bucketName || !supabaseUrl || !supabaseAnonKey) {
       return new Response(JSON.stringify({ error: 'Worker not configured' }), {
@@ -120,19 +134,19 @@ export default {
         },
       });
     }
-    
+
     // Headers CORS
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
-    
+
     // Gérer les CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
-    
+
     try {
       // Vérifier l'authentification
       const authHeader = request.headers.get('Authorization');
@@ -145,10 +159,10 @@ export default {
           },
         });
       }
-      
+
       const token = authHeader.substring(7);
       const user = await verifySupabaseAuth(token, supabaseUrl, supabaseAnonKey);
-      
+
       if (!user) {
         return new Response(JSON.stringify({ error: 'Invalid token' }), {
           status: 401,
@@ -162,15 +176,15 @@ export default {
       // Récupérer le vrai rôle depuis la DB (sécurité contre self-assignment)
       // Njibou le rôle lhaqiqi mn DB bach ntjanbou self-assignment
       const realUserRole = await getUserRoleFromProfile(user.id, supabaseUrl, supabaseAnonKey);
-      
+
       const url = new URL(request.url);
       const pathname = url.pathname;
       const path = url.searchParams.get('path');
-      
+
       // Route: GET /view - Voir un fichier (pour admins seulement)
       if (request.method === 'GET' && pathname === '/view') {
         const filePath = url.searchParams.get('path');
-        
+
         if (!filePath) {
           return new Response(JSON.stringify({ error: 'Path parameter required' }), {
             status: 400,
@@ -180,10 +194,22 @@ export default {
             },
           });
         }
-        
-        // Vérifier que c'est un admin
-        if (realUserRole !== 'admin') {
-          return new Response(JSON.stringify({ error: 'Admin access required' }), {
+
+        // Vérifier l'abonnement (sauf pour les admins et le propriétaire du fichier)
+        const hasSubscription = await hasActiveSubscription(user.id, supabaseUrl, supabaseAnonKey, token);
+        const isOwner = filePath && (filePath.startsWith(user.id + '/') || filePath.startsWith('files/' + user.id + '/'));
+
+        if (realUserRole !== 'admin' && !hasSubscription && !isOwner) {
+          return new Response(JSON.stringify({
+            error: 'Subscription required',
+            debug: {
+              role: realUserRole,
+              hasSubscription,
+              isOwner,
+              userId: user.id,
+              path: filePath
+            }
+          }), {
             status: 403,
             headers: {
               'Content-Type': 'application/json',
@@ -191,7 +217,7 @@ export default {
             },
           });
         }
-        
+
         try {
           const decodedPath = decodeURIComponent(filePath);
           const aws = new AwsClient({
@@ -200,16 +226,16 @@ export default {
             service: 's3',
             region: 'auto',
           });
-          
+
           const encodedPath = encodeR2Path(decodedPath);
           const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
-          
+
           const signedRequest = await aws.sign(r2Url, {
             method: 'GET',
           });
-          
+
           const fileResponse = await fetch(signedRequest);
-          
+
           if (!fileResponse.ok) {
             return new Response(JSON.stringify({ error: 'File not found' }), {
               status: 404,
@@ -219,7 +245,7 @@ export default {
               },
             });
           }
-          
+
           // Retourner le fichier directement
           return new Response(fileResponse.body, {
             headers: {
@@ -239,14 +265,14 @@ export default {
           });
         }
       }
-      
+
       // Route: POST /upload - Upload avec FormData (pour BankTransferForm)
       if (request.method === 'POST' && pathname === '/upload') {
         try {
           const formData = await request.formData();
           const file = formData.get('file');
           const filePath = formData.get('path');
-          
+
           if (!file || !filePath) {
             return new Response(JSON.stringify({ error: 'File and path are required' }), {
               status: 400,
@@ -256,16 +282,16 @@ export default {
               },
             });
           }
-          
+
           const fileData = await file.arrayBuffer();
           const contentType = file.type || 'application/octet-stream';
           const decodedPath = decodeURIComponent(filePath);
-          
+
           // IDOR Check: Enforce user isolation
           // Vérifier que l'utilisateur n'accède qu'à ses propres fichiers
           // Khassna nt2kdou anna l'utilisateur kaychouf ghir l-fichiers dialou
           if (realUserRole !== 'admin' && !decodedPath.startsWith(`${user.id}/`) && !decodedPath.startsWith(`transfer-proofs/${user.id}/`)) {
-             return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
+            return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
               status: 403,
               headers: {
                 'Content-Type': 'application/json',
@@ -280,10 +306,10 @@ export default {
             service: 's3',
             region: 'auto',
           });
-          
+
           const encodedPath = encodeR2Path(decodedPath);
           const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
-          
+
           const signedRequest = await aws.sign(r2Url, {
             method: 'PUT',
             body: fileData,
@@ -291,9 +317,9 @@ export default {
               'Content-Type': contentType,
             },
           });
-          
+
           const uploadResponse = await fetch(signedRequest);
-          
+
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text();
             return new Response(JSON.stringify({ error: `Upload failed: ${uploadResponse.status} ${errorText}` }), {
@@ -304,14 +330,14 @@ export default {
               },
             });
           }
-          
+
           // Retourner l'URL publique du fichier
           const publicUrl = `https://pub-7b40cd8a60564c57996c99bb2ef7024a.r2.dev/${encodedPath}`;
-          
-          return new Response(JSON.stringify({ 
-            success: true, 
+
+          return new Response(JSON.stringify({
+            success: true,
             path: decodedPath,
-            url: publicUrl 
+            url: publicUrl
           }), {
             headers: {
               'Content-Type': 'application/json',
@@ -329,11 +355,11 @@ export default {
           });
         }
       }
-      
+
       // Vérifier l'abonnement (sauf pour les admins et les uploads de preuve de virement)
       const userRole = realUserRole;
       const isTransferProof = path && path.startsWith('transfer-proofs/');
-      
+
       if (userRole !== 'admin' && !isTransferProof) {
         const hasSubscription = await hasActiveSubscription(user.id, supabaseUrl, supabaseAnonKey);
         if (!hasSubscription) {
@@ -347,7 +373,7 @@ export default {
         }
       }
       const decodedPath = path ? decodeURIComponent(path) : null;
-      
+
       if (!decodedPath) {
         return new Response(JSON.stringify({ error: 'Path parameter required' }), {
           status: 400,
@@ -362,35 +388,35 @@ export default {
       // Vérification de sécurité IDOR pour PUT et DELETE
       // Tahqq mn l'IDOR bach hta wahed ma yqdr yms7 ola ybdel fichiers dial chi had akhor
       if (decodedPath && userRole !== 'admin') {
-         // Allow access to own folder OR own transfer proofs
-         // Autoriser l'accès à son propre dossier OU ses propres preuves de virement
-         if (!decodedPath.startsWith(`${user.id}/`) && !decodedPath.startsWith(`transfer-proofs/${user.id}/`)) {
-            return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
-              status: 403,
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders,
-              },
-            });
-         }
+        // Allow access to own folder OR own transfer proofs
+        // Autoriser l'accès à son propre dossier OU ses propres preuves de virement
+        if (!decodedPath.startsWith(`${user.id}/`) && !decodedPath.startsWith(`transfer-proofs/${user.id}/`)) {
+          return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          });
+        }
       }
-      
+
       // Route: PUT - Upload un fichier
       if (request.method === 'PUT') {
         try {
           const fileData = await request.arrayBuffer();
           const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
-          
+
           const aws = new AwsClient({
             accessKeyId: accessKeyId,
             secretAccessKey: secretAccessKey,
             service: 's3',
             region: 'auto',
           });
-          
+
           const encodedPath = encodeR2Path(decodedPath);
           const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
-          
+
           const signedRequest = await aws.sign(r2Url, {
             method: 'PUT',
             body: fileData,
@@ -398,9 +424,9 @@ export default {
               'Content-Type': contentType,
             },
           });
-          
+
           const uploadResponse = await fetch(signedRequest);
-          
+
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text();
             return new Response(JSON.stringify({ error: `Upload failed: ${uploadResponse.status} ${errorText}` }), {
@@ -411,7 +437,7 @@ export default {
               },
             });
           }
-          
+
           return new Response(JSON.stringify({ success: true, path: decodedPath }), {
             headers: {
               'Content-Type': 'application/json',
@@ -429,7 +455,7 @@ export default {
           });
         }
       }
-      
+
       // Route: DELETE - Supprimer un fichier
       if (request.method === 'DELETE') {
         try {
@@ -439,16 +465,16 @@ export default {
             service: 's3',
             region: 'auto',
           });
-          
+
           const encodedPath = encodeR2Path(decodedPath);
           const r2Url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedPath}`;
-          
+
           const signedRequest = await aws.sign(r2Url, {
             method: 'DELETE',
           });
-          
+
           const deleteResponse = await fetch(signedRequest);
-          
+
           // 404 est acceptable (fichier déjà supprimé)
           if (!deleteResponse.ok && deleteResponse.status !== 404) {
             const errorText = await deleteResponse.text();
@@ -460,7 +486,7 @@ export default {
               },
             });
           }
-          
+
           return new Response(JSON.stringify({ success: true }), {
             headers: {
               'Content-Type': 'application/json',
@@ -478,7 +504,7 @@ export default {
           });
         }
       }
-      
+
       // Méthode non supportée
       return new Response(JSON.stringify({ error: 'Method not allowed. Only PUT and DELETE are supported.' }), {
         status: 405,
@@ -487,7 +513,7 @@ export default {
           ...corsHeaders,
         },
       });
-      
+
     } catch (error) {
       console.error('Error:', error);
       return new Response(JSON.stringify({ error: 'Internal server error' }), {

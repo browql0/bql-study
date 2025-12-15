@@ -2,14 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import { Trash2, FileText, X, AlertTriangle, FileSpreadsheet, File } from 'lucide-react';
 import { getDisplayUrl } from '../utils/fileUrlHelper';
-import PDFViewer from './PDFViewer';
+import * as pdfjsLib from 'pdfjs-dist';
+import { supabase } from '../lib/supabase';
 import './FilesList.css';
+
+// Utiliser le worker inline (pas de fichier externe)
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 const FilesList = ({ subjectId, section, files }) => {
   const { deleteFile, isAdmin } = useApp();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
   const [viewerUrl, setViewerUrl] = useState(null);
+  const [pdfPages, setPdfPages] = useState([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Ajouter/retirer la classe modal-open au body quand le modal de confirmation est ouvert
   // Gestion de la classe modal-open pour le file viewer
@@ -23,6 +32,84 @@ const FilesList = ({ subjectId, section, files }) => {
       document.body.classList.remove('modal-open');
     };
   }, [viewingFile, deleteConfirm]);
+
+  // Charger et rendre le PDF en images
+  // Charger et rendre le PDF en images
+  useEffect(() => {
+    if (!viewingFile?.name.toLowerCase().endsWith('.pdf')) {
+      setPdfPages([]);
+      return;
+    }
+
+    setPdfLoading(true);
+    setPdfPages([]);
+
+    const loadPdf = async () => {
+      try {
+        // Obtenir le token de session pour l'authentification
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+          throw new Error('Non authentifié');
+        }
+
+        // Construire l'URL du proxy via le Worker
+        const workerUrl = import.meta.env.VITE_CLOUDFLARE_WORKER_URL;
+
+        if (!workerUrl) {
+          console.warn('VITE_CLOUDFLARE_WORKER_URL non défini, tentative de chargement direct (risque CORS)');
+          // Fallback direct si pas de worker configuré
+          if (viewerUrl) {
+            const pdfDoc = await pdfjsLib.getDocument(viewerUrl.split('#')[0]).promise;
+            await renderPages(pdfDoc);
+          }
+          return;
+        }
+
+        const filePath = viewingFile.storage_path || viewingFile.path; // Fallback
+
+        if (!filePath) {
+          throw new Error('Chemin du fichier introuvable');
+        }
+
+        const proxyUrl = `${workerUrl}/view?path=${encodeURIComponent(filePath)}`;
+
+        // Charger le PDF via le proxy avec authentification
+        const loadingTask = pdfjsLib.getDocument({
+          url: proxyUrl,
+          httpHeaders: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const pdfDoc = await loadingTask.promise;
+        await renderPages(pdfDoc);
+
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+        setPdfLoading(false);
+      }
+    };
+
+    const renderPages = async (pdfDoc) => {
+      const pages = [];
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const viewport = page.getViewport({ scale: 1.8 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: context, viewport }).promise;
+        pages.push(canvas.toDataURL());
+      }
+      setPdfPages(pages);
+      setPdfLoading(false);
+    };
+
+    loadPdf();
+  }, [viewerUrl, viewingFile]);
 
   const handleDelete = (fileId) => {
     setDeleteConfirm(fileId);
@@ -70,8 +157,8 @@ const FilesList = ({ subjectId, section, files }) => {
       return `${fileUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`;
     }
 
-    // Pour les autres fichiers, utiliser Office Web Viewer
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+    // Pour les autres fichiers, utiliser Google Docs Viewer en mode embedded (interface minimale)
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
   };
 
   const formatFileSize = (bytes) => {
@@ -167,21 +254,35 @@ const FilesList = ({ subjectId, section, files }) => {
       {viewingFile && (
         <div className="file-viewer-overlay" onClick={closeFileViewer}>
           <div className="file-viewer-content" onClick={(e) => e.stopPropagation()}>
-            <div className="file-viewer-header">
-              <div>
-                <h3>{viewingFile.title}</h3>
-                <p className="file-viewer-name">{viewingFile.name}</p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button className="btn-icon btn-close-viewer" onClick={closeFileViewer} title="Fermer">
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-            <div className="file-viewer-frame">
+            <div className="file-viewer-frame" style={{ display: 'block', overflowY: 'auto', background: '#f5f5f5', height: '100%', width: '100%' }}>
               {viewerUrl ? (
                 viewingFile.name.toLowerCase().endsWith('.pdf') ? (
-                  <PDFViewer url={viewerUrl.split('#')[0]} fileName={viewingFile.name} />
+                  pdfLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
+                      <p>Chargement du PDF...</p>
+                    </div>
+                  ) : pdfPages.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px', minHeight: '100%' }}>
+                      {pdfPages.map((pageDataUrl, idx) => (
+                        <img
+                          key={idx}
+                          src={pageDataUrl}
+                          alt={`Page ${idx + 1}`}
+                          style={{
+                            maxWidth: '100%',
+                            background: '#fff',
+                            borderRadius: '4px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444' }}>
+                      <p>Impossible de charger le PDF.</p>
+                      <a href={viewerUrl.split('#')[0]} target="_blank" rel="noopener noreferrer" style={{ color: '#4f8ff0', marginTop: '8px' }}>Télécharger le fichier</a>
+                    </div>
+                  )
                 ) : (
                   <iframe
                     src={viewerUrl}

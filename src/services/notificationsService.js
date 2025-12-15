@@ -1,169 +1,169 @@
 import { supabase } from '../lib/supabase';
 
 export const notificationsService = {
-      // Fonction de test pour créer plusieurs notifications
-      async testNotifications(userId) {
-        const results = [];
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_file',
-          'Nouveau fichier ajouté',
-          'Un nouveau fichier est disponible.',
-          { fileId: 'test-file-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_photo',
-          'Nouvelle photo ajoutée',
-          'Une nouvelle photo est disponible.',
-          { photoId: 'test-photo-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_note',
-          'Nouvelle note ajoutée',
-          'Une nouvelle note est disponible.',
-          { noteId: 'test-note-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_quiz',
-          'Nouveau quiz ajouté',
-          'Un nouveau quiz est disponible.',
-          { quizId: 'test-quiz-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'trial_expiry',
-          'Fin de période d’essai',
-          'Votre période d’essai se termine bientôt.',
-          null
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'subscription_expiry',
-          'Fin d’abonnement',
-          'Votre abonnement arrive à expiration.',
-          null
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'custom_admin',
-          'Message de l’administrateur',
-          'Notification personnalisée envoyée par l’admin.',
-          { customData: 'test' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_user',
-          'Nouvel utilisateur inscrit',
-          'Un nouvel utilisateur vient de s’inscrire.',
-          { newUserId: 'test-user-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'new_payment',
-          'Paiement reçu',
-          'Un paiement vient d’être reçu.',
-          { paymentId: 'test-payment-1' }
-        ));
-        results.push(await notificationsService.createNotificationWithPreference(
-          userId,
-          'voucher_expired',
-          'Code promo épuisé',
-          'Un code promo vient d’être épuisé.',
-          { voucherId: 'test-voucher-1' }
-        ));
-        return results;
-      },
-    // Vérifier la préférence de notification avant de créer
-    async createNotificationWithPreference(userId, type, title, message, data = null) {
-      // Charger les préférences de l'utilisateur
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('notification_preferences')
-        .eq('id', userId)
-        .single();
-      if (error || !profile) return { success: false, error: 'Impossible de charger les préférences' };
-      const prefs = profile.notification_preferences || {};
-      // Map type vers clé de préférence
-      const typeToPref = {
-        new_file: 'new_files',
-        new_photo: 'new_photos',
-        new_note: 'new_notes',
-        new_quiz: 'new_quiz',
-        trial_expiry: 'trial_expiry',
-        subscription_expiry: 'subscription_expiry',
-        custom_admin: 'custom_admin',
-        new_user: 'new_users',
-        new_payment: 'new_payments',
-        voucher_expired: 'voucher_expired'
-      };
-      const prefKey = typeToPref[type];
-      if (prefKey && prefs[prefKey] === false) {
-        // Préférence désactivée, ne pas créer la notification
-        return { success: false, error: 'Notification désactivée par préférence utilisateur' };
+  // Fonction de test pour créer plusieurs notifications
+  async testNotifications(userId) {
+    const results = [];
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_file',
+      'Nouveau fichier ajouté',
+      'Un nouveau fichier est disponible.',
+      { fileId: 'test-file-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_photo',
+      'Nouvelle photo ajoutée',
+      'Une nouvelle photo est disponible.',
+      { photoId: 'test-photo-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_note',
+      'Nouvelle note ajoutée',
+      'Une nouvelle note est disponible.',
+      { noteId: 'test-note-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_quiz',
+      'Nouveau quiz ajouté',
+      'Un nouveau quiz est disponible.',
+      { quizId: 'test-quiz-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'trial_expiry',
+      'Fin de période d’essai',
+      'Votre période d’essai se termine bientôt.',
+      null
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'subscription_expiry',
+      'Fin d’abonnement',
+      'Votre abonnement arrive à expiration.',
+      null
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'custom_admin',
+      'Message de l’administrateur',
+      'Notification personnalisée envoyée par l’admin.',
+      { customData: 'test' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_user',
+      'Nouvel utilisateur inscrit',
+      'Un nouvel utilisateur vient de s’inscrire.',
+      { newUserId: 'test-user-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'new_payment',
+      'Paiement reçu',
+      'Un paiement vient d’être reçu.',
+      { paymentId: 'test-payment-1' }
+    ));
+    results.push(await notificationsService.createNotificationWithPreference(
+      userId,
+      'voucher_expired',
+      'Code promo épuisé',
+      'Un code promo vient d’être épuisé.',
+      { voucherId: 'test-voucher-1' }
+    ));
+    return results;
+  },
+  // Vérifier la préférence de notification avant de créer
+  async createNotificationWithPreference(userId, type, title, message, data = null) {
+    // Charger les préférences de l'utilisateur
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('notification_preferences')
+      .eq('id', userId)
+      .single();
+    if (error || !profile) return { success: false, error: 'Impossible de charger les préférences' };
+    const prefs = profile.notification_preferences || {};
+    // Map type vers clé de préférence
+    const typeToPref = {
+      new_file: 'new_files',
+      new_photo: 'new_photos',
+      new_note: 'new_notes',
+      new_quiz: 'new_quiz',
+      trial_expiry: 'trial_expiry',
+      subscription_expiry: 'subscription_expiry',
+      custom_admin: 'custom_admin',
+      new_user: 'new_users',
+      new_payment: 'new_payments',
+      voucher_expired: 'voucher_expired'
+    };
+    const prefKey = typeToPref[type];
+    if (prefKey && prefs[prefKey] === false) {
+      // Préférence désactivée, ne pas créer la notification
+      return { success: false, error: 'Notification désactivée par préférence utilisateur' };
+    }
+    // Créer la notification locale
+    const result = await notificationsService.createNotification(userId, type, title, message, data);
+    // Envoi notification push système si préférence activée
+    try {
+      // Adapter le titre, le body et l'icône selon le type
+      let pushTitle = title;
+      let pushBody = message;
+      let pushIcon = '/favicon.svg';
+      switch (type) {
+        case 'new_file':
+          pushTitle = 'Nouveau fichier ajouté';
+          pushBody = 'Un nouveau fichier est disponible.';
+          break;
+        case 'new_photo':
+          pushTitle = 'Nouvelle photo ajoutée';
+          pushBody = 'Une nouvelle photo est disponible.';
+          break;
+        case 'new_note':
+          pushTitle = 'Nouvelle note ajoutée';
+          pushBody = 'Une nouvelle note est disponible.';
+          break;
+        case 'new_quiz':
+          pushTitle = 'Nouveau quiz ajouté';
+          pushBody = 'Un nouveau quiz est disponible.';
+          break;
+        case 'trial_expiry':
+          pushTitle = 'Fin de période d’essai';
+          pushBody = 'Votre période d’essai se termine bientôt.';
+          break;
+        case 'subscription_expiry':
+          pushTitle = 'Fin d’abonnement';
+          pushBody = 'Votre abonnement arrive à expiration.';
+          break;
+        case 'custom_admin':
+          pushTitle = 'Message de l’administrateur';
+          pushBody = 'Notification personnalisée envoyée par l’admin.';
+          break;
+        case 'new_user':
+          pushTitle = 'Nouvel utilisateur inscrit';
+          pushBody = 'Un nouvel utilisateur vient de s’inscrire.';
+          break;
+        case 'new_payment':
+          pushTitle = 'Paiement reçu';
+          pushBody = 'Un paiement vient d’être reçu.';
+          break;
+        case 'voucher_expired':
+          pushTitle = 'Code promo épuisé';
+          pushBody = 'Un code promo vient d\'être épuisé.';
+          break;
       }
-      // Créer la notification locale
-      const result = await notificationsService.createNotification(userId, type, title, message, data);
-      // Envoi notification push système si préférence activée
-      try {
-        // Adapter le titre, le body et l'icône selon le type
-        let pushTitle = title;
-        let pushBody = message;
-        let pushIcon = '/favicon.svg';
-        switch (type) {
-          case 'new_file':
-            pushTitle = 'Nouveau fichier ajouté';
-            pushBody = 'Un nouveau fichier est disponible.';
-            break;
-          case 'new_photo':
-            pushTitle = 'Nouvelle photo ajoutée';
-            pushBody = 'Une nouvelle photo est disponible.';
-            break;
-          case 'new_note':
-            pushTitle = 'Nouvelle note ajoutée';
-            pushBody = 'Une nouvelle note est disponible.';
-            break;
-          case 'new_quiz':
-            pushTitle = 'Nouveau quiz ajouté';
-            pushBody = 'Un nouveau quiz est disponible.';
-            break;
-          case 'trial_expiry':
-            pushTitle = 'Fin de période d’essai';
-            pushBody = 'Votre période d’essai se termine bientôt.';
-            break;
-          case 'subscription_expiry':
-            pushTitle = 'Fin d’abonnement';
-            pushBody = 'Votre abonnement arrive à expiration.';
-            break;
-          case 'custom_admin':
-            pushTitle = 'Message de l’administrateur';
-            pushBody = 'Notification personnalisée envoyée par l’admin.';
-            break;
-          case 'new_user':
-            pushTitle = 'Nouvel utilisateur inscrit';
-            pushBody = 'Un nouvel utilisateur vient de s’inscrire.';
-            break;
-          case 'new_payment':
-            pushTitle = 'Paiement reçu';
-            pushBody = 'Un paiement vient d’être reçu.';
-            break;
-          case 'voucher_expired':
-            pushTitle = 'Code promo épuisé';
-            pushBody = 'Un code promo vient d\'être épuisé.';
-            break;
-        }
-        
-        // Note: Les notifications push sont gérées côté client (AppContext)
-        // car ce service s'exécute côté serveur Supabase sans session utilisateur
-        
-      } catch (err) {
-        // Erreur generale, ne pas bloquer
-        console.debug('Erreur lors de la creation de notification');
-      }
-      return result;
-    },
+
+      // Note: Les notifications push sont gérées côté client (AppContext)
+      // car ce service s'exécute côté serveur Supabase sans session utilisateur
+
+    } catch (err) {
+      // Erreur generale, ne pas bloquer
+      console.debug('Erreur lors de la creation de notification');
+    }
+    return result;
+  },
   // Récupérer toutes les notifications non lues pour l'utilisateur actuel
   async getUnreadNotifications(userId) {
     try {
@@ -315,10 +315,47 @@ export const notificationsService = {
       if (error) {
         throw error;
       }
-      
+
       const count = result || 0;
       return { success: true, result, count };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  ,
+
+  // Notifier tous les administrateurs (In-App + Push)
+  async notifyAllAdmins(type, title, message, data = null) {
+    try {
+      // 1. Récupérer les IDs des admins
+      const { data: admins, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (error || !admins || admins.length === 0) {
+        return { success: false, error: 'Aucun admin trouvé' };
+      }
+
+      const adminIds = admins.map(a => a.id);
+
+      // 2. Créer une notification in-app pour chaque admin
+      // On utilise Promise.all pour paralléliser
+      const notificationPromises = adminIds.map(adminId =>
+        notificationsService.createNotificationWithPreference(
+          adminId,
+          type,
+          title,
+          message,
+          data
+        )
+      );
+
+      await Promise.all(notificationPromises);
+
+      return { success: true, count: adminIds.length };
+    } catch (error) {
+      console.error('Error notifying admins:', error);
       return { success: false, error: error.message };
     }
   }

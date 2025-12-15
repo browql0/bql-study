@@ -17,41 +17,41 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.contactPhone.trim()) {
       newErrors.contactPhone = 'Numéro de téléphone requis';
     } else if (!/^0[67]\d{8}$/.test(formData.contactPhone.replace(/\s/g, ''))) {
       newErrors.contactPhone = 'Numéro invalide (ex: 0612345678)';
     }
-    
+
     if (!formData.preferredDate) {
       newErrors.preferredDate = 'Date souhaitée requise';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error('Utilisateur non connecté');
       }
-      
+
       // Vérifier s'il y a une demande récente (< 24h)
       const oneDayAgo = new Date();
       oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-      
+
       const { data: recentPayments, error: checkError } = await supabase
         .from('pending_payments')
         .select('created_at, status')
@@ -60,16 +60,16 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         .gte('created_at', oneDayAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(1);
-      
+
       if (checkError) {
         console.error('Erreur vérification cooldown:', checkError);
       }
-      
+
       if (recentPayments && recentPayments.length > 0) {
         const lastPaymentDate = new Date(recentPayments[0].created_at);
         const hoursSince = Math.floor((new Date() - lastPaymentDate) / (1000 * 60 * 60));
         const hoursLeft = 24 - hoursSince;
-        
+
         setConfirmationMessage({
           title: '⏰ Cooldown actif',
           message: `Vous avez déjà une demande en attente. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
@@ -79,7 +79,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         setLoading(false);
         return;
       }
-      
+
       // Créer le paiement en attente
       const { error } = await supabase
         .from('pending_payments')
@@ -92,12 +92,27 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           preferred_date: formData.preferredDate,
           notes: formData.notes || null
         });
-      
+
       if (error) throw error;
-      
+
       // Notifier les admins
       try {
         console.log('🔔 Envoi notification paiement cash aux admins');
+
+        // Notification In-App
+        const { notificationsService } = await import('../services/notificationsService');
+        await notificationsService.notifyAllAdmins(
+          'new_payment',
+          'Paiement cash',
+          `${formData.accountHolderName || user.email} - ${amount} DH`,
+          {
+            planType: selectedPlan,
+            amount,
+            phone: formData.contactPhone
+          }
+        );
+
+        // Notification Push
         const pushNotificationService = (await import('../services/pushNotificationService')).default;
         const result = await pushNotificationService.notifyAdmins(
           'pending_payment_cash',
@@ -108,7 +123,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       } catch (notifError) {
         console.error('❌ Erreur notification admins:', notifError);
       }
-      
+
       setConfirmationMessage({
         title: 'Demande de rendez-vous envoyée !',
         message: 'Un administrateur vous contactera bientôt pour confirmer le lieu et l\'horaire du rendez-vous.',
@@ -120,7 +135,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         onClose();
         if (onSuccess) onSuccess();
       }, 3000);
-      
+
     } catch (error) {
       console.error('Error submitting cash payment request:', error);
       alert('Erreur lors de l\'envoi. Veuillez réessayer.');
@@ -146,7 +161,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           <div className="info-message">
             <Banknote size={20} />
             <p>
-              Remplissez ce formulaire pour demander un rendez-vous. 
+              Remplissez ce formulaire pour demander un rendez-vous.
               Un administrateur vous contactera pour convenir d'un lieu et horaire.
             </p>
           </div>
@@ -231,7 +246,7 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           </form>
         </div>
       </div>
-      
+
       <ConfirmationModal
         isOpen={showConfirmation}
         onClose={() => {

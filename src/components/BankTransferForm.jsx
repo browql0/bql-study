@@ -19,19 +19,19 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.accountHolderName.trim()) {
       newErrors.accountHolderName = 'Nom du titulaire requis';
     }
-    
+
     if (!formData.transferDate) {
       newErrors.transferDate = 'Date du virement requise';
     }
-    
+
     if (!formData.proofFile) {
       newErrors.proofFile = 'Preuve de virement requise (screenshot ou photo)';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,13 +44,13 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         setErrors({ ...errors, proofFile: 'Le fichier ne doit pas dépasser 50MB' });
         return;
       }
-      
+
       // Vérifier le type
       if (!file.type.startsWith('image/')) {
         setErrors({ ...errors, proofFile: 'Le fichier doit être une image' });
         return;
       }
-      
+
       setFormData({ ...formData, proofFile: file });
       setErrors({ ...errors, proofFile: null });
     }
@@ -59,19 +59,19 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
   const uploadProof = async (file) => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       throw new Error('Session expirée, veuillez vous reconnecter');
     }
-    
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-    
+
     // Upload vers Cloudflare R2 via le worker
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
     formDataUpload.append('path', `transfer-proofs/${fileName}`);
-    
+
     const response = await fetch(import.meta.env.VITE_CLOUDFLARE_WORKER_URL + '/upload', {
       method: 'POST',
       headers: {
@@ -79,38 +79,38 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       },
       body: formDataUpload
     });
-    
+
     if (!response.ok) {
       throw new Error('Erreur lors de l\'upload du fichier');
     }
-    
+
     const result = await response.json();
     return result.url;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         throw new Error('Utilisateur non connecté');
       }
-      
+
       // Vérifier s'il y a une demande récente (< 24h)
       const oneDayAgo = new Date();
       oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-      
+
       console.log('🔍 Vérification cooldown pour user:', user.id);
       console.log('🔍 Date limite (24h ago):', oneDayAgo.toISOString());
-      
+
       const { data: recentPayments, error: checkError } = await supabase
         .from('pending_payments')
         .select('created_at, status')
@@ -119,20 +119,20 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         .gte('created_at', oneDayAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(1);
-      
+
       console.log('🔍 Résultat requête cooldown:', { recentPayments, checkError });
-      
+
       if (checkError) {
         console.error('❌ Erreur vérification cooldown:', checkError);
       }
-      
+
       if (recentPayments && recentPayments.length > 0) {
         console.log('⏰ Demande récente trouvée:', recentPayments[0]);
         const lastPaymentDate = new Date(recentPayments[0].created_at);
         const hoursSince = Math.floor((new Date() - lastPaymentDate) / (1000 * 60 * 60));
         const hoursLeft = 24 - hoursSince;
         console.log('⏰ Heures écoulées:', hoursSince, '- Heures restantes:', hoursLeft);
-        
+
         setConfirmationMessage({
           title: '⏰ Cooldown actif',
           message: `Vous avez déjà une demande en attente. Veuillez attendre encore ${hoursLeft}h avant de faire une nouvelle demande.`,
@@ -142,12 +142,12 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         setLoading(false);
         return;
       }
-      
+
       // Upload de la preuve
       setUploadProgress(50);
       const proofUrl = await uploadProof(formData.proofFile);
       setUploadProgress(75);
-      
+
       // Créer le paiement en attente
       const { error } = await supabase
         .from('pending_payments')
@@ -162,14 +162,29 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           transfer_reference: formData.transferReference || null,
           account_holder_name: formData.accountHolderName
         });
-      
+
       if (error) throw error;
-      
+
       setUploadProgress(100);
-      
+
       // Notifier les admins
       try {
         console.log('🔔 Envoi notification virement aux admins');
+
+        // Notification In-App
+        const { notificationsService } = await import('../services/notificationsService');
+        await notificationsService.notifyAllAdmins(
+          'new_payment',
+          'Virement bancaire',
+          `${formData.accountHolderName} - ${amount} DH`,
+          {
+            planType: selectedPlan,
+            amount,
+            method: 'bank_transfer'
+          }
+        );
+
+        // Notification Push
         const pushNotificationService = (await import('../services/pushNotificationService')).default;
         const result = await pushNotificationService.notifyAdmins(
           'pending_payment',
@@ -180,7 +195,7 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
       } catch (notifError) {
         console.error('❌ Erreur notification admins:', notifError);
       }
-      
+
       setConfirmationMessage({
         title: 'Demande envoyée !',
         message: 'Votre preuve de virement a été envoyée avec succès. Un administrateur validera votre paiement sous peu.',
@@ -192,7 +207,7 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
         onSuccess();
         onClose();
       }, 3000);
-      
+
     } catch (error) {
       console.error('Error submitting transfer:', error);
       alert('Erreur lors de l\'envoi. Veuillez réessayer.');
@@ -335,7 +350,7 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           </form>
         </div>
       </div>
-      
+
       <ConfirmationModal
         isOpen={showConfirmation}
         onClose={() => {

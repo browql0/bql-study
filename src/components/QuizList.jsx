@@ -4,7 +4,7 @@ import { quizService } from '../services/quizService';
 import { Play, Trash2, Edit, Trophy, Clock, Target, TrendingUp, FileText, Layers, X, AlertTriangle } from 'lucide-react';
 import './QuizList.css';
 
-const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
+const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType }) => {
   const { isAdmin } = useApp();
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
     } else {
       document.body.classList.remove('modal-open');
     }
-    
+
     return () => {
       document.body.classList.remove('modal-open');
     };
@@ -37,7 +37,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
         try {
           const stats = await quizService.getQuizStats(quiz.id);
           const bestScore = await quizService.getBestScore(quiz.id);
-          
+
           setQuizStats(prev => ({ ...prev, [quiz.id]: stats }));
           setUserBestScores(prev => ({ ...prev, [quiz.id]: bestScore }));
         } catch (error) {
@@ -47,7 +47,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
           setUserBestScores(prev => ({ ...prev, [quiz.id]: null }));
         }
       });
-      
+
       await Promise.allSettled(statsPromises);
     } catch (error) {
       console.error('Error loading quizzes:', error);
@@ -59,6 +59,11 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
   useEffect(() => {
     loadQuizzes();
   }, [subjectId, section]);
+
+  // Filtrer les quiz selon le type si nécessaire
+  const displayedQuizzes = filterType
+    ? quizzes.filter(q => q.type === filterType)
+    : quizzes;
 
   const handleDelete = async (quizId) => {
     try {
@@ -94,10 +99,10 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
     );
   }
 
-  if (quizzes.length === 0) {
+  if (displayedQuizzes.length === 0) {
     return (
       <div className="empty-state scale-in">
-        <p>Aucun quiz pour le moment</p>
+        <p>Aucun {filterType === 'flashcard' ? 'flashcard' : 'quiz'} pour le moment</p>
       </div>
     );
   }
@@ -105,17 +110,17 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
   return (
     <>
       <div className="quiz-list">
-        {quizzes.map((quiz, index) => {
+        {displayedQuizzes.map((quiz, index) => {
           const stats = quizStats[quiz.id] || {};
           const bestScore = userBestScores[quiz.id];
           const hasPlayed = bestScore !== null && bestScore !== undefined;
-          const scorePercentage = hasPlayed 
-            ? Math.round((bestScore.score / bestScore.total_questions) * 100) 
+          const scorePercentage = hasPlayed
+            ? Math.round((bestScore.score / bestScore.total_questions) * 100)
             : 0;
 
           return (
-            <div 
-              key={quiz.id} 
+            <div
+              key={quiz.id}
               className="quiz-card card fade-in"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
@@ -134,7 +139,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
                   )}
                 </div>
                 {hasPlayed && (
-                  <div 
+                  <div
                     className="score-badge"
                     style={{ backgroundColor: getScoreColor(scorePercentage) }}
                   >
@@ -215,14 +220,14 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
               </div>
             </div>
             <div className="modal-footer mobile-modal-footer">
-              <button 
-                className="btn btn-secondary mobile-btn" 
+              <button
+                className="btn btn-secondary mobile-btn"
                 onClick={() => setDeleteConfirm(null)}
               >
                 Annuler
               </button>
-              <button 
-                className="btn btn-danger mobile-btn" 
+              <button
+                className="btn btn-danger mobile-btn"
                 onClick={() => handleDelete(deleteConfirm)}
               >
                 Supprimer
