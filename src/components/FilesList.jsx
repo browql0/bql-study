@@ -103,7 +103,7 @@ const FilesList = ({ subjectId, section, files }) => {
 
     if (extension === 'pdf') {
       return '#ef4444'; // Rouge
-    } else if (['xls', 'xlsx', 'csv', 'pptx'].includes(extension)) {
+    } else if (['xls', 'xlsx', 'csv'].includes(extension)) {
       return '#10b981'; // Vert
     } else if (['doc', 'docx', 'txt'].includes(extension)) {
       return '#3b82f6'; // Bleu
@@ -116,7 +116,7 @@ const FilesList = ({ subjectId, section, files }) => {
   if (files.length === 0) {
     return (
       <div className="empty-state scale-in">
-        <p>Aucun fichier pour le moment </p>
+        <p>Aucun fichier pour le moment</p>
       </div>
     );
   }

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, AlertCircle, FileText, Layers, Sparkles } from 'lucide-react';
 import './AddQuizModal.css';
 
-const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = null }) => {
-  const [quizType, setQuizType] = useState(initialType || 'quiz');
+const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
+  const [quizType, setQuizType] = useState('quiz');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([
@@ -25,7 +25,7 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = null 
       ...questions,
       { question: '', answer: '', options: ['', '', '', ''], explanation: '', points: 1 }
     ]);
-
+    
     setTimeout(() => {
       const questionsList = document.querySelector('.questions-list');
       const newQuestionCard = document.querySelectorAll('.question-card')[newIndex];
@@ -136,44 +136,42 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = null 
             </div>
           )}
 
-          {/* Type Selection - Only show if no initialType provided */}
-          {!initialType && (
-            <section className="quiz-section">
-              <div className="quiz-section-label">
-                <span className="quiz-section-number">01</span>
-                <h3>Type de contenu</h3>
-              </div>
-              <div className="quiz-type-buttons">
-                <button
-                  type="button"
-                  className={`quiz-type-button ${quizType === 'quiz' ? 'active' : ''}`}
-                  onClick={() => setQuizType('quiz')}
-                >
-                  <FileText size={24} />
-                  <div>
-                    <div className="quiz-type-button-title">Quiz (QCM)</div>
-                    <div className="quiz-type-button-desc">Questions à choix multiples</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className={`quiz-type-button ${quizType === 'flashcard' ? 'active' : ''}`}
-                  onClick={() => setQuizType('flashcard')}
-                >
-                  <Layers size={24} />
-                  <div>
-                    <div className="quiz-type-button-title">Flashcards</div>
-                    <div className="quiz-type-button-desc">Cartes de mémorisation</div>
-                  </div>
-                </button>
-              </div>
-            </section>
-          )}
+          {/* Type Selection */}
+          <section className="quiz-section">
+            <div className="quiz-section-label">
+              <span className="quiz-section-number">01</span>
+              <h3>Type de contenu</h3>
+            </div>
+            <div className="quiz-type-buttons">
+              <button
+                type="button"
+                className={`quiz-type-button ${quizType === 'quiz' ? 'active' : ''}`}
+                onClick={() => setQuizType('quiz')}
+              >
+                <FileText size={24} />
+                <div>
+                  <div className="quiz-type-button-title">Quiz (QCM)</div>
+                  <div className="quiz-type-button-desc">Questions à choix multiples</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                className={`quiz-type-button ${quizType === 'flashcard' ? 'active' : ''}`}
+                onClick={() => setQuizType('flashcard')}
+              >
+                <Layers size={24} />
+                <div>
+                  <div className="quiz-type-button-title">Flashcards</div>
+                  <div className="quiz-type-button-desc">Cartes de mémorisation</div>
+                </div>
+              </button>
+            </div>
+          </section>
 
           {/* Basic Info */}
           <section className="quiz-section">
             <div className="quiz-section-label">
-              <span className="quiz-section-number">{initialType ? '01' : '02'}</span>
+              <span className="quiz-section-number">02</span>
               <h3>Informations de base</h3>
             </div>
             <div className="quiz-form-grid">
@@ -206,9 +204,9 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = null 
                 <span className="quiz-section-number">03</span>
                 <h3>Questions <span className="quiz-count-badge">{questions.length}</span></h3>
               </div>
-              <button
-                type="button"
-                className="quiz-add-question-btn"
+              <button 
+                type="button" 
+                className="quiz-add-question-btn" 
                 onClick={addQuestion}
               >
                 <Plus size={20} />
@@ -309,16 +307,16 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = null 
 
           {/* Footer */}
           <div className="quiz-modal-footer">
-            <button
-              type="button"
-              className="quiz-modal-btn quiz-modal-btn-secondary"
+            <button 
+              type="button" 
+              className="quiz-modal-btn quiz-modal-btn-secondary" 
               onClick={onClose}
             >
               Annuler
             </button>
-            <button
-              type="submit"
-              className="quiz-modal-btn quiz-modal-btn-primary"
+            <button 
+              type="submit" 
+              className="quiz-modal-btn quiz-modal-btn-primary" 
               disabled={saving}
             >
               {saving ? 'Création en cours...' : 'Créer le quiz'}

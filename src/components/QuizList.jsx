@@ -4,7 +4,7 @@ import { quizService } from '../services/quizService';
 import { Play, Trash2, Edit, Trophy, Clock, Target, TrendingUp, FileText, Layers, X, AlertTriangle } from 'lucide-react';
 import './QuizList.css';
 
-const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType = null }) => {
+const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard }) => {
   const { isAdmin } = useApp();
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
     } else {
       document.body.classList.remove('modal-open');
     }
-
+    
     return () => {
       document.body.classList.remove('modal-open');
     };
@@ -29,20 +29,15 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
     setLoading(true);
     try {
       const data = await quizService.getQuizzesBySubject(subjectId, section);
-      // Filtrer si un type est spécifié
-      const filteredData = filterType
-        ? data.filter(q => q.type === filterType)
-        : data;
-
-      setQuizzes(filteredData);
+      setQuizzes(data);
 
       // Charger les statistiques et meilleurs scores pour chaque quiz
       // Utiliser Promise.allSettled pour ne pas bloquer si une requête échoue
-      const statsPromises = filteredData.map(async (quiz) => {
+      const statsPromises = data.map(async (quiz) => {
         try {
           const stats = await quizService.getQuizStats(quiz.id);
           const bestScore = await quizService.getBestScore(quiz.id);
-
+          
           setQuizStats(prev => ({ ...prev, [quiz.id]: stats }));
           setUserBestScores(prev => ({ ...prev, [quiz.id]: bestScore }));
         } catch (error) {
@@ -52,7 +47,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
           setUserBestScores(prev => ({ ...prev, [quiz.id]: null }));
         }
       });
-
+      
       await Promise.allSettled(statsPromises);
     } catch (error) {
       console.error('Error loading quizzes:', error);
@@ -63,7 +58,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
 
   useEffect(() => {
     loadQuizzes();
-  }, [subjectId, section, filterType]);
+  }, [subjectId, section]);
 
   const handleDelete = async (quizId) => {
     try {
@@ -94,7 +89,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
     return (
       <div className="loading-state">
         <div className="spinner"></div>
-        <p>Chargement des {filterType === 'flashcard' ? 'flashcards' : 'quiz'}...</p>
+        <p>Chargement des quiz...</p>
       </div>
     );
   }
@@ -102,7 +97,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
   if (quizzes.length === 0) {
     return (
       <div className="empty-state scale-in">
-        <p>Aucun {filterType === 'flashcard' ? 'flashcard' : 'quiz'} pour le moment</p>
+        <p>Aucun quiz pour le moment</p>
       </div>
     );
   }
@@ -114,13 +109,13 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
           const stats = quizStats[quiz.id] || {};
           const bestScore = userBestScores[quiz.id];
           const hasPlayed = bestScore !== null && bestScore !== undefined;
-          const scorePercentage = hasPlayed
-            ? Math.round((bestScore.score / bestScore.total_questions) * 100)
+          const scorePercentage = hasPlayed 
+            ? Math.round((bestScore.score / bestScore.total_questions) * 100) 
             : 0;
 
           return (
-            <div
-              key={quiz.id}
+            <div 
+              key={quiz.id} 
               className="quiz-card card fade-in"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
@@ -139,7 +134,7 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
                   )}
                 </div>
                 {hasPlayed && (
-                  <div
+                  <div 
                     className="score-badge"
                     style={{ backgroundColor: getScoreColor(scorePercentage) }}
                   >
@@ -220,14 +215,14 @@ const QuizList = ({ subjectId, section, onPlayQuiz, onPlayFlashcard, filterType 
               </div>
             </div>
             <div className="modal-footer mobile-modal-footer">
-              <button
-                className="btn btn-secondary mobile-btn"
+              <button 
+                className="btn btn-secondary mobile-btn" 
                 onClick={() => setDeleteConfirm(null)}
               >
                 Annuler
               </button>
-              <button
-                className="btn btn-danger mobile-btn"
+              <button 
+                className="btn btn-danger mobile-btn" 
                 onClick={() => handleDelete(deleteConfirm)}
               >
                 Supprimer
