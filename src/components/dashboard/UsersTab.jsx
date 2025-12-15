@@ -4,6 +4,26 @@ import { supabase } from '../../lib/supabase';
 import { settingsService } from '../../services/settingsService';
 import './UsersTab.css';
 
+// Helper to sync logged in user role
+const syncLoggedInUserRole = async (targetUserId, nextRole) => {
+  try {
+    if (!targetUserId || !nextRole) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== targetUserId) return;
+    const metadata = user.user_metadata || {};
+    if (metadata.role === nextRole) return;
+      await supabase.auth.updateUser({
+        data: {
+          ...metadata,
+          role: nextRole
+        }
+      });
+      await supabase.auth.refreshSession();
+    } catch (error) {
+    console.warn('Impossible de synchroniser le rôle auth:', error);
+  }
+};
+
 const UsersTab = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -30,6 +50,8 @@ const UsersTab = () => {
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
+      
+      console.log('Users fetch result:', { count: usersData?.length, role: (await supabase.auth.getUser()).data.user?.user_metadata?.role });
 
       // Récupérer les paiements pour chaque utilisateur
       const { data: paymentsData, error: paymentsError } = await supabase
@@ -250,15 +272,18 @@ const UsersTab = () => {
       message: `Êtes-vous sûr de vouloir ${action} cet utilisateur ?`,
       onConfirm: async () => {
         try {
+          const newRole = isAdmin ? 'spectator' : 'admin';
           const { error } = await supabase
             .from('profiles')
             .update({
-              role: isAdmin ? 'spectator' : 'admin',
+              role: newRole,
               updated_at: new Date().toISOString()
             })
             .eq('id', userId);
 
           if (error) throw error;
+
+          await syncLoggedInUserRole(userId, newRole);
 
           // Forcer le rafraîchissement des données
           await fetchAllUsers();

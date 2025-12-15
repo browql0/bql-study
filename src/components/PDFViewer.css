@@ -1,0 +1,11 @@
+.pdf-viewer-container iframe {
+    border: none;
+    background: white;
+}
+
+/* Ajustements pour mobile */
+@media (max-width: 768px) {
+    .pdf-viewer-container {
+        padding: 0 !important;
+    }
+}

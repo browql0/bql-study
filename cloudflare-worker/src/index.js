@@ -68,6 +68,36 @@ function encodeR2Path(path) {
 }
 
 /**
+ * Vérifie le rôle de l'utilisateur dans la table profiles
+ * Tahqq mn dwr dial l'utilisateur f table profiles
+ */
+async function getUserRoleFromProfile(userId, supabaseUrl, supabaseAnonKey) {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=role`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      }
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return data[0].role;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching user role:', error);
+    return null;
+  }
+}
+
+/**
  * Handler principal du Worker
  */
 export default {
@@ -128,6 +158,10 @@ export default {
           },
         });
       }
+
+      // Récupérer le vrai rôle depuis la DB (sécurité contre self-assignment)
+      // Njibou le rôle lhaqiqi mn DB bach ntjanbou self-assignment
+      const realUserRole = await getUserRoleFromProfile(user.id, supabaseUrl, supabaseAnonKey);
       
       const url = new URL(request.url);
       const pathname = url.pathname;
@@ -148,8 +182,7 @@ export default {
         }
         
         // Vérifier que c'est un admin
-        const userRole = user.user_metadata?.role;
-        if (userRole !== 'admin') {
+        if (realUserRole !== 'admin') {
           return new Response(JSON.stringify({ error: 'Admin access required' }), {
             status: 403,
             headers: {
@@ -228,6 +261,19 @@ export default {
           const contentType = file.type || 'application/octet-stream';
           const decodedPath = decodeURIComponent(filePath);
           
+          // IDOR Check: Enforce user isolation
+          // Vérifier que l'utilisateur n'accède qu'à ses propres fichiers
+          // Khassna nt2kdou anna l'utilisateur kaychouf ghir l-fichiers dialou
+          if (realUserRole !== 'admin' && !decodedPath.startsWith(`${user.id}/`) && !decodedPath.startsWith(`transfer-proofs/${user.id}/`)) {
+             return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
+              status: 403,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            });
+          }
+
           const aws = new AwsClient({
             accessKeyId: accessKeyId,
             secretAccessKey: secretAccessKey,
@@ -285,7 +331,7 @@ export default {
       }
       
       // Vérifier l'abonnement (sauf pour les admins et les uploads de preuve de virement)
-      const userRole = user.user_metadata?.role;
+      const userRole = realUserRole;
       const isTransferProof = path && path.startsWith('transfer-proofs/');
       
       if (userRole !== 'admin' && !isTransferProof) {
@@ -310,6 +356,23 @@ export default {
             ...corsHeaders,
           },
         });
+      }
+
+      // IDOR Check for PUT/DELETE
+      // Vérification de sécurité IDOR pour PUT et DELETE
+      // Tahqq mn l'IDOR bach hta wahed ma yqdr yms7 ola ybdel fichiers dial chi had akhor
+      if (decodedPath && userRole !== 'admin') {
+         // Allow access to own folder OR own transfer proofs
+         // Autoriser l'accès à son propre dossier OU ses propres preuves de virement
+         if (!decodedPath.startsWith(`${user.id}/`) && !decodedPath.startsWith(`transfer-proofs/${user.id}/`)) {
+            return new Response(JSON.stringify({ error: 'Access denied: Path must start with your User ID' }), {
+              status: 403,
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            });
+         }
       }
       
       // Route: PUT - Upload un fichier

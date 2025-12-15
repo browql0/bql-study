@@ -20,9 +20,11 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.0",
     "lucide-react": "^0.554.0",
+    "pdfjs-dist": "^5.4.449",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-loading-indicators": "^1.0.1"
+    "react-loading-indicators": "^1.0.1",
+    "react-pdf": "^10.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { signIn as authSignIn, signUp as authSignUp, signOut as authSignOut, onAuthStateChange, updateProfile as authUpdateProfile, updatePassword as authUpdatePassword } from '../services/authService';
 import { supabase } from '../lib/supabase';
 import * as subjectsService from '../services/subjectsService';
@@ -10,6 +10,26 @@ import { notificationsService } from '../services/notificationsService';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { subscriptionExpiryService } from '../services/subscriptionExpiryService';
 import { quizService } from '../services/quizService';
+
+// Helper to sync auth role
+const syncAuthRoleWithProfile = async (sessionUser, profileRole) => {
+  if (!sessionUser?.id || !profileRole) return;
+  const metadata = sessionUser.user_metadata || {};
+  if (metadata.role === profileRole) return;
+  try {
+    await supabase.auth.updateUser({
+      data: {
+        ...metadata,
+        role: profileRole
+      }
+    });
+    // Force refresh session to ensure new claims are used
+    await supabase.auth.refreshSession();
+    console.log('Synced auth role to:', profileRole);
+  } catch (error) {
+    console.warn('Failed to sync auth role with profile role:', error);
+  }
+};
 
 const AppContext = createContext();
 
@@ -50,15 +70,17 @@ export const AppProvider = ({ children }) => {
           .eq('id', session.user.id)
           .single();
         
-        setCurrentUser({
+        const userData = {
           id: session.user.id,
           email: session.user.email,
           name: profileData?.name || session.user.user_metadata?.name || session.user.email,
           username: session.user.email,
           role: profileData?.role || 'spectator',
           created_at: profileData?.created_at
-        });
-        
+        };
+
+        await syncAuthRoleWithProfile(session.user, userData.role);
+
         // Vérifier l'expiration de l'abonnement au login
         try {
           const expiryStatus = await subscriptionExpiryService.checkOnLogin(session.user.id);
@@ -79,13 +101,17 @@ export const AppProvider = ({ children }) => {
             if (deviceResult.error === 'device_limit' || 
                 deviceResult.error?.includes('Limite d\'appareils') ||
                 deviceResult.error?.includes('P0001')) {
-              // Limite d'appareils atteinte - stocker l'erreur pour afficher le modal
+              // Limite d'appareils atteinte
               console.warn('Limite d\'appareils atteinte');
               setDeviceLimitError({
                 devices: deviceResult.devices || []
               });
-              // Ne pas déconnecter immédiatement, laisser le modal gérer
-              return;
+              
+              // NE PAS définir currentUser pour éviter le "flash" du dashboard
+              // L'utilisateur sera déconnecté par authService ou devra gérer la modale
+              // Si authService a déjà fait le signOut, on ne devrait même pas être ici ou le prochain event le nettoiera
+              setLoading(false);
+              return; 
             } else {
               // Autre erreur - logger mais ne pas bloquer la connexion
               console.error('Erreur lors de l\'enregistrement de l\'appareil:', deviceResult.error);
@@ -102,10 +128,14 @@ export const AppProvider = ({ children }) => {
             setDeviceLimitError({
               devices: []
             });
+            setLoading(false);
             return;
           }
           // Ne pas bloquer la connexion si l'enregistrement de l'appareil échoue pour d'autres raisons
         }
+        
+        // Si tout est OK, on définit l'utilisateur
+        setCurrentUser(userData);
         
         // Charger les matières depuis Supabase de manière optimisée
         await loadSubjects();

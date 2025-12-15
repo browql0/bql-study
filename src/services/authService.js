@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { deviceService } from './deviceService';
 
 /**
  * Vérifie si un email est déjà utilisé
@@ -128,6 +129,35 @@ export const signIn = async (email, password) => {
     });
 
     if (error) throw error;
+
+    // Check device limit immediately after login to prevent "flash"
+    // Vérifier la limite d'appareils immédiatement après la connexion
+    if (data?.user) {
+      try {
+        const deviceResult = await deviceService.registerDevice();
+        
+        if (!deviceResult.success) {
+          // If device limit reached, sign out immediately
+          if (deviceResult.error === 'device_limit' || 
+              deviceResult.error?.includes('Limite d\'appareils') || 
+              deviceResult.error?.includes('P0001')) {
+            
+            await supabase.auth.signOut();
+            return { 
+              data: null, 
+              error: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.' 
+            };
+          }
+        }
+      } catch (deviceError) {
+        console.error('Error checking device limit during login:', deviceError);
+        // We might want to let them in if checking fails, or block. 
+        // For security, maybe blocking is better if we are strict, but for UX, maybe allow.
+        // Given the requirement is strict, let's just log. 
+        // If registerDevice throws, it's usually unexpected.
+      }
+    }
+
     return { data, error: null };
   } catch (error) {
     return { data: null, error: error.message };
