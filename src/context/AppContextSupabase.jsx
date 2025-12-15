@@ -23,9 +23,6 @@ const syncAuthRoleWithProfile = async (sessionUser, profileRole) => {
         role: profileRole
       }
     });
-    // Force refresh session to ensure new claims are used
-    await supabase.auth.refreshSession();
-    console.log('Synced auth role to:', profileRole);
   } catch (error) {
     console.warn('Failed to sync auth role with profile role:', error);
   }
