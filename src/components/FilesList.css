@@ -218,7 +218,8 @@
   position: relative;
   flex: 1;
   background: white;
-  overflow: hidden;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   align-items: center;
   justify-content: center;

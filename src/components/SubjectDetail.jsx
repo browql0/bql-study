@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContextSupabase';
-import { 
+import {
   ArrowLeft, FileText, Image as ImageIcon, Plus, BookOpen, Edit, CheckSquare, Download, FileCheck, File,
   GraduationCap, Calculator, FlaskConical, Dna, Globe, BookText, Atom, Brain, Music, Palette, Code,
   Languages, Microscope, Beaker, Lightbulb, PenTool, Compass, Map, Camera, Film, Headphones,
@@ -10,7 +10,7 @@ import {
   Paintbrush, Scissors, Hammer, Wrench, Key, Lock, Unlock, Bell, Clock, Calendar, Mail, Phone,
   MessageSquare, Video, Radio, Tv, Monitor, Laptop, Tablet, Smartphone, Printer, Folder, FolderOpen,
   Archive, Search, Filter, Settings, Cog, BarChart, PieChart, TrendingUp, DollarSign, Euro, Coins,
-  Wallet, CreditCard, Receipt, ShoppingCart
+  Wallet, CreditCard, Receipt, ShoppingCart, Layers
 } from 'lucide-react';
 import NotesList from './NotesList';
 import PhotoGallery from './PhotoGallery';
@@ -68,7 +68,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
 
   const exportNotes = () => {
     const sectionData = getSectionData();
-    const content = sectionData.notes.map(note => 
+    const content = sectionData.notes.map(note =>
       `${note.title}\n${'='.repeat(note.title.length)}\n\n${note.content}\n\n`
     ).join('\n---\n\n');
 
@@ -81,14 +81,14 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
   };
 
   const getTotalStats = () => {
-    const totalNotes = (currentSubject.cours?.notes?.length || 0) + 
-                      (currentSubject.exercices?.notes?.length || 0) + 
-                      (currentSubject.corrections?.notes?.length || 0) +
-                      (currentSubject.td?.notes?.length || 0);
-    const totalPhotos = (currentSubject.cours?.photos?.length || 0) + 
-                       (currentSubject.exercices?.photos?.length || 0) + 
-                       (currentSubject.corrections?.photos?.length || 0) +
-                       (currentSubject.td?.photos?.length || 0);
+    const totalNotes = (currentSubject.cours?.notes?.length || 0) +
+      (currentSubject.exercices?.notes?.length || 0) +
+      (currentSubject.corrections?.notes?.length || 0) +
+      (currentSubject.td?.notes?.length || 0);
+    const totalPhotos = (currentSubject.cours?.photos?.length || 0) +
+      (currentSubject.exercices?.photos?.length || 0) +
+      (currentSubject.corrections?.photos?.length || 0) +
+      (currentSubject.td?.photos?.length || 0);
     return { totalNotes, totalPhotos };
   };
 
@@ -154,7 +154,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         </button>
       </div>
 
-      {/* Tabs: Notes, Photos, Fichiers et Quiz */}
+      {/* Tabs: Notes, Photos, Fichiers, Quiz et Flashcards */}
       <div className="tabs">
         <button
           className={`tab ${activeTab === 'notes' ? 'active' : ''}`}
@@ -187,6 +187,13 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
           <Brain size={18} />
           <span>Quiz</span>
         </button>
+        <button
+          className={`tab ${activeTab === 'flashcards' ? 'active' : ''}`}
+          onClick={() => setActiveTab('flashcards')}
+        >
+          <Layers size={18} />
+          <span>Flashcards</span>
+        </button>
       </div>
 
       <div className="tab-actions">
@@ -211,47 +218,70 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
               </button>
             )}
             {activeTab === 'quiz' && (
-              <button className="btn btn-primary" onClick={() => setShowAddQuiz(true)}>
+              <button className="btn btn-primary" onClick={() => {
+                setQuizKey(prev => prev + 1); // Forcer un reset si besoin
+                setShowAddQuiz('quiz');
+              }}>
                 <Plus size={18} />
                 Nouveau Quiz
+              </button>
+            )}
+            {activeTab === 'flashcards' && (
+              <button className="btn btn-primary" onClick={() => {
+                setQuizKey(prev => prev + 1);
+                setShowAddQuiz('flashcard');
+              }}>
+                <Plus size={18} />
+                Nouvelle Flashcard
               </button>
             )}
           </>
         )}
       </div>
 
-      <ProtectedContent 
+      <ProtectedContent
         hasAccess={hasSubscription || isAdmin()}
         onUpgrade={onUpgrade}
         message="Abonnez-vous pour accéder aux notes, photos, fichiers et quiz"
       >
         <div className="tab-content">
           {activeTab === 'notes' && (
-            <NotesList 
-              subjectId={currentSubject.id} 
+            <NotesList
+              subjectId={currentSubject.id}
               section={activeSection}
-              notes={sectionData.notes || []} 
+              notes={sectionData.notes || []}
             />
           )}
           {activeTab === 'photos' && (
-            <PhotoGallery 
-              subjectId={currentSubject.id} 
+            <PhotoGallery
+              subjectId={currentSubject.id}
               section={activeSection}
-              photos={sectionData.photos || []} 
+              photos={sectionData.photos || []}
             />
           )}
           {activeTab === 'files' && (
-            <FilesList 
-              subjectId={currentSubject.id} 
+            <FilesList
+              subjectId={currentSubject.id}
               section={activeSection}
-              files={sectionData.files || []} 
+              files={sectionData.files || []}
             />
           )}
           {activeTab === 'quiz' && (
             <QuizList
-              key={quizKey}
+              key={`quiz-${quizKey}`}
               subjectId={currentSubject.id}
               section={activeSection}
+              filterType="quiz"
+              onPlayQuiz={(quiz) => setPlayingQuiz(quiz)}
+              onPlayFlashcard={(quiz) => setPlayingFlashcard(quiz)}
+            />
+          )}
+          {activeTab === 'flashcards' && (
+            <QuizList
+              key={`flashcard-${quizKey}`}
+              subjectId={currentSubject.id}
+              section={activeSection}
+              filterType="flashcard"
               onPlayQuiz={(quiz) => setPlayingQuiz(quiz)}
               onPlayFlashcard={(quiz) => setPlayingFlashcard(quiz)}
             />
@@ -288,15 +318,17 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
           subjectId={currentSubject.id}
           subjectName={currentSubject.name}
           section={activeSection}
+          initialType={typeof showAddQuiz === 'string' ? showAddQuiz : 'quiz'}
           onClose={() => setShowAddQuiz(false)}
           onSave={async (subjectId, section, quizData) => {
             await quizService.createQuiz(subjectId, section, quizData);
             setQuizKey(prev => prev + 1); // Recharger la liste
-            
+
             // Notifier les spectateurs du nouveau quiz
             try {
               const { notifySpectators } = await import('../services/pushNotificationService');
-              await notifySpectators(subjectId, 'quiz dans ' , subjectName, quizData.title || 'Nouveau quiz');
+              const typeLabel = quizData.type === 'quiz' ? 'quiz' : 'flashcard';
+              await notifySpectators(subjectId, `${typeLabel} dans `, currentSubject.name, quizData.title || `Nouveau ${typeLabel}`);
             } catch (notifError) {
               console.debug('Push notification failed:', notifError);
             }
