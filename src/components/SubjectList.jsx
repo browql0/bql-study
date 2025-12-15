@@ -11,7 +11,8 @@ import {
   Scissors, Hammer, Wrench, Key, Lock, Unlock, Bell, Clock, Calendar, Mail, Phone,
   MessageSquare, Video, Radio, Tv, Monitor, Laptop, Tablet, Smartphone, Printer,
   Folder, FolderOpen, Archive, Search, Settings, Cog, BarChart, PieChart, TrendingUp,
-  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw, Check
+  DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw, Check,
+  Layers
 } from 'lucide-react';
 import ProtectedContent from './ProtectedContent';
 import './SubjectList.css';
@@ -81,6 +82,11 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
         const aPhotosCount = (a.cours?.photos?.length || 0) + (a.exercices?.photos?.length || 0) + (a.corrections?.photos?.length || 0);
         const bPhotosCount = (b.cours?.photos?.length || 0) + (b.exercices?.photos?.length || 0) + (b.corrections?.photos?.length || 0);
         return bPhotosCount - aPhotosCount;
+      }
+      case 'files': {
+        const aFilesCount = (a.cours?.files?.length || 0) + (a.exercices?.files?.length || 0) + (a.corrections?.files?.length || 0);
+        const bFilesCount = (b.cours?.files?.length || 0) + (b.exercices?.files?.length || 0) + (b.corrections?.files?.length || 0);
+        return bFilesCount - aFilesCount;
       }
       case 'recent':
       default:
@@ -248,6 +254,7 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
             const filesCount = ['cours', 'exercices', 'corrections', 'td'].reduce((acc, sec) => acc + (subject[sec]?.files?.length || 0), 0);
             // Compter tous les quizzes et flashcards
             const quizzesCount = subject.quizzes?.length || 0;
+            const flashcardsCount = subject.flashcards?.length || 0;
 
             return (
               <article
@@ -282,7 +289,7 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
 
                   <div className="card-center">
                     <h3 className="card-title">{subject.name}</h3>
-                    <p className="card-sub">{subject.description || `${notesCount} notes • ${photosCount} photos`}</p>
+                    <p className="card-sub">{subject.description || `${notesCount} notes • ${photosCount} photos • ${filesCount} fichiers`}</p>
                     <div className="card-chips">
                       <span className="chip">
                         <FileText size={16} />
@@ -299,6 +306,10 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
                       <span className="chip">
                         <Brain size={16} />
                         <span>{quizzesCount}</span>
+                      </span>
+                      <span className="chip">
+                        <Layers size={16} />
+                        <span>{flashcardsCount}</span>
                       </span>
                     </div>
                   </div>

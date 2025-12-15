@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import { Trash2, FileText, X, AlertTriangle, FileSpreadsheet, File } from 'lucide-react';
 import { getDisplayUrl } from '../utils/fileUrlHelper';
+import PDFViewer from './PDFViewer';
 import './FilesList.css';
 
 const FilesList = ({ subjectId, section, files }) => {
@@ -63,12 +64,12 @@ const FilesList = ({ subjectId, section, files }) => {
     const path = file.storage_path || file.url;
     const fileUrl = await getDisplayUrl(null, path);
     const extension = file.name.split('.').pop().toLowerCase();
-    
+
     // Pour les PDFs, affichage direct avec paramètres pour masquer les contrôles
     if (extension === 'pdf') {
       return `${fileUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`;
     }
-    
+
     // Pour les autres fichiers, utiliser Office Web Viewer
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
   };
@@ -84,7 +85,7 @@ const FilesList = ({ subjectId, section, files }) => {
   const getFileIcon = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
     const iconProps = { size: 32, strokeWidth: 2 };
-    
+
     if (extension === 'pdf') {
       return <FileText {...iconProps} />;
     } else if (['xls', 'xlsx', 'csv'].includes(extension)) {
@@ -99,7 +100,7 @@ const FilesList = ({ subjectId, section, files }) => {
 
   const getFileColor = (fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
-    
+
     if (extension === 'pdf') {
       return '#ef4444'; // Rouge
     } else if (['xls', 'xlsx', 'csv', 'pptx'].includes(extension)) {
@@ -124,8 +125,8 @@ const FilesList = ({ subjectId, section, files }) => {
     <>
       <div className="files-list">
         {files.map((file, index) => (
-          <div 
-            key={file.id} 
+          <div
+            key={file.id}
             className="file-card card fade-in"
             style={{ animationDelay: `${index * 0.05}s` }}
             onClick={() => openFile(file)}
@@ -179,12 +180,16 @@ const FilesList = ({ subjectId, section, files }) => {
             </div>
             <div className="file-viewer-frame">
               {viewerUrl ? (
-                <iframe
-                  src={viewerUrl}
-                  title={viewingFile.title}
-                  frameBorder="0"
-                  allowFullScreen
-                />
+                viewingFile.name.toLowerCase().endsWith('.pdf') ? (
+                  <PDFViewer url={viewerUrl.split('#')[0]} fileName={viewingFile.name} />
+                ) : (
+                  <iframe
+                    src={viewerUrl}
+                    title={viewingFile.title}
+                    frameBorder="0"
+                    allowFullScreen
+                  />
+                )
               ) : (
                 <div style={{ padding: '40px', textAlign: 'center' }}>
                   <p>Chargement...</p>
