@@ -174,8 +174,13 @@ export default {
       }
 
       // Récupérer le vrai rôle depuis la DB (sécurité contre self-assignment)
-      // Njibou le rôle lhaqiqi mn DB bach ntjanbou self-assignment
-      const realUserRole = await getUserRoleFromProfile(user.id, supabaseUrl, supabaseAnonKey);
+      // On vérifie aussi user_metadata comme fallback si la DB échoue
+      let realUserRole = await getUserRoleFromProfile(user.id, supabaseUrl, supabaseAnonKey);
+
+      if (!realUserRole && (user.user_metadata?.role === 'admin' || user.app_metadata?.role === 'admin')) {
+        console.log('Role not found in DB, using metadata role:', user.user_metadata?.role);
+        realUserRole = user.user_metadata?.role || user.app_metadata?.role;
+      }
 
       const url = new URL(request.url);
       const pathname = url.pathname;

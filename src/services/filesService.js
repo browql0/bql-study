@@ -17,7 +17,7 @@ export async function getAllFiles() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {  
+  if (error) {
     console.error('Error fetching files:', error);
     throw error;
   }
@@ -70,21 +70,25 @@ export async function getFilesBySection(subjectId, section) {
 
 // Upload un fichier
 export async function uploadFile(file, fileData) {
+  let uploaded = false;
+  let publicUrl;
+  let storagePath;
+
   try {
     // Essayer d'abord avec getSession qui peut rafraîchir le token
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     let user = session?.user;
-    
+
     if (!user) {
       // Si getSession échoue, essayer getUser
       const { data: { user: getUserResult }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError || !getUserResult) {
         console.error('Authentication error:', userError || sessionError);
         throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
       }
-      
+
       user = getUserResult;
     }
 
@@ -99,10 +103,7 @@ export async function uploadFile(file, fileData) {
     const fileExt = file.name.split('.').pop();
     const fileNameWithoutExt = file.name.replace(`.${fileExt}`, '');
     const fileName = `${timestamp}_${fileNameWithoutExt}.${fileExt}`;
-    const storagePath = `files/${user.id}/${fileData.subjectId}/${fileData.section}/${fileName}`;
-
-    let publicUrl;
-    let uploaded = false;
+    storagePath = `files/${user.id}/${fileData.subjectId}/${fileData.section}/${fileName}`;
 
     // Upload vers Cloudflare R2 si configuré, sinon utiliser Supabase Storage
     if (isCloudflareConfigured()) {
@@ -123,7 +124,7 @@ export async function uploadFile(file, fileData) {
       const { data: urlData } = supabase.storage
         .from('files')
         .getPublicUrl(supabasePath);
-      
+
       publicUrl = urlData.publicUrl;
       uploaded = true;
     }
@@ -131,7 +132,7 @@ export async function uploadFile(file, fileData) {
     // Si pas d'URL publique, on stocke le storage_path
     // L'URL sera générée via getDisplayUrl() quand nécessaire
     const fileUrl = publicUrl || storagePath; // Stocker le path si pas d'URL publique
-    
+
     // Créer l'entrée dans la table files (Supabase)
     const insertData = {
       user_id: user.id,
@@ -143,7 +144,7 @@ export async function uploadFile(file, fileData) {
       url: fileUrl, // URL publique ou storage_path
       storage_path: storagePath,
     };
-    
+
     // Ajouter title et description si fournis
     const title = fileData.title || file.name.replace(/\.[^/.]+$/, '');
     if (title) {
@@ -152,7 +153,7 @@ export async function uploadFile(file, fileData) {
     if (fileData.description) {
       insertData.description = fileData.description;
     }
-    
+
     const { data, error } = await supabase
       .from('files')
       .insert([insertData])
@@ -172,13 +173,13 @@ export async function uploadFile(file, fileData) {
           url: fileUrl || storagePath,
           storage_path: storagePath,
         };
-        
+
         const { data: fallbackResult, error: fallbackError } = await supabase
           .from('files')
           .insert([fallbackData])
           .select()
           .single();
-        
+
         if (fallbackError) {
           // Nettoyer le fichier uploadé
           if (isCloudflareConfigured()) {
@@ -189,10 +190,10 @@ export async function uploadFile(file, fileData) {
           console.error('Error creating file record:', fallbackError);
           throw fallbackError;
         }
-        
+
         return fallbackResult;
       }
-      
+
       // Si l'insertion échoue, supprimer le fichier uploadé
       if (isCloudflareConfigured()) {
         await deleteFromCloudflare(storagePath);
@@ -212,7 +213,7 @@ export async function uploadFile(file, fileData) {
         .single();
 
       const subjectName = subjectData?.name || 'une matière';
-      
+
       await notificationsService.notifySpectatorsNewContent(
         'new_file',
         'Nouveau fichier ajouté',
@@ -241,12 +242,12 @@ export async function uploadFile(file, fileData) {
         console.error('Error cleaning up uploaded file:', cleanupError);
       }
     }
-    
+
     if (error.message?.includes('expiré') || error.message?.includes('session')) {
       // Déclencher un événement pour forcer la reconnexion
       window.dispatchEvent(new CustomEvent('auth-expired'));
     }
-    
+
     throw error;
   }
 }
@@ -302,7 +303,7 @@ export async function deleteFile(id) {
 export async function downloadFile(storagePath, fileName) {
   try {
     let fileBlob;
-    
+
     if (isCloudflareConfigured()) {
       // Télécharger depuis Cloudflare R2 (générer l'URL à la demande)
       const fileUrl = await getDisplayUrl(null, storagePath);
