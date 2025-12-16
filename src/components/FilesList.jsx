@@ -254,6 +254,14 @@ const FilesList = ({ subjectId, section, files }) => {
       {viewingFile && (
         <div className="file-viewer-overlay" onClick={closeFileViewer}>
           <div className="file-viewer-content" onClick={(e) => e.stopPropagation()}>
+            <div className="file-viewer-header">
+              <div>
+                <h3>{viewingFile.title || viewingFile.name}</h3>
+              </div>
+              <button className="btn-close-viewer" onClick={closeFileViewer} title="Fermer">
+                <X size={20} />
+              </button>
+            </div>
             <div className="file-viewer-frame" style={{ display: 'block', overflowY: 'auto', background: '#f5f5f5', height: '100%', width: '100%' }}>
               {viewerUrl ? (
                 viewingFile.name.toLowerCase().endsWith('.pdf') ? (

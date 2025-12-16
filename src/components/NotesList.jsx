@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContextSupabase';
-import { Edit2, Trash2, Calendar, Tag, Eye, EyeOff, AlertTriangle, X } from 'lucide-react';
+import { Edit2, Trash2, Calendar, Tag, Eye, EyeOff, AlertTriangle, X, Maximize2 } from 'lucide-react';
 import EditNoteModal from './EditNoteModal';
 import './NotesList.css';
 
@@ -9,6 +9,18 @@ const NotesList = ({ subjectId, section, notes }) => {
   const [editingNote, setEditingNote] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [viewingNote, setViewingNote] = useState(null);
+
+  useEffect(() => {
+    if (viewingNote || deleteConfirm || editingNote) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [viewingNote, deleteConfirm, editingNote]);
 
   const handleDelete = (noteId) => {
     setDeleteConfirm(noteId);
@@ -43,7 +55,7 @@ const NotesList = ({ subjectId, section, notes }) => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-      
+
       return escaped
         // Keywords JavaScript/TypeScript
         .replace(/\b(if|else if|else|const|let|var|function|return|for|while|do|switch|case|break|continue|class|extends|import|export|from|default|async|await|try|catch|finally|throw|new|this|super|static|public|private|protected)\b/g, '<span class="keyword">$1</span>')
@@ -110,8 +122,8 @@ const NotesList = ({ subjectId, section, notes }) => {
         {notes.map((note, index) => {
           const isExpanded = expandedNotes.has(note.id);
           return (
-            <div 
-              key={note.id} 
+            <div
+              key={note.id}
               className="note-card card fade-in"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
@@ -124,6 +136,13 @@ const NotesList = ({ subjectId, section, notes }) => {
                     title={isExpanded ? 'Réduire' : 'Développer'}
                   >
                     {isExpanded ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                  <button
+                    className="btn-icon"
+                    onClick={() => setViewingNote(note)}
+                    title="Agrandir"
+                  >
+                    <Maximize2 size={16} />
                   </button>
                   {isAdmin() && (
                     <>
@@ -146,7 +165,7 @@ const NotesList = ({ subjectId, section, notes }) => {
                 </div>
               </div>
 
-              <div 
+              <div
                 className={`note-content ${isExpanded ? 'expanded' : ''}`}
                 dangerouslySetInnerHTML={{ __html: formatContent(note.content) }}
               />
@@ -179,6 +198,45 @@ const NotesList = ({ subjectId, section, notes }) => {
           note={editingNote}
           onClose={() => setEditingNote(null)}
         />
+      )}
+
+      {viewingNote && (
+        <div className="note-viewer-overlay" onClick={() => setViewingNote(null)}>
+          <div className="note-viewer-content" onClick={(e) => e.stopPropagation()}>
+            <div className="note-viewer-header">
+              <h3>{viewingNote.title}</h3>
+              <button
+                className="btn-close-viewer"
+                onClick={() => setViewingNote(null)}
+                title="Fermer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="note-viewer-body">
+              <div
+                className="note-content expanded"
+                dangerouslySetInnerHTML={{ __html: formatContent(viewingNote.content) }}
+              />
+              <div className="note-footer" style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                <div className="note-date">
+                  <Calendar size={14} />
+                  <span>{new Date(viewingNote.updatedAt).toLocaleDateString('fr-FR')}</span>
+                </div>
+                {viewingNote.tags && viewingNote.tags.length > 0 && (
+                  <div className="note-tags">
+                    <Tag size={14} />
+                    {viewingNote.tags.map((tag, idx) => (
+                      <span key={idx} className="tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteConfirm && (

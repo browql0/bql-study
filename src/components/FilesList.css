@@ -183,11 +183,15 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+
+
 .file-viewer-header h3 {
   font-size: 20px;
+  align-items: center;
   margin: 0 0 6px 0;
   color: white;
   font-weight: 600;
+  position: relative;
 }
 
 .file-viewer-name {
@@ -202,16 +206,31 @@
 }
 
 .btn-close-viewer {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .btn-close-viewer:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.5);
-  transform: scale(1.05);
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
 }
 
 .file-viewer-frame {
@@ -238,43 +257,53 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
-  
+
   .file-viewer-content {
     height: 90vh;
     border-radius: 12px;
   }
-  
+
   .file-viewer-header {
-    padding: 16px 20px;
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 12px 14px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
   .file-viewer-header h3 {
-    font-size: 18px;
+    font-size: 15px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60vw;
   }
 
   .file-viewer-name {
-    font-size: 12px;
+    display: none;
   }
 
-  .file-viewer-header > div:last-child {
-    width: 100%;
+  /* Reset overrides */
+  .file-viewer-header>div:last-child {
+    width: auto;
   }
 
   .file-viewer-header .btn {
-    flex: 1;
+    flex: 0 0 auto;
   }
 
   .btn-close-viewer {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.15);
   }
-  
+
   .btn-close-viewer:hover {
     transform: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
   }
 }
-
