@@ -22,6 +22,7 @@ import AddNoteModal from './AddNoteModal';
 import AddPhotoModal from './AddPhotoModal';
 import AddFileModal from './AddFileModal';
 import AddQuizModal from './AddQuizModal';
+import AddFlashcardModal from './AddFlashcardModal';
 import ProtectedContent from './ProtectedContent';
 import { quizService } from '../services/quizService';
 import './SubjectDetail.css';
@@ -311,10 +312,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
       {showAddQuiz && (
         <AddQuizModal
           subjectId={currentSubject.id}
-          subjectName={currentSubject.name}
           section={activeSection}
-          initialType="quiz"
-          lockedType={true}
           onClose={() => setShowAddQuiz(false)}
           onSave={async (subjectId, section, quizData) => {
             await quizService.createQuiz(subjectId, section, quizData);
@@ -332,21 +330,18 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
       )}
 
       {showAddFlashcard && (
-        <AddQuizModal
+        <AddFlashcardModal
           subjectId={currentSubject.id}
-          subjectName={currentSubject.name}
           section={activeSection}
-          initialType="flashcard"
-          lockedType={true}
           onClose={() => setShowAddFlashcard(false)}
-          onSave={async (subjectId, section, quizData) => {
-            await quizService.createQuiz(subjectId, section, quizData);
+          onSave={async (subjectId, section, flashcardData) => {
+            await quizService.createQuiz(subjectId, section, flashcardData);
             setQuizKey(prev => prev + 1); // Recharger la liste
 
             // Notifier les spectateurs de la nouvelle flashcard
             try {
               const { notifySpectators } = await import('../services/pushNotificationService');
-              await notifySpectators(subjectId, 'flashcard', quizData.title || 'Nouvelle flashcard');
+              await notifySpectators(subjectId, 'flashcard', flashcardData.title || 'Nouvelle flashcard');
             } catch (notifError) {
               console.debug('Push notification failed:', notifError);
             }

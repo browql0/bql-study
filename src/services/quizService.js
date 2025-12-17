@@ -63,7 +63,7 @@ export const quizService = {
   async createQuiz(subjectId, section, quizData) {
     try {
       const { data: user } = await supabase.auth.getUser();
-      
+
       // Créer le quiz
       const { data: quiz, error: quizError } = await supabase
         .from('quizzes')
@@ -184,20 +184,9 @@ export const quizService = {
   },
 
   async getQuizStats(quizId) {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_quiz_stats', { quiz_uuid: quizId });
-
-      if (error) {
-        // Si la fonction RPC n'existe pas ou a une erreur, calculer manuellement
-        console.warn('RPC function error, calculating stats manually:', error);
-        return this.calculateQuizStatsManually(quizId);
-      }
-      return data[0] || { total_attempts: 0, average_score: 0, best_score: 0, completion_rate: 0 };
-    } catch (error) {
-      console.error('Error fetching quiz stats:', error);
-      return this.calculateQuizStatsManually(quizId);
-    }
+    // La fonction RPC get_quiz_stats n'existe pas encore côté DB,
+    // on utilise le calcul manuel directement pour éviter les erreurs 404.
+    return this.calculateQuizStatsManually(quizId);
   },
 
   async calculateQuizStatsManually(quizId) {

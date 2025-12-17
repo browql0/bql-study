@@ -152,8 +152,8 @@
 
 .notes-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
@@ -161,21 +161,70 @@
 @media (max-width: 768px) {
   .notes-list {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 18px;
   }
 }
 
 .note-card {
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.06),
+    0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  padding: 20px;
+}
+
+.note-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #4f8ff0 0%, #3b82f6 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.note-card:hover::before {
+  transform: scaleX(1);
 }
 
 .note-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
+  box-shadow:
+    0 12px 24px -4px rgba(79, 143, 240, 0.15),
+    0 8px 16px -4px rgba(79, 143, 240, 0.1);
+  border-color: #4f8ff0;
+}
+
+[data-theme="dark"] .note-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .note-card:hover {
+  box-shadow:
+    0 12px 24px -4px rgba(79, 143, 240, 0.25),
+    0 8px 16px -4px rgba(79, 143, 240, 0.15);
+  border-color: #4f8ff0;
 }
 
 @media (max-width: 768px) {
+  .note-card {
+    padding: 18px;
+  }
+
   .note-card:hover {
     transform: none;
   }
@@ -193,18 +242,34 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+  gap: 12px;
 }
 
 .note-header h3 {
   font-size: 18px;
   color: var(--text-primary);
   flex: 1;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+  background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .note-header h3 {
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .note-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Modern Note Action Buttons */
@@ -467,33 +532,33 @@
 .note-content code {
   display: inline;
   padding: 4px 10px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(124, 58, 237, 0.12));
-  color: #8b5cf6;
-  border: 1.5px solid rgba(139, 92, 246, 0.25);
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.12), rgba(59, 130, 246, 0.12));
+  color: #4f8ff0;
+  border: 1.5px solid rgba(79, 143, 240, 0.25);
   border-radius: 8px;
   font-family: 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
   font-size: 0.88em;
   font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 2px 8px rgba(79, 143, 240, 0.1);
 }
 
 [data-theme="dark"] .note-content code {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.15));
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.35);
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.2), rgba(59, 130, 246, 0.15));
+  color: #93c5fd;
+  border-color: rgba(79, 143, 240, 0.35);
 }
 
 .note-content h1 {
   font-size: 28px;
   font-weight: 800;
   margin: 24px 0 16px 0;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #4f8ff0, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   border-bottom: 3px solid transparent;
-  border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
+  border-image: linear-gradient(90deg, #4f8ff0, #3b82f6) 1;
   padding-bottom: 12px;
   letter-spacing: -0.5px;
   position: relative;
@@ -504,7 +569,7 @@
   position: absolute;
   left: -24px;
   opacity: 0.3;
-  color: #667eea;
+  color: #4f8ff0;
 }
 
 .note-content h2 {
@@ -513,7 +578,7 @@
   margin: 20px 0 12px 0;
   color: #1e293b;
   padding-left: 12px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #4f8ff0;
   letter-spacing: -0.3px;
 }
 
@@ -528,18 +593,18 @@
   color: #334155;
   display: inline-block;
   padding: 4px 12px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.08), rgba(59, 130, 246, 0.08));
   border-radius: 8px;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #4f8ff0;
 }
 
 [data-theme="dark"] .note-content h3 {
   color: #cbd5e1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.1));
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.15), rgba(59, 130, 246, 0.1));
 }
 
 .note-content a {
-  color: #667eea;
+  color: #4f8ff0;
   text-decoration: none;
   font-weight: 600;
   border-bottom: 2px solid transparent;
@@ -547,7 +612,7 @@
 }
 
 .note-content a:hover {
-  border-bottom-color: #667eea;
+  border-bottom-color: #4f8ff0;
 }
 
 .note-content img {
@@ -559,14 +624,14 @@
 }
 
 .note-content blockquote {
-  border-left: 5px solid #667eea;
+  border-left: 5px solid #4f8ff0;
   padding: 16px 24px;
   margin: 16px 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.05), rgba(59, 130, 246, 0.05));
   border-radius: 0 12px 12px 0;
   color: #475569;
   font-style: italic;
-  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.08);
+  box-shadow: 0 2px 12px rgba(79, 143, 240, 0.08);
   position: relative;
 }
 
@@ -576,13 +641,13 @@
   top: 8px;
   left: -8px;
   font-size: 48px;
-  color: #667eea;
+  color: #4f8ff0;
   opacity: 0.2;
   font-family: Georgia, serif;
 }
 
 [data-theme="dark"] .note-content blockquote {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.08));
+  background: linear-gradient(135deg, rgba(79, 143, 240, 0.1), rgba(59, 130, 246, 0.08));
   color: #cbd5e1;
 }
 

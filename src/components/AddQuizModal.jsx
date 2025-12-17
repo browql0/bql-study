@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, AlertCircle, FileText, Layers, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, AlertCircle, Brain, Sparkles } from 'lucide-react';
 import './AddQuizModal.css';
 
-const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz', lockedType = false }) => {
-  const [quizType, setQuizType] = useState(initialType);
+const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([
@@ -76,12 +75,10 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
         return;
       }
 
-      if (quizType === 'quiz') {
-        const filledOptions = q.options.filter(opt => opt.trim() !== '');
-        if (filledOptions.length < 2) {
-          setError(`Question ${i + 1}: Au moins 2 options sont requises pour un quiz`);
-          return;
-        }
+      const filledOptions = q.options.filter(opt => opt.trim() !== '');
+      if (filledOptions.length < 2) {
+        setError(`Question ${i + 1}: Au moins 2 options sont requises pour un quiz`);
+        return;
       }
     }
 
@@ -91,11 +88,11 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
       const quizData = {
         title: title.trim(),
         description: description.trim(),
-        type: quizType,
+        type: 'quiz',
         questions: questions.map(q => ({
           question: q.question.trim(),
           answer: q.answer.trim(),
-          options: quizType === 'quiz' ? q.options.filter(opt => opt.trim() !== '') : null,
+          options: q.options.filter(opt => opt.trim() !== ''),
           explanation: q.explanation?.trim() || null,
           points: parseInt(q.points) || 1
         }))
@@ -118,8 +115,8 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
         <div className="quiz-modal-header">
           <div className="quiz-modal-header-content">
             <div className="quiz-modal-title-section">
-              <Sparkles className="quiz-modal-icon" size={32} />
-              <h2>Créer un {quizType === 'quiz' ? 'Quiz' : 'Flashcard'}</h2>
+              <Brain className="quiz-modal-icon" size={32} />
+              <h2>Créer un Quiz (QCM)</h2>
             </div>
             <button className="quiz-modal-close" onClick={onClose} aria-label="Fermer">
               <X size={24} />
@@ -136,44 +133,10 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
             </div>
           )}
 
-          {/* Type Selection - Only show if not locked */}
-          {!lockedType && (
-            <section className="quiz-section">
-              <div className="quiz-section-label">
-                <span className="quiz-section-number">01</span>
-                <h3>Type de contenu</h3>
-              </div>
-              <div className="quiz-type-buttons">
-                <button
-                  type="button"
-                  className={`quiz-type-button ${quizType === 'quiz' ? 'active' : ''}`}
-                  onClick={() => setQuizType('quiz')}
-                >
-                  <FileText size={24} />
-                  <div>
-                    <div className="quiz-type-button-title">Quiz (QCM)</div>
-                    <div className="quiz-type-button-desc">Questions à choix multiples</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className={`quiz-type-button ${quizType === 'flashcard' ? 'active' : ''}`}
-                  onClick={() => setQuizType('flashcard')}
-                >
-                  <Layers size={24} />
-                  <div>
-                    <div className="quiz-type-button-title">Flashcards</div>
-                    <div className="quiz-type-button-desc">Cartes de mémorisation</div>
-                  </div>
-                </button>
-              </div>
-            </section>
-          )}
-
           {/* Basic Info */}
           <section className="quiz-section">
             <div className="quiz-section-label">
-              <span className="quiz-section-number">{lockedType ? '01' : '02'}</span>
+              <span className="quiz-section-number">01</span>
               <h3>Informations de base</h3>
             </div>
             <div className="quiz-form-grid">
@@ -203,7 +166,7 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
           <section className="quiz-section">
             <div className="quiz-section-header">
               <div className="quiz-section-label">
-                <span className="quiz-section-number">{lockedType ? '02' : '03'}</span>
+                <span className="quiz-section-number">02</span>
                 <h3>Questions <span className="quiz-count-badge">{questions.length}</span></h3>
               </div>
               <button
@@ -241,40 +204,36 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
                       <textarea
                         value={question.question}
                         onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                        placeholder={quizType === 'quiz' ? 'Ex: Quelle est la capitale de la France ?' : 'Recto de la carte'}
+                        placeholder="Ex: Quelle est la capitale de la France ?"
                         rows="3"
                         required
                       />
                     </div>
 
-                    {quizType === 'quiz' && (
-                      <div className="question-form-field">
-                        <label>Options de réponse *</label>
-                        <div className="options-grid">
-                          {question.options.map((option, oIndex) => (
-                            <div key={oIndex} className="option-field">
-                              <span className="option-label">{String.fromCharCode(65 + oIndex)}</span>
-                              <input
-                                type="text"
-                                value={option}
-                                onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
+                    <div className="question-form-field">
+                      <label>Options de réponse *</label>
+                      <div className="options-grid">
+                        {question.options.map((option, oIndex) => (
+                          <div key={oIndex} className="option-field">
+                            <span className="option-label">{String.fromCharCode(65 + oIndex)}</span>
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                              placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
 
                     <div className="question-form-field">
-                      <label>
-                        {quizType === 'quiz' ? 'Bonne réponse *' : 'Réponse (verso) *'}
-                      </label>
+                      <label>Bonne réponse *</label>
                       <textarea
                         value={question.answer}
                         onChange={(e) => updateQuestion(qIndex, 'answer', e.target.value)}
-                        placeholder={quizType === 'quiz' ? 'Ex: Paris (doit correspondre exactement à une option)' : 'Verso de la carte'}
-                        rows="3"
+                        placeholder="Ex: Paris (doit correspondre exactement à une option)"
+                        rows="2"
                         required
                       />
                     </div>
@@ -289,18 +248,16 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
                       />
                     </div>
 
-                    {quizType === 'quiz' && (
-                      <div className="question-form-field question-points-field">
-                        <label>Points</label>
-                        <input
-                          type="number"
-                          value={question.points}
-                          onChange={(e) => updateQuestion(qIndex, 'points', e.target.value)}
-                          min="1"
-                          className="points-input"
-                        />
-                      </div>
-                    )}
+                    <div className="question-form-field question-points-field">
+                      <label>Points</label>
+                      <input
+                        type="number"
+                        value={question.points}
+                        onChange={(e) => updateQuestion(qIndex, 'points', e.target.value)}
+                        min="1"
+                        className="points-input"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -321,7 +278,7 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave, initialType = 'quiz
               className="quiz-modal-btn quiz-modal-btn-primary"
               disabled={saving}
             >
-              {saving ? 'Création en cours...' : 'Créer le quiz'}
+              {saving ? 'Création en cours...' : `Créer le quiz (${questions.length} question${questions.length > 1 ? 's' : ''})`}
             </button>
           </div>
         </form>

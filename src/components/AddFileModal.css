@@ -1,27 +1,239 @@
-/* --- MODAL FIX: Toujours au premier plan --- */
-.modal-overlay, .mobile-modal-overlay {
-  position: fixed;
+/* === FILE UPLOAD MODAL === */
+.mobile-file-upload {
+  margin-top: 8px;
+}
+
+.mobile-file-upload-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 32px;
+  border: 2.5px dashed #cbd5e1;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  font-size: 15px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-file-upload-btn::before {
+  content: '';
+  position: absolute;
   top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(30, 32, 38, 0.35);
-  z-index: 9999;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(79, 143, 240, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.mobile-file-upload-btn:hover::before {
+  left: 100%;
+}
+
+.mobile-file-upload-btn:hover {
+  border-color: #4f8ff0;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #4f8ff0;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79, 143, 240, 0.15);
+}
+
+.mobile-file-upload-btn svg:first-child {
+  color: #4f8ff0;
+  transition: all 0.3s;
+}
+
+.mobile-file-upload-btn:hover svg:first-child {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.mobile-file-upload-btn svg:last-child {
+  color: #94a3b8;
+  transition: all 0.3s;
+}
+
+.mobile-file-upload-btn:hover svg:last-child {
+  color: #4f8ff0;
+  transform: translateY(-3px);
+}
+
+/* File info display */
+.mobile-file-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.mobile-file-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 15px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-file-size {
+  font-size: 13px;
+  color: #64748b;
+  background: rgba(79, 143, 240, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.mobile-change-file-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: rgba(79, 143, 240, 0.1);
+  border: 1.5px solid rgba(79, 143, 240, 0.3);
+  border-radius: 10px;
+  color: #4f8ff0;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
+  gap: 8px;
+  width: 100%;
   justify-content: center;
 }
 
-.modal, .mobile-modal, .confirm-modal {
-  position: relative;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.18);
-  padding: 32px 24px 24px 24px;
-  min-width: 320px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  z-index: 10000;
-  margin-top: 48px;
+.mobile-change-file-btn:hover {
+  background: rgba(79, 143, 240, 0.15);
+  border-color: #4f8ff0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 143, 240, 0.2);
+}
+
+.mobile-file-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Input and Textarea Improvements */
+.mobile-input,
+.mobile-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.mobile-input:focus,
+.mobile-textarea:focus {
+  outline: none;
+  border-color: #4f8ff0;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(79, 143, 240, 0.1);
+}
+
+.mobile-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .mobile-input,
+[data-theme="dark"] .mobile-textarea {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .mobile-input:focus,
+[data-theme="dark"] .mobile-textarea:focus {
+  background: #1e293b;
+  border-color: #4f8ff0;
+}
+
+/* Form Group Improvements */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+[data-theme="dark"] .form-group label {
+  color: #f1f5f9;
+}
+
+/* Dark Mode File Upload */
+[data-theme="dark"] .mobile-file-upload-btn {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .mobile-file-upload-btn:hover {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+  border-color: #4f8ff0;
+}
+
+[data-theme="dark"] .mobile-file-name {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .mobile-file-size {
+  color: #cbd5e1;
+  background: rgba(79, 143, 240, 0.2);
+}
+
+[data-theme="dark"] .mobile-change-file-btn {
+  background: rgba(79, 143, 240, 0.15);
+  border-color: rgba(79, 143, 240, 0.4);
+}
+
+[data-theme="dark"] .mobile-file-hint {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mobile-file-upload-btn {
+    padding: 32px 24px;
+    gap: 12px;
+  }
+
+  .mobile-input,
+  .mobile-textarea {
+    font-size: 16px;
+    /* Prevents zoom on iOS */
+  }
 }

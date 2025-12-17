@@ -9,7 +9,7 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [photoUrls, setPhotoUrls] = useState({});
-  
+
   // Zoom state
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -106,9 +106,9 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
       setTouchStartPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
       if (scale > 1) {
         setIsDragging(true);
-        setStartPos({ 
-          x: e.touches[0].clientX - position.x, 
-          y: e.touches[0].clientY - position.y 
+        setStartPos({
+          x: e.touches[0].clientX - position.x,
+          y: e.touches[0].clientY - position.y
         });
       }
     }
@@ -136,13 +136,13 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
 
   const handleTouchEnd = (e) => {
     setIsDragging(false);
-    
+
     // Swipe detection (only if not zoomed)
     if (scale === 1 && e.changedTouches.length === 1) {
       const touchEndPos = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
       const diffX = touchEndPos.x - touchStartPos.x;
       const diffY = touchEndPos.y - touchStartPos.y;
-      
+
       // Horizontal swipe detection (threshold 50px)
       if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
         if (diffX > 0) {
@@ -161,7 +161,7 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     } else {
       document.body.classList.remove('modal-open');
     }
-    
+
     return () => {
       document.body.classList.remove('modal-open');
     };
@@ -200,7 +200,7 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
       }
       setPhotoUrls(urls);
     };
-    
+
     if (photos.length > 0) {
       loadPhotoUrls();
     }
@@ -228,21 +228,44 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     );
   }
 
+  // Gestion du clavier pour la navigation
+  useEffect(() => {
+    if (selectedPhotoIndex === null) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigatePhoto(-1);
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigatePhoto(1);
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closePhotoViewer();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhotoIndex, photos.length]);
+
   const selectedPhoto = selectedPhotoIndex !== null ? photos[selectedPhotoIndex] : null;
 
   return (
     <>
       <div className="photo-gallery">
         {photos.map((photo, index) => (
-          <div 
-            key={photo.id} 
+          <div
+            key={photo.id}
             className="photo-card card fade-in"
             style={{ animationDelay: `${index * 0.05}s` }}
           >
             <div className="photo-image" onClick={() => openPhotoViewer(index)}>
-              <img 
-                src={getPhotoUrl(photo)} 
-                alt={photo.title} 
+              <img
+                src={getPhotoUrl(photo)}
+                alt={photo.title}
                 loading="lazy"
               />
               <div className="photo-overlay">
@@ -278,19 +301,19 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
           <button className="viewer-close" onClick={closePhotoViewer}>
             <X size={32} />
           </button>
-          
+
           {selectedPhotoIndex > 0 && (
-            <button 
-              className="viewer-nav viewer-prev" 
+            <button
+              className="viewer-nav viewer-prev"
               onClick={(e) => { e.stopPropagation(); navigatePhoto(-1); }}
             >
               <ChevronLeft size={32} />
             </button>
           )}
-          
+
           {selectedPhotoIndex < photos.length - 1 && (
-            <button 
-              className="viewer-nav viewer-next" 
+            <button
+              className="viewer-nav viewer-next"
               onClick={(e) => { e.stopPropagation(); navigatePhoto(1); }}
             >
               <ChevronRight size={32} />
@@ -298,10 +321,10 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
           )}
 
           <div className="photo-viewer-content" onClick={(e) => e.stopPropagation()}>
-            <div 
+            <div
               className="image-container"
-              style={{ 
-                overflow: 'hidden', 
+              style={{
+                overflow: 'hidden',
                 cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
                 display: 'flex',
                 justifyContent: 'center',
@@ -318,10 +341,10 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
-              <img 
+              <img
                 ref={imageRef}
-                src={getPhotoUrl(selectedPhoto)} 
-                alt={selectedPhoto.title} 
+                src={getPhotoUrl(selectedPhoto)}
+                alt={selectedPhoto.title}
                 className="viewer-image"
                 style={{
                   transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
@@ -333,7 +356,7 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
                 draggable={false}
               />
             </div>
-            
+
             <div className="zoom-controls">
               <button onClick={handleZoomOut} disabled={scale <= 1} title="Zoom arrière">
                 <ZoomOut size={20} />

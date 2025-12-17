@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { quizService } from '../services/quizService';
-import { X, ChevronLeft, ChevronRight, RotateCw, Shuffle } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RotateCw, Shuffle, Check, Flag } from 'lucide-react';
 import './FlashcardViewer.css';
 
 const FlashcardViewer = ({ quiz, onClose }) => {
@@ -12,6 +12,11 @@ const FlashcardViewer = ({ quiz, onClose }) => {
 
   useEffect(() => {
     loadFlashcards();
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [quiz.id]);
 
   const loadFlashcards = async () => {
@@ -31,15 +36,15 @@ const FlashcardViewer = ({ quiz, onClose }) => {
 
   const handleNext = () => {
     if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
+      setTimeout(() => setCurrentIndex(currentIndex + 1), 150); // Petit délai pour laisser l'anim de flip reset si besoin
     }
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
       setIsFlipped(false);
+      setTimeout(() => setCurrentIndex(currentIndex - 1), 150);
     }
   };
 
@@ -56,174 +61,158 @@ const FlashcardViewer = ({ quiz, onClose }) => {
       newMastered.delete(currentIndex);
     } else {
       newMastered.add(currentIndex);
+      // Auto advance on master if not last card (optional UX tweak)
+      // if (currentIndex < flashcards.length - 1) handleNext();
     }
     setMasteredCards(newMastered);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'ArrowLeft') handlePrevious();
-    if (e.key === 'ArrowRight') handleNext();
-    if (e.key === ' ') {
-      e.preventDefault();
-      handleFlip();
-    }
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        if (currentIndex > 0) {
+          setIsFlipped(false);
+          setTimeout(() => setCurrentIndex(prev => prev - 1), 150);
+        }
+      }
+      if (e.key === 'ArrowRight') {
+        if (currentIndex < flashcards.length - 1) {
+          setIsFlipped(false);
+          setTimeout(() => setCurrentIndex(prev => prev + 1), 150);
+        }
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        setIsFlipped(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, flashcards.length]); // Dependencies stable now
+
+  const renderMarkdown = (text) => {
+    if (!text) return '';
+    let html = text
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\n/g, '<br />');
+
+    return <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handleKeyPress]);
+  if (loading) return null; // Or a spinner
 
-  if (loading) {
-    return (
-      <div className="flashcard-overlay">
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Chargement des flashcards...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (flashcards.length === 0) {
-    return (
-      <div className="flashcard-overlay" onClick={onClose}>
-        <div className="flashcard-container" onClick={(e) => e.stopPropagation()}>
-          <div className="empty-state">
-            <p>Aucune flashcard disponible</p>
-            <button className="btn btn-primary" onClick={onClose}>
-              Retour
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (flashcards.length === 0) return null;
 
   const currentCard = flashcards[currentIndex];
-  const progress = ((currentIndex + 1) / flashcards.length) * 100;
   const isMastered = masteredCards.has(currentIndex);
+  const progressPercent = ((currentIndex + 1) / flashcards.length) * 100;
 
   return (
-    <div className="flashcard-overlay" onClick={onClose}>
-      <div className="flashcard-container" onClick={(e) => e.stopPropagation()}>
-        <div className="flashcard-header">
-          <div className="flashcard-info">
-            <h2>{quiz.title}</h2>
-            <p>
-              Carte {currentIndex + 1} / {flashcards.length}
-              {masteredCards.size > 0 && (
-                <span className="mastered-count">
-                  • {masteredCards.size} maîtrisée{masteredCards.size > 1 ? 's' : ''}
-                </span>
-              )}
-            </p>
+    <div className="fv-overlay">
+      <div className="fv-backdrop" onClick={onClose} />
+
+      <div className="fv-container">
+
+        {/* HEADER */}
+        <div className="fv-header">
+          <div className="fv-header-left">
+            <h2 className="fv-title">{quiz.title}</h2>
+            <div className="fv-subtitle">
+              <span>Correction</span>
+              <span className="fv-dot">•</span>
+              <span>{currentIndex + 1} sur {flashcards.length}</span>
+            </div>
           </div>
-          <div className="header-actions">
-            <button 
-              className="btn-icon" 
-              onClick={handleShuffle}
-              title="Mélanger"
-            >
+          <div className="fv-header-right">
+            <button className="fv-icon-btn" onClick={handleShuffle} title="Mélanger">
               <Shuffle size={20} />
             </button>
-            <button className="btn-icon" onClick={onClose}>
+            <button className="fv-icon-btn" onClick={onClose} title="Fermer">
               <X size={24} />
             </button>
           </div>
         </div>
 
-        <div className="flashcard-progress">
-          <div 
-            className="flashcard-progress-fill" 
-            style={{ width: `${progress}%` }}
-          />
+        {/* PROGRESS BAR */}
+        <div className="fv-progress-track">
+          <div className="fv-progress-bar" style={{ width: `${progressPercent}%` }} />
         </div>
 
-        <div className="flashcard-wrapper">
-          <div 
-            className={`flashcard ${isFlipped ? 'is-flipped' : ''}`}
-            onClick={handleFlip}
+        {/* MAIN STAGE */}
+        <div className="fv-stage">
+
+          {/* Nav Left */}
+          <button
+            className="fv-nav-btn prev"
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
           >
-            <div className="flashcard-inner">
-              <div className="flashcard-side flashcard-front">
-                <div className="card-badge">Question</div>
-                <div className="card-text">{currentCard.question}</div>
-                <div className="flip-indicator">
-                  <RotateCw size={18} />
-                  <span>Cliquez pour voir la réponse</span>
+            <ChevronLeft size={32} />
+          </button>
+
+          {/* CARD */}
+          <div className="fv-card-wrapper">
+            <div
+              className={`fv-card ${isFlipped ? 'flipped' : ''}`}
+              onClick={handleFlip}
+            >
+              {/* FRONT */}
+              <div className="fv-face fv-front">
+                <div className="fv-face-header">Question</div>
+                <div className="fv-face-content">
+                  {renderMarkdown(currentCard.question)}
+                </div>
+                <div className="fv-tap-hint">
+                  <RotateCw size={14} /> Cliquez pour retourner
                 </div>
               </div>
-              
-              <div className="flashcard-side flashcard-back">
-                <div className="card-badge">Réponse</div>
-                <div className="card-text">{currentCard.answer}</div>
-                {currentCard.explanation && (
-                  <div className="card-note">
-                    <strong>💡 Explication :</strong>
-                    <p>{currentCard.explanation}</p>
-                  </div>
-                )}
+
+              {/* BACK */}
+              <div className="fv-face fv-back">
+                <div className="fv-face-header">Réponse</div>
+                <div className="fv-face-content">
+                  {renderMarkdown(currentCard.answer)}
+                  {currentCard.explanation && (
+                    <div className="fv-explanation">
+                      <strong>Explication:</strong>
+                      {renderMarkdown(currentCard.explanation)}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="flashcard-controls">
+          {/* Nav Right */}
           <button
-            className="btn btn-secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePrevious();
-            }}
-            disabled={currentIndex === 0}
-          >
-            <ChevronLeft size={20} />
-            Précédent
-          </button>
-
-          <button
-            className={`btn ${isMastered ? 'btn-success' : 'btn-secondary'}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleMastered();
-            }}
-          >
-            {isMastered ? '✓ Maîtrisée' : 'Marquer maîtrisée'}
-          </button>
-
-          <button
-            className="btn btn-primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNext();
-            }}
+            className="fv-nav-btn next"
+            onClick={handleNext}
             disabled={currentIndex === flashcards.length - 1}
           >
-            Suivant
-            <ChevronRight size={20} />
+            <ChevronRight size={32} />
           </button>
         </div>
 
-        <div className="flashcard-dots">
-          {flashcards.map((_, index) => (
-            <button
-              key={index}
-              className={`dot ${index === currentIndex ? 'active' : ''} ${masteredCards.has(index) ? 'mastered' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentIndex(index);
-                setIsFlipped(false);
-              }}
-              title={`Carte ${index + 1}`}
-            />
-          ))}
+        {/* FOOTER ACTIONS */}
+        <div className="fv-footer">
+          <button
+            className={`fv-action-btn ${isMastered ? 'mastered' : ''}`}
+            onClick={handleMastered}
+          >
+            {isMastered ? <Check size={20} /> : <Flag size={20} />}
+            <span>{isMastered ? 'Maîtrisée' : 'Marquer à revoir'}</span>
+          </button>
+
+          {/* Optional: Add "Edit" or "Report" buttons here later */}
         </div>
 
-        <div className="keyboard-hints">
-          <span>← →</span> Navigation
-          <span>Espace</span> Retourner
-        </div>
       </div>
     </div>
   );

@@ -30,6 +30,9 @@ const Login = () => {
   const [nameStatus, setNameStatus] = useState(null);
   // null | checking | available | taken | invalid
 
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
 
   // --------------------------------------------------------
   // VALIDATION MOT DE PASSE
@@ -146,6 +149,12 @@ const Login = () => {
           return;
         }
 
+        if (!acceptTerms) {
+          setError('Veuillez accepter les conditions d\'utilisation.');
+          setLoading(false);
+          return;
+        }
+
         const result = await register(formData.email, formData.password, formData.name);
 
         if (!result.success) {
@@ -188,6 +197,7 @@ const Login = () => {
     setIsRegister(!isRegister);
     setError('');
     setFormData({ email: '', password: '', name: '' });
+    setAcceptTerms(false);
   };
 
 
@@ -362,6 +372,25 @@ const Login = () => {
             </div>
 
             {/* ------------------------------------------------------ */}
+            {/* CHECKBOX CONDITIONS D'UTILISATION */}
+            {/* ------------------------------------------------------ */}
+            {isRegister && (
+              <div className="terms-checkbox-wrapper">
+                <label className="terms-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                  />
+                  <span className="checkbox-custom"></span>
+                  <span className="terms-text">
+                    "En cliquant sur 'S'inscrire', vous acceptez nos <a href="#" onClick={(e) => { e.preventDefault(); setShowTermsModal(true); }}>conditions d'utilisation</a>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------ */}
             {/* ERREURS / SUCCESS */}
             {/* ------------------------------------------------------ */}
             {error && (
@@ -417,6 +446,99 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal des Conditions d'Utilisation */}
+      {showTermsModal && (
+        <div className="terms-modal-overlay" onClick={() => setShowTermsModal(false)}>
+          <div className="terms-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="terms-modal-header">
+              <h2>Conditions d'Utilisation</h2>
+              <button className="terms-modal-close" onClick={() => setShowTermsModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="terms-modal-body">
+              <div className="terms-header-info">
+                <p><strong>Dernière mise à jour :</strong> 17 Décembre 2025</p>
+              </div>
+
+              <section>
+                <h3>1. MENTIONS LÉGALES</h3>
+                <p>
+                  Le site <strong>BQL-Study</strong> est édité par <strong>Ali Hajjaj</strong>, éditeur indépendant domicilié à <strong>Tanger, Maroc</strong>.
+                </p>
+                <p>Contact officiel : <strong>bqlstudy@gmail.com</strong></p>
+              </section>
+
+              <section>
+                <h3>2. ACCÈS ET CONDITIONS D'UTILISATION</h3>
+                <ul>
+                  <li><strong>Service :</strong> Accès aux ressources pédagogiques 24h/24 et 7j/7, sauf maintenance technique.</li>
+                  <li><strong>Mineurs :</strong> L'utilisation de BQL-Study par un mineur implique l'accord préalable de son représentant légal.</li>
+                  <li><strong>Maintenance :</strong> L'éditeur se réserve le droit d'interrompre l'accès pour mise à jour sans préavis. Aucune indemnité ne pourra être réclamée.</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3>3. ESSAI, ABONNEMENT ET RÉSILIATION</h3>
+                <ul>
+                  <li><strong>Essai Gratuit :</strong> Une période de 7 jours est offerte une seule fois par utilisateur.</li>
+                  <li><strong>Non-remboursement :</strong> L'abonnement mensuel est <strong>strictement non remboursable</strong> dès validation du paiement, conformément à la nature numérique du service.</li>
+                  <li><strong>Résiliation :</strong> L'utilisateur peut résilier son abonnement à tout moment via son espace personnel. La résiliation prend effet à la fin de la période en cours. Aucun remboursement ne sera effectué pour les jours restants.</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3>4. PROTECTION DU CONTENU ET ANTI-FRAUDE</h3>
+                <ul>
+                  <li><strong>Interdiction de Capture :</strong> Toute tentative de capture d'écran, d'enregistrement vidéo ou audio du contenu est <strong>strictement interdite</strong>.</li>
+                  <li><strong>Partage de compte :</strong> L'accès est strictement personnel. Le partage d'identifiants est interdit et entraîne la suspension définitive du compte sans remboursement.</li>
+                  <li><strong>Sanctions :</strong> Toute violation du présent article peut entraîner la fermeture immédiate du compte et d'éventuelles poursuites judiciaires.</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3>5. PROPRIÉTÉ INTELLECTUELLE</h3>
+                <p>
+                  Tous les contenus (textes, logos, design, corrections) sont la propriété exclusive de <strong>Ali Hajjaj</strong>.
+                  Toute reproduction ou diffusion non autorisée est passible de poursuites.
+                </p>
+              </section>
+
+              <section>
+                <h3>6. LIMITATION DE RESPONSABILITÉ</h3>
+                <p>
+                  <strong>Contenus :</strong> BQL-Study fournit des outils d'aide. L'éditeur ne peut être tenu responsable
+                  d'éventuelles erreurs ou de l'échec aux examens de l'utilisateur.
+                </p>
+              </section>
+
+              <section>
+                <h3>7. PROTECTION DES DONNÉES (RGPD)</h3>
+                <ul>
+                  <li><strong>Responsable :</strong> Ali Hajjaj. Données stockées de manière sécurisée via <strong>Supabase</strong>.</li>
+                  <li><strong>Engagement :</strong> Les données ne sont jamais revendues ni cédées à des tiers.</li>
+                  <li><strong>Conservation :</strong> Les données sont conservées tant que le compte est actif. Elles peuvent être supprimées à tout moment sur simple demande de l'utilisateur.</li>
+                  <li><strong>Vos Droits :</strong> Vous disposez d'un droit d'accès, de <strong>rectification</strong>, de <strong>portabilité</strong> et de suppression de vos données en écrivant à : <strong>bqlstudy@gmail.com</strong>.</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3>8. DROIT APPLICABLE ET JURIDICTION</h3>
+                <p>
+                  Les présentes conditions sont soumises au droit <strong>Marocain</strong>. En cas de litige,
+                  les tribunaux de la ville de <strong>Tanger</strong> seront seuls compétents.
+                </p>
+              </section>
+            </div>
+            <div className="terms-modal-footer">
+              <button className="terms-modal-btn" onClick={() => setShowTermsModal(false)}>
+                J'ai compris
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
