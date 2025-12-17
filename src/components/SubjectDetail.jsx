@@ -68,6 +68,19 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
     return currentSubject[activeSection] || { notes: [], photos: [], files: [] };
   };
 
+  const sectionQuizzes = (currentSubject.quizzes || []).filter(q => q.section === activeSection);
+  const sectionFlashcards = (currentSubject.flashcards || []).filter(q => q.section === activeSection);
+
+  const countSectionItems = (sectionName) => {
+    const s = currentSubject[sectionName];
+    const notes = s?.notes?.length || 0;
+    const photos = s?.photos?.length || 0;
+    const files = s?.files?.length || 0;
+    const quizzes = (currentSubject.quizzes || []).filter(q => q.section === sectionName).length;
+    const flashcards = (currentSubject.flashcards || []).filter(q => q.section === sectionName).length;
+    return notes + photos + files + quizzes + flashcards;
+  };
+
   const exportNotes = () => {
     const sectionData = getSectionData();
     const content = sectionData.notes.map(note =>
@@ -128,7 +141,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <BookOpen size={18} />
           <span>Cours</span>
-          <span className="badge">{(currentSubject.cours?.notes?.length || 0) + (currentSubject.cours?.photos?.length || 0) + (currentSubject.cours?.files?.length || 0)}</span>
+          <span className="badge">{countSectionItems('cours')}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'exercices' ? 'active' : ''}`}
@@ -136,7 +149,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <Edit size={18} />
           <span>Exercices</span>
-          <span className="badge">{(currentSubject.exercices?.notes?.length || 0) + (currentSubject.exercices?.photos?.length || 0) + (currentSubject.exercices?.files?.length || 0)}</span>
+          <span className="badge">{countSectionItems('exercices')}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'corrections' ? 'active' : ''}`}
@@ -144,7 +157,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <CheckSquare size={18} />
           <span>Corrections</span>
-          <span className="badge">{(currentSubject.corrections?.notes?.length || 0) + (currentSubject.corrections?.photos?.length || 0) + (currentSubject.corrections?.files?.length || 0)}</span>
+          <span className="badge">{countSectionItems('corrections')}</span>
         </button>
         <button
           className={`section-btn ${activeSection === 'td' ? 'active' : ''}`}
@@ -152,7 +165,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <FileCheck size={18} />
           <span>TD</span>
-          <span className="badge">{(currentSubject.td?.notes?.length || 0) + (currentSubject.td?.photos?.length || 0) + (currentSubject.td?.files?.length || 0)}</span>
+          <span className="badge">{countSectionItems('td')}</span>
         </button>
       </div>
 
@@ -188,6 +201,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <Brain size={18} />
           <span>Quiz</span>
+          <span className="tab-count">({sectionQuizzes.length})</span>
         </button>
         <button
           className={`tab ${activeTab === 'flashcard' ? 'active' : ''}`}
@@ -195,6 +209,7 @@ const SubjectDetail = ({ subject, onBack, initialSection = 'cours', initialTab =
         >
           <Layers size={18} />
           <span>Flashcards</span>
+          <span className="tab-count">({sectionFlashcards.length})</span>
         </button>
       </div>
 

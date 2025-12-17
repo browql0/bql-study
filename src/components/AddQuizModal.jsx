@@ -1,6 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, AlertCircle, Brain, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X, Plus, Trash2, AlertCircle, Brain, Sparkles,
+  Bold, Italic, List, Code, Eye, Image as ImageIcon, Link, Minus
+} from 'lucide-react';
 import './AddQuizModal.css';
+
+// Composant interne pour l'éditeur Markdown simplifié (identique à AddFlashcardModal)
+const MarkdownField = ({ label, value, onChange, placeholder, required = false }) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const textareaRef = useRef(null);
+
+  const insertMarkdown = (before, after = '', placeholderText = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    const textToInsert = selectedText || placeholderText;
+
+    // Pour le code multiligne
+    if (before === '`' && after === '`' && (textToInsert.includes('\n') || (!selectedText && placeholderText))) {
+      const codeBlock = '\n```\n' + (textToInsert || 'votre code ici') + '\n```\n';
+      const newText = value.substring(0, start) + codeBlock + value.substring(end);
+      onChange(newText);
+      setTimeout(() => {
+        textarea.focus();
+        const cursorPos = start + 5;
+        textarea.setSelectionRange(cursorPos, cursorPos + (textToInsert || 'votre code ici').length);
+      }, 0);
+      return;
+    }
+
+    const newText = value.substring(0, start) + before + textToInsert + after + value.substring(end);
+    onChange(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + (selectedText ? selectedText.length : 0);
+      textarea.setSelectionRange(newCursorPos, newCursorPos + (placeholderText && !selectedText ? placeholderText.length : 0));
+    }, 0);
+  };
+
+  const renderPreview = () => {
+    if (!value) return <p className="markdown-preview" style={{ opacity: 0.5 }}>Aucun contenu</p>;
+
+    let html = value
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%" />')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\n/g, '<br />');
+
+    return <div className="markdown-preview" dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
+  return (
+    <div className="question-form-field">
+      <div className="editor-header">
+        <label>{label} {required && '*'}</label>
+        <button
+          type="button"
+          className={`preview-toggle-btn ${showPreview ? 'active' : ''}`}
+          onClick={() => setShowPreview(!showPreview)}
+        >
+          <Eye size={14} />
+          {showPreview ? 'Éditer' : 'Aperçu'}
+        </button>
+      </div>
+
+      <div className="markdown-editor-container">
+        {!showPreview && (
+          <div className="markdown-editor-toolbar">
+            <div className="toolbar-group">
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('**', '**', 'gras')} title="Gras">
+                <Bold size={16} />
+              </button>
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('*', '*', 'italique')} title="Italique">
+                <Italic size={16} />
+              </button>
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('`', '`', 'code')} title="Code">
+                <Code size={16} />
+              </button>
+            </div>
+            <div className="toolbar-divider"></div>
+            <div className="toolbar-group">
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('- ', '', 'liste')} title="Liste">
+                <List size={16} />
+              </button>
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('[', '](url)', 'lien')} title="Lien">
+                <Link size={16} />
+              </button>
+              <button type="button" className="toolbar-btn" onClick={() => insertMarkdown('![', '](url)', 'image')} title="Image">
+                <ImageIcon size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showPreview ? (
+          <div className="markdown-preview-container">
+            {renderPreview()}
+          </div>
+        ) : (
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows="4"
+            required={required}
+            className="markdown-textarea"
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
   const [title, setTitle] = useState('');
@@ -30,10 +149,6 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
       const newQuestionCard = document.querySelectorAll('.question-card')[newIndex];
       if (questionsList && newQuestionCard) {
         newQuestionCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        const firstInput = newQuestionCard.querySelector('textarea, input');
-        if (firstInput) {
-          setTimeout(() => firstInput.focus(), 300);
-        }
       }
     }, 100);
   };
@@ -157,6 +272,7 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ajoutez une description pour ce quiz..."
                   rows="4"
+                  className="simple-textarea"
                 />
               </div>
             </div>
@@ -199,16 +315,14 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
                   </div>
 
                   <div className="question-card-content">
-                    <div className="question-form-field">
-                      <label>Question *</label>
-                      <textarea
-                        value={question.question}
-                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                        placeholder="Ex: Quelle est la capitale de la France ?"
-                        rows="3"
-                        required
-                      />
-                    </div>
+                    {/* Markdown Question */}
+                    <MarkdownField
+                      label="Question"
+                      value={question.question}
+                      onChange={(val) => updateQuestion(qIndex, 'question', val)}
+                      placeholder="Ex: Quelle est la capitale de la France ?"
+                      required={true}
+                    />
 
                     <div className="question-form-field">
                       <label>Options de réponse *</label>
@@ -228,25 +342,24 @@ const AddQuizModal = ({ subjectId, section, onClose, onSave }) => {
                     </div>
 
                     <div className="question-form-field">
-                      <label>Bonne réponse *</label>
+                      <label>Bonne réponse (copier exactement une option) *</label>
                       <textarea
                         value={question.answer}
                         onChange={(e) => updateQuestion(qIndex, 'answer', e.target.value)}
-                        placeholder="Ex: Paris (doit correspondre exactement à une option)"
+                        placeholder="Ex: Paris"
                         rows="2"
+                        className="simple-textarea"
                         required
                       />
                     </div>
 
-                    <div className="question-form-field">
-                      <label>Explication</label>
-                      <textarea
-                        value={question.explanation}
-                        onChange={(e) => updateQuestion(qIndex, 'explanation', e.target.value)}
-                        placeholder="Ajoutez une explication détaillée..."
-                        rows="3"
-                      />
-                    </div>
+                    {/* Markdown Explanation */}
+                    <MarkdownField
+                      label="Explication (affichée après réponse)"
+                      value={question.explanation}
+                      onChange={(val) => updateQuestion(qIndex, 'explanation', val)}
+                      placeholder="Ajoutez une explication détaillée..."
+                    />
 
                     <div className="question-form-field question-points-field">
                       <label>Points</label>

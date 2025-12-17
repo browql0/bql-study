@@ -289,7 +289,8 @@ export const AppProvider = ({ children }) => {
           exercices,
           corrections,
           general,
-          quizzes: quizzes || [],
+          quizzes: (quizzes || []).filter(q => !q.type || q.type.toLowerCase() === 'quiz'),
+          flashcards: (quizzes || []).filter(q => q.type?.toLowerCase() === 'flashcard'),
           createdAt: subject.created_at || subject.createdAt
         };
       }));

@@ -48,7 +48,7 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
 
     const currentQ = quizData.questions[currentQuestion];
     const isCorrect = selectedAnswer === currentQ.answer;
-    
+
     const answerData = {
       questionId: currentQ.id,
       question: currentQ.question,
@@ -129,6 +129,21 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
     return null;
   }
 
+  // Fonction pour rendre le Markdown (similaire à FlashcardViewer)
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+
+    let html = text
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
+      .replace(/\n/g, '<br />');
+
+    return <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
   const currentQ = quizData.questions[currentQuestion];
   const progress = ((currentQuestion + 1) / quizData.questions.length) * 100;
 
@@ -152,8 +167,8 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
 
             {/* Progress */}
             <div className="quiz-progress-bar">
-              <div 
-                className="quiz-progress-fill" 
+              <div
+                className="quiz-progress-fill"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -165,7 +180,9 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
                 <div className="question-points">{currentQ.points} pt{currentQ.points > 1 ? 's' : ''}</div>
               </div>
 
-              <h3 className="question-text">{currentQ.question}</h3>
+              <div className="question-text">
+                {renderMarkdown(currentQ.question)}
+              </div>
 
               {/* Options */}
               <div className="options-container">
@@ -173,7 +190,7 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
                   const isSelected = selectedAnswer === option;
                   const isCorrect = option === currentQ.answer;
                   let optionClass = 'option-button';
-                  
+
                   if (showResult) {
                     if (isCorrect) {
                       optionClass += ' correct';
@@ -202,11 +219,12 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
                 })}
               </div>
 
-              {/* Explanation */}
               {showResult && currentQ.explanation && (
                 <div className={`explanation ${userAnswers[userAnswers.length - 1]?.isCorrect ? 'correct' : 'incorrect'}`}>
                   <strong>Explication :</strong>
-                  <p>{currentQ.explanation}</p>
+                  <div className="explanation-content">
+                    {renderMarkdown(currentQ.explanation)}
+                  </div>
                 </div>
               )}
             </div>
@@ -253,8 +271,8 @@ const QuizPlayer = ({ quiz, onClose, onComplete }) => {
             </div>
 
             <h2>Quiz terminé !</h2>
-            
-            <div 
+
+            <div
               className="score-display"
               style={{ borderColor: getScoreMessage().color }}
             >
