@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Refactored to use AppContext for mobile search
 import { useApp } from '../context/AppContextSupabase';
 import {
   BookOpen, FileText, Image, Trash2, SortAsc, Filter, AlertTriangle, X, File,
@@ -12,7 +13,7 @@ import {
   MessageSquare, Video, Radio, Tv, Monitor, Laptop, Tablet, Smartphone, Printer,
   Folder, FolderOpen, Archive, Search, Settings, Cog, BarChart, PieChart, TrendingUp,
   DollarSign, Euro, Coins, Wallet, CreditCard, Receipt, ShoppingCart, RefreshCw, Check,
-  Layers
+  Layers, LayoutDashboard
 } from 'lucide-react';
 import ProtectedContent from './ProtectedContent';
 import './SubjectList.css';
@@ -32,8 +33,8 @@ const ICON_MAP = {
   Receipt, ShoppingCart
 };
 
-const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
-  const { subjects, searchQuery, deleteSubject, isAdmin, loadSubjects } = useApp();
+const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade, onOpenDashboard }) => {
+  const { subjects, searchQuery, deleteSubject, isAdmin, loadSubjects, setMobileSearchOpen } = useApp();
   const [sortBy, setSortBy] = useState('recent');
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -185,6 +186,32 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade }) => {
             >
               <Filter size={18} />
             </button>
+            <button
+              className="btn-icon mobile-only-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMobileSearchOpen(true);
+              }}
+              title="Rechercher"
+              type="button"
+            >
+              <Search size={18} />
+            </button>
+            {isAdmin() && (
+              <button
+                className="btn-icon mobile-only-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onOpenDashboard();
+                }}
+                title="Tableau de bord"
+                type="button"
+              >
+                <LayoutDashboard size={18} />
+              </button>
+            )}
           </div>
         </div>
 

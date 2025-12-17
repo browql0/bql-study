@@ -131,14 +131,14 @@ const NotesList = ({ subjectId, section, notes }) => {
                 <h3>{note.title}</h3>
                 <div className="note-actions">
                   <button
-                    className="btn-icon"
+                    className="btn-icon btn-toggle"
                     onClick={() => toggleExpand(note.id)}
                     title={isExpanded ? 'Réduire' : 'Développer'}
                   >
                     {isExpanded ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                   <button
-                    className="btn-icon"
+                    className="btn-icon btn-view"
                     onClick={() => setViewingNote(note)}
                     title="Agrandir"
                   >
@@ -147,14 +147,14 @@ const NotesList = ({ subjectId, section, notes }) => {
                   {isAdmin() && (
                     <>
                       <button
-                        className="btn-icon"
+                        className="btn-icon btn-edit"
                         onClick={() => setEditingNote(note)}
                         title="Modifier"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button
-                        className="btn-icon"
+                        className="btn-icon btn-delete"
                         onClick={() => handleDelete(note.id)}
                         title="Supprimer"
                       >

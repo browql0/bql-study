@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContextSupabase';
-import { 
-  Search, Moon, Sun, Plus, Menu, X, LogOut, User, BookOpen, 
+import {
+  Search, Moon, Sun, Plus, Menu, X, LogOut, User, BookOpen,
   PlusCircle, SearchCode, BarChart3, Sparkles, Grid3x3, Settings,
   FileText, Image, Folder, Bell, AlertTriangle
 } from 'lucide-react';
@@ -11,10 +11,9 @@ import NotificationsPanel from './NotificationsPanel';
 import './Header.css';
 
 const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, onOpenSettings }) => {
-  const { searchQuery, setSearchQuery, theme, toggleTheme, subjects, currentUser, logout, isAdmin } = useApp();
+  const { searchQuery, setSearchQuery, theme, toggleTheme, subjects, currentUser, logout, isAdmin, mobileSearchOpen, setMobileSearchOpen } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -25,20 +24,20 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
     let files = 0;
 
     for (const subject of subjects) {
-      notes += (subject.cours?.notes?.length || 0) + 
-               (subject.exercices?.notes?.length || 0) + 
-               (subject.corrections?.notes?.length || 0);
-      photos += (subject.cours?.photos?.length || 0) + 
-                (subject.exercices?.photos?.length || 0) + 
-                (subject.corrections?.photos?.length || 0);
-      files += (subject.cours?.files?.length || 0) + 
-               (subject.exercices?.files?.length || 0) + 
-               (subject.corrections?.files?.length || 0);
+      notes += (subject.cours?.notes?.length || 0) +
+        (subject.exercices?.notes?.length || 0) +
+        (subject.corrections?.notes?.length || 0);
+      photos += (subject.cours?.photos?.length || 0) +
+        (subject.exercices?.photos?.length || 0) +
+        (subject.corrections?.photos?.length || 0);
+      files += (subject.cours?.files?.length || 0) +
+        (subject.exercices?.files?.length || 0) +
+        (subject.corrections?.files?.length || 0);
     }
 
     return { totalNotes: notes, totalPhotos: photos, totalFiles: files };
   }, [subjects]);
-  
+
   const { totalNotes, totalPhotos, totalFiles } = totals;
 
   // Charger le nombre de notifications non lues
@@ -133,7 +132,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                 />
-                <button 
+                <button
                   className="search-advanced-btn"
                   onClick={onOpenSearch}
                   title="Recherche avancée"
@@ -146,7 +145,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
             {/* Right Actions */}
             <div className="header-right-actions">
               {isAdmin() && (
-                <button 
+                <button
                   className="header-action-icon"
                   onClick={onAddSubject}
                   title="Nouvelle Matière"
@@ -156,7 +155,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 </button>
               )}
 
-              <button 
+              <button
                 className="header-action-icon"
                 onClick={toggleTheme}
                 title={theme === 'light' ? 'Mode sombre' : 'Mode clair'}
@@ -166,7 +165,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
               </button>
 
               {isAdmin() && (
-                <button 
+                <button
                   className="header-action-icon"
                   onClick={onOpenDashboard}
                   title="Dashboard"
@@ -176,9 +175,9 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 </button>
               )}
 
-    
 
-              <button 
+
+              <button
                 className="header-action-icon notification-btn"
                 onClick={() => setShowNotifications(true)}
                 title="Notifications"
@@ -191,7 +190,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
               </button>
 
               <div className="header-user-menu">
-                <button 
+                <button
                   className="user-menu-trigger"
                   onClick={onOpenProfile}
                   title="Mon profil"
@@ -201,7 +200,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                   </div>
                   <span className="user-name">{currentUser?.email || currentUser?.name}</span>
                 </button>
-                <button 
+                <button
                   className="logout-btn"
                   onClick={handleLogoutClick}
                   title="Déconnexion"
@@ -243,60 +242,16 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
           <div className="mobile-header-top">
             <div className="mobile-brand">
               <div className="mobile-brand-icon">
-                <BookOpen size={24} strokeWidth={2.5} />
-                <div className="mobile-brand-glow"></div>
+                <span className="brand-letter">B</span>
               </div>
               <div className="mobile-brand-text">
                 <h1 className="mobile-brand-title">Bql Study</h1>
               </div>
             </div>
-            <div className="mobile-header-actions">
-              {isAdmin() && (
-                <button 
-                  className="mobile-dashboard-btn"
-                  onClick={onOpenDashboard}
-                  aria-label="Dashboard"
-                  title="Dashboard"
-                >
-                  <BarChart3 size={24} />
-                </button>
-              )}
 
-            </div>
           </div>
 
-          {/* Search Bar Row */}
-          <div className="mobile-header-search">
-            <button 
-              className="mobile-search-trigger"
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-            >
-              <Search size={20} />
-              <span className="mobile-search-placeholder">
-                {searchQuery || "Rechercher..."}
-              </span>
-            </button>
-          </div>
 
-          {/* Stats Row */}
-          <div className="mobile-header-stats">
-            <div className="mobile-stat-item">
-              <span className="mobile-stat-label">Matières</span>
-              <span className="mobile-stat-value">{subjects.length}</span>
-            </div>
-            <div className="mobile-stat-item">
-              <span className="mobile-stat-label">Notes</span>
-              <span className="mobile-stat-value">{totalNotes}</span>
-            </div>
-            <div className="mobile-stat-item">
-              <span className="mobile-stat-label">Photos</span>
-              <span className="mobile-stat-value">{totalPhotos}</span>
-            </div>
-            <div className="mobile-stat-item">
-              <span className="mobile-stat-label">Fichiers</span>
-              <span className="mobile-stat-value">{totalFiles}</span>
-            </div>
-          </div>
         </div>
 
         {/* Mobile Search Overlay */}
@@ -313,14 +268,14 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                 />
-                <button 
+                <button
                   className="mobile-search-close-btn"
                   onClick={() => setMobileSearchOpen(false)}
                 >
                   <X size={20} />
                 </button>
               </div>
-              <button 
+              <button
                 className="mobile-search-advanced"
                 onClick={() => {
                   onOpenSearch();
@@ -350,7 +305,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 </div>
               </div>
             </div>
-            <button 
+            <button
               className="mobile-menu-close"
               onClick={() => setMenuOpen(false)}
             >
@@ -398,7 +353,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
           </div>
 
           <div className="mobile-menu-actions">
-            <button 
+            <button
               className="mobile-menu-action primary"
               onClick={() => {
                 onOpenProfile();
@@ -408,8 +363,8 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
               <User size={22} />
               <span>Mon Profil</span>
             </button>
-            
-            <button 
+
+            <button
               className="mobile-menu-action"
               onClick={() => {
                 toggleTheme();
@@ -418,10 +373,10 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
               {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
               <span>{theme === 'light' ? 'Mode Sombre' : 'Mode Clair'}</span>
             </button>
-            
+
             {isAdmin() && (
               <>
-                <button 
+                <button
                   className="mobile-menu-action"
                   onClick={() => {
                     onAddSubject();
@@ -431,7 +386,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                   <PlusCircle size={22} />
                   <span>Nouvelle Matière</span>
                 </button>
-                <button 
+                <button
                   className="mobile-menu-action"
                   onClick={() => {
                     onOpenDashboard();
@@ -443,8 +398,8 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 </button>
               </>
             )}
-            
-            <button 
+
+            <button
               className="mobile-menu-action notification-menu-item"
               onClick={() => {
                 setShowNotifications(true);
@@ -457,8 +412,8 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
                 <span className="notification-badge-mobile">{unreadCount > 99 ? '99+' : unreadCount}</span>
               )}
             </button>
-            
-            <button 
+
+            <button
               className="mobile-menu-action"
               onClick={() => {
                 onOpenSearch();
@@ -468,8 +423,8 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
               <SearchCode size={22} />
               <span>Recherche Avancée</span>
             </button>
-            
-            <button 
+
+            <button
               className="mobile-menu-action danger"
               onClick={handleLogoutClick}
             >
@@ -481,7 +436,7 @@ const Header = ({ onAddSubject, onOpenProfile, onOpenSearch, onOpenDashboard, on
 
         {/* Mobile Menu Backdrop */}
         {menuOpen && (
-          <div 
+          <div
             className="mobile-menu-backdrop"
             onClick={() => setMenuOpen(false)}
           ></div>

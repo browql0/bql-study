@@ -208,12 +208,12 @@ export const registerDevice = async () => {
 
       // Compter les fingerprints uniques (appareils physiques distincts)
       const uniqueFingerprints = new Set(devices?.map(d => d.device_fingerprint) || []);
-      
+
       // Si l'utilisateur a plus de 2 appareils actifs (cas d'erreur ou contournement)
       // Désactiver automatiquement les appareils les plus anciens pour ne garder que 2
       if (uniqueFingerprints.size > 2) {
         console.warn(`Utilisateur ${user.id} a ${uniqueFingerprints.size} appareils actifs, nettoyage en cours...`);
-        
+
         // Grouper les appareils par fingerprint et garder seulement le plus récent de chaque fingerprint
         const fingerprintGroups = {};
         devices?.forEach(device => {
@@ -233,7 +233,7 @@ export const registerDevice = async () => {
           .slice(0, 2);
 
         const devicesToKeep = new Set(sortedDevices.map(d => d.id));
-        
+
         // Désactiver tous les appareils sauf les 2 plus récents
         const devicesToDeactivate = devices?.filter(d => !devicesToKeep.has(d.id));
         if (devicesToDeactivate && devicesToDeactivate.length > 0) {
@@ -242,19 +242,19 @@ export const registerDevice = async () => {
             .from('user_devices')
             .update({ is_active: false })
             .in('id', deviceIdsToDeactivate);
-          
+
           console.log(`Désactivation de ${deviceIdsToDeactivate.length} appareils en trop`);
         }
-        
+
         // Recompter après nettoyage
         const { data: devicesAfterCleanup } = await supabase
           .from('user_devices')
           .select('device_fingerprint')
           .eq('user_id', user.id)
           .eq('is_active', true);
-        
+
         const uniqueFingerprintsAfterCleanup = new Set(devicesAfterCleanup?.map(d => d.device_fingerprint) || []);
-        
+
         if (uniqueFingerprintsAfterCleanup.size >= 2) {
           // Toujours 2 appareils ou plus après nettoyage
           const { data: allDevices } = await supabase
@@ -306,8 +306,43 @@ export const registerDevice = async () => {
       .maybeSingle();
 
     if (insertError) {
+      // Gérer l'erreur de contrainte unique (race condition ou réactivation)
+      if (insertError.code === '23505' || (insertError.message && insertError.message.includes('unique constraint'))) {
+        console.log('Appareil déjà existant (conflit détecté), mise à jour...');
+
+        // Récupérer l'appareil existant qui a causé le conflit
+        const { data: conflictDevice, error: fetchConflictError } = await supabase
+          .from('user_devices')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('device_fingerprint', fingerprint)
+          .maybeSingle();
+
+        if (fetchConflictError) throw fetchConflictError;
+
+        if (conflictDevice) {
+          // Mettre à jour l'appareil existant
+          const { data: updatedConflict, error: updateConflictError } = await supabase
+            .from('user_devices')
+            .update({
+              last_login_at: new Date().toISOString(),
+              is_active: true,
+              device_name: deviceInfo.deviceName,
+              browser: deviceInfo.browser,
+              os: deviceInfo.os,
+              device_type: deviceInfo.deviceType
+            })
+            .eq('id', conflictDevice.id)
+            .select()
+            .maybeSingle();
+
+          if (updateConflictError) throw updateConflictError;
+          return { success: true, device: updatedConflict };
+        }
+      }
+
       // Si c'est une erreur de limite d'appareils du trigger PostgreSQL (P0001)
-      // Vérifier d'abord si l'utilisateur est admin (les admins ne devraient pas être bloqués)
+      // ... (reste du code existant)
       if (insertError.code === 'P0001' || insertError.message?.includes('Limite d\'appareils')) {
         // Re-vérifier le rôle admin (au cas où le trigger bloque aussi les admins)
         let role = user.user_metadata?.role;
@@ -319,9 +354,9 @@ export const registerDevice = async () => {
             .maybeSingle();
           if (profile) role = profile.role;
         }
-        
+
         const isAdmin = role === 'admin';
-        
+
         if (isAdmin) {
           // Admin bloqué par le trigger - retourner une erreur spécifique
           // Le trigger côté serveur devrait idéalement vérifier le rôle aussi
@@ -355,7 +390,7 @@ export const registerDevice = async () => {
 
   } catch (error) {
     console.error('Error registering device:', error);
-    
+
     // Gérer aussi les erreurs de limite qui peuvent venir du trigger
     if (error.code === 'P0001' || error.message?.includes('Limite d\'appareils')) {
       try {
@@ -371,9 +406,9 @@ export const registerDevice = async () => {
               .maybeSingle();
             if (profile) role = profile.role;
           }
-          
+
           const isAdmin = role === 'admin';
-          
+
           if (isAdmin) {
             // Admin bloqué par le trigger - c'est un problème de configuration côté serveur
             console.error('ERREUR: Un admin a été bloqué par le trigger PostgreSQL. Le trigger devrait bypasser les admins.');
@@ -405,7 +440,7 @@ export const registerDevice = async () => {
         console.error('Error fetching devices for limit error:', fetchError);
       }
     }
-    
+
     return { success: false, error: error.message };
   }
 };
@@ -457,7 +492,7 @@ export const deactivateCurrentDevice = async () => {
     if (!user) return { success: false, error: 'Not authenticated' };
 
     const fingerprint = await getDeviceFingerprint();
-    
+
     // Désactiver l'appareil actuel s'il existe et est actif
     // Si l'appareil n'existe pas (cas du 3ème appareil bloqué), c'est normal
     const { error } = await supabase
@@ -466,7 +501,7 @@ export const deactivateCurrentDevice = async () => {
       .eq('user_id', user.id)
       .eq('device_fingerprint', fingerprint)
       .eq('is_active', true);
-    
+
     // Si aucune ligne n'a été mise à jour (appareil non trouvé), ce n'est pas une erreur
     // Cela peut arriver si l'appareil n'a jamais été enregistré (cas du 3ème appareil)
     if (error) throw error;

@@ -46,6 +46,7 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [subscriptionWarning, setSubscriptionWarning] = useState(null);
   const [deviceLimitError, setDeviceLimitError] = useState(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Charger le thème depuis localStorage
   useEffect(() => {
@@ -787,6 +788,8 @@ export const AppProvider = ({ children }) => {
     setSubscriptionWarning,
     deviceLimitError,
     setDeviceLimitError,
+    mobileSearchOpen,
+    setMobileSearchOpen,
     setSearchQuery,
     toggleTheme,
     login,

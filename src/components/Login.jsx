@@ -200,9 +200,12 @@ const Login = () => {
         <div className="shape shape-1"></div>
         <div className="shape shape-2"></div>
         <div className="shape shape-3"></div>
+        <div className="shape shape-4"></div>
+        <div className="shape shape-5"></div>
+        <div className="shape shape-6"></div>
       </div>
 
-      <div className="login-card">
+      <div className="login-card" key={isRegister ? 'register-card' : 'login-card'}>
 
         <div className="login-brand">
           <div className="brand-icon">
@@ -212,204 +215,206 @@ const Login = () => {
           <p className="brand-tagline">Votre espace d'études personnel</p>
         </div>
 
-        <div className="login-header">
-          <h1>{isRegister ? 'Rejoignez-nous' : 'Bon retour !'}</h1>
-          <p>{isRegister ? 'Créez votre espace d’études personnalisé' : 'Continuez votre progression'}</p>
-        </div>
+        <div className="login-animated-content" key={isRegister ? 'register' : 'login'}>
+          <div className="login-header">
+            <h1>{isRegister ? 'Rejoignez-nous' : 'Bon retour !'}</h1>
+            <p>{isRegister ? 'Créez votre espace d’études personnalisé' : 'Continuez votre progression'}</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
+          <form onSubmit={handleSubmit} className="login-form">
 
-          {/* ------------------------------------------------------ */}
-          {/* NOM À L'INSCRIPTION */}
-          {/* ------------------------------------------------------ */}
-          {isRegister && (
-            <div className="form-group">
-              <label>Nom complet </label>
-              <div className="name-input-wrapper">
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Entrez votre nom complet (suivant la liste des participants)"
-                  required
-                  autoComplete="off"
-                />
+            {/* ------------------------------------------------------ */}
+            {/* NOM À L'INSCRIPTION */}
+            {/* ------------------------------------------------------ */}
+            {isRegister && (
+              <div className="form-group">
+                <label>Nom complet </label>
+                <div className="name-input-wrapper">
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Entrez votre nom complet"
+                    required
+                    autoComplete="off"
+                  />
 
-                {nameStatus === 'checking' && (
-                  <div className="name-status checking"><Loader size={16} className="spinner" /></div>
-                )}
+                  {nameStatus === 'checking' && (
+                    <div className="name-status checking"><div className="spinner" /></div>
+                  )}
 
-                {nameStatus === 'available' && (
-                  <div className="name-status available"><Check size={16} /></div>
-                )}
+                  {nameStatus === 'available' && (
+                    <div className="name-status available"><Check size={16} /></div>
+                  )}
+
+                  {nameStatus === 'taken' && (
+                    <div className="name-status taken"><X size={16} /></div>
+                  )}
+
+                  {nameStatus === 'invalid' && (
+                    <div className="name-status invalid"><X size={16} /></div>
+                  )}
+                </div>
 
                 {nameStatus === 'taken' && (
-                  <div className="name-status taken"><X size={16} /></div>
+                  <div className="name-error-message">
+                    <AlertCircle size={14} />
+                    <span>Ce nom est déjà utilisé</span>
+                  </div>
                 )}
 
-                {nameStatus === 'invalid' && (
-                  <div className="name-status invalid"><X size={16} /></div>
+                {nameStatus === 'invalid' && formData.name.trim() && (
+                  <div className="name-error-message">
+                    <AlertCircle size={14} />
+                    <span>Ce nom n'est pas autorisé</span>
+                  </div>
                 )}
               </div>
+            )}
 
-              {nameStatus === 'taken' && (
-                <div className="name-error-message">
-                  <AlertCircle size={14} />
-                  <span>Ce nom est déjà utilisé</span>
-                </div>
-              )}
+            {/* ------------------------------------------------------ */}
+            {/* EMAIL */}
+            {/* ------------------------------------------------------ */}
+            <div className="form-group">
+              <label>Email</label>
 
-              {nameStatus === 'invalid' && formData.name.trim() && (
-                <div className="name-error-message">
-                  <AlertCircle size={14} />
-                  <span>Ce nom n'est pas autorisé</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ------------------------------------------------------ */}
-          {/* EMAIL */}
-          {/* ------------------------------------------------------ */}
-          <div className="form-group">
-            <label>Email</label>
-
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Entrez votre email"
-              required
-            />
-          </div>
-
-          {/* ------------------------------------------------------ */}
-          {/* MOT DE PASSE */}
-          {/* ------------------------------------------------------ */}
-          <div className="form-group">
-            <label>Mot de passe</label>
-
-            <div className="password-input-wrapper">
               <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
+                type="email"
+                name="email"
+                value={formData.email}
                 onChange={handleChange}
-                placeholder="Entrez votre mot de passe"
+                placeholder="Entrez votre email"
                 required
               />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
             </div>
 
-            {/* FORCE MDP + CHECKS */}
-            {isRegister && formData.password && (
-              <>
-                <div className="password-strength">
-                  <div className="strength-bar">
-                    <div
-                      className={`strength-fill strength-${passwordStrength}`}
-                      style={{ width: `${(passwordStrength / 4) * 100}%` }}
-                    />
-                  </div>
+            {/* ------------------------------------------------------ */}
+            {/* MOT DE PASSE */}
+            {/* ------------------------------------------------------ */}
+            <div className="form-group">
+              <label>Mot de passe</label>
 
-                  <span className="strength-text">
-                    {passwordStrength === 0 && 'Très faible'}
-                    {passwordStrength === 1 && 'Faible'}
-                    {passwordStrength === 2 && 'Moyen'}
-                    {passwordStrength === 3 && 'Fort'}
-                    {passwordStrength === 4 && 'Très fort'}
-                  </span>
-                </div>
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Entrez votre mot de passe"
+                  required
+                />
 
-                {/* Règles visibles */}
-                <div className="password-validations">
-                  <div className={`validation-item ${validations.minLength ? 'valid' : ''}`}>
-                    {validations.minLength ? <Check size={14} /> : <X size={14} />}
-                    <span>Au moins 6 caractères</span>
-                  </div>
-
-                  <div className={`validation-item ${validations.hasNumber ? 'valid' : ''}`}>
-                    {validations.hasNumber ? <Check size={14} /> : <X size={14} />}
-                    <span>Contient un chiffre</span>
-                  </div>
-
-                  <div className={`validation-item ${validations.hasUpper ? 'valid' : ''}`}>
-                    {validations.hasUpper ? <Check size={14} /> : <X size={14} />}
-                    <span>Contient une majuscule</span>
-                  </div>
-
-                  <div className={`validation-item ${validations.hasLower ? 'valid' : ''}`}>
-                    {validations.hasLower ? <Check size={14} /> : <X size={14} />}
-                    <span>Contient une minuscule</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* ------------------------------------------------------ */}
-          {/* ERREURS / SUCCESS */}
-          {/* ------------------------------------------------------ */}
-          {error && (
-            <div className="error-message">
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="success-message">
-              <Check size={18} />
-              <span>{success}</span>
-            </div>
-          )}
-
-          {/* ------------------------------------------------------ */}
-          {/* BOUTON SOUMISSION */}
-          {/* ------------------------------------------------------ */}
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader size={20} className="spinner" />
-                <span>{isRegister ? 'Inscription en cours...' : 'Connexion en cours...'}</span>
-              </>
-            ) : (
-              <span>{isRegister ? "S'inscrire" : "Se connecter"}</span>
-            )}
-          </button>
-
-          {loading && (
-            <div className="login-loading-overlay">
-              <div className="login-loading-content">
-                <div className="login-loading-spinner">
-                  <div className="spinner-ring"></div>
-                  <div className="spinner-ring"></div>
-                  <div className="spinner-ring"></div>
-                </div>
-                <p className="login-loading-text">
-                  {isRegister ? 'Création de votre compte...' : 'Connexion en cours...'}
-                </p>
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            </div>
-          )}
-        </form>
 
-        <div className="login-footer">
-          <button onClick={toggleMode} className="toggle-mode-btn">
-            {isRegister
-              ? 'Vous avez déjà un compte ? Connectez-vous'
-              : "Pas encore de compte ? Inscrivez-vous"}
-          </button>
+              {isRegister && (
+                <>
+                  <div className="password-strength">
+                    <div className="strength-bar">
+                      <div
+                        className={`strength-fill strength-${passwordStrength}`}
+                        style={{ width: formData.password ? `${(passwordStrength / 4) * 100}%` : '0%' }}
+                      />
+                    </div>
+
+                    <span className="strength-text">
+                      {!formData.password && 'Entrez un mot de passe'}
+                      {formData.password && passwordStrength === 0 && 'Très faible'}
+                      {formData.password && passwordStrength === 1 && 'Faible'}
+                      {formData.password && passwordStrength === 2 && 'Moyen'}
+                      {formData.password && passwordStrength === 3 && 'Fort'}
+                      {formData.password && passwordStrength === 4 && 'Très fort'}
+                    </span>
+                  </div>
+
+                  {/* Règles visibles */}
+                  <div className="password-validations">
+                    <div className={`validation-item ${validations.minLength ? 'valid' : ''}`}>
+                      {validations.minLength ? <Check size={14} /> : <div className="validation-dot" />}
+                      <span>Au moins 6 caractères</span>
+                    </div>
+
+                    <div className={`validation-item ${validations.hasNumber ? 'valid' : ''}`}>
+                      {validations.hasNumber ? <Check size={14} /> : <div className="validation-dot" />}
+                      <span>Contient un chiffre</span>
+                    </div>
+
+                    <div className={`validation-item ${validations.hasUpper ? 'valid' : ''}`}>
+                      {validations.hasUpper ? <Check size={14} /> : <div className="validation-dot" />}
+                      <span>Contient une majuscule</span>
+                    </div>
+
+                    <div className={`validation-item ${validations.hasLower ? 'valid' : ''}`}>
+                      {validations.hasLower ? <Check size={14} /> : <div className="validation-dot" />}
+                      <span>Contient une minuscule</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ------------------------------------------------------ */}
+            {/* ERREURS / SUCCESS */}
+            {/* ------------------------------------------------------ */}
+            {error && (
+              <div className="error-message">
+                <AlertCircle size={18} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="success-message">
+                <Check size={18} />
+                <span>{success}</span>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------ */}
+            {/* BOUTON SOUMISSION */}
+            {/* ------------------------------------------------------ */}
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader size={20} className="spinner" />
+                  <span>{isRegister ? 'Inscription en cours...' : 'Connexion en cours...'}</span>
+                </>
+              ) : (
+                <span>{isRegister ? "S'inscrire" : "Se connecter"}</span>
+              )}
+            </button>
+
+            {loading && (
+              <div className="login-loading-overlay">
+                <div className="login-loading-content">
+                  <div className="login-loading-spinner">
+                    <div className="spinner-ring"></div>
+                    <div className="spinner-ring"></div>
+                    <div className="spinner-ring"></div>
+                  </div>
+                  <p className="login-loading-text">
+                    {isRegister ? 'Création de votre compte...' : 'Connexion en cours...'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </form>
+
+          <div className="login-footer">
+            <button onClick={toggleMode} className="toggle-mode-btn">
+              {isRegister
+                ? 'Vous avez déjà un compte ? Connectez-vous'
+                : "Pas encore de compte ? Inscrivez-vous"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

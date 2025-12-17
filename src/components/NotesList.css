@@ -207,105 +207,96 @@
   gap: 10px;
 }
 
+/* Modern Note Action Buttons */
 .note-actions .btn-icon {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1.5px solid rgba(226, 232, 240, 0.5);
-  width: 40px;
-  height: 40px;
+  background: transparent;
+  /* Cleaner default state */
+  border: 1px solid transparent;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #64748b;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #94a3b8;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   padding: 0;
   position: relative;
-  overflow: hidden;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  overflow: visible;
+  /* Allow transform */
+  box-shadow: none;
+}
+
+/* Remove the old highlight before effect for a cleaner look */
+.note-actions .btn-icon::before {
+  display: none;
 }
 
 .note-actions .btn-icon svg {
-  position: relative;
-  z-index: 2;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  stroke-width: 2px;
+  transition: all 0.3s ease;
 }
 
-/* Effet de brillance au survol */
-.note-actions .btn-icon::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
-  transform: translate(-50%, -50%);
-  transition: width 0.5s ease, height 0.5s ease;
-  z-index: 1;
-  pointer-events: none;
+/* Eye/Toggle Button - Blue */
+.note-actions .btn-toggle {
+  background: rgba(59, 130, 246, 0.05);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
-.note-actions .btn-icon:hover::before {
-  width: 150%;
-  height: 150%;
-}
-
-/* Bouton Eye/EyeOff - Bleu */
-.note-actions .btn-icon:first-child {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.12));
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-.note-actions .btn-icon:first-child:hover {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+.note-actions .btn-toggle:hover {
+  background: #3b82f6;
+  color: white;
   border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Expand/View Button - Purple/Indigo */
+.note-actions .btn-view {
+  background: rgba(99, 102, 241, 0.05);
+  /* Indigo tint */
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+.note-actions .btn-view:hover {
+  background: #6366f1;
   color: white;
-  transform: translateY(-4px) scale(1.08);
-  box-shadow:
-    0 12px 28px rgba(59, 130, 246, 0.45),
-    0 6px 12px rgba(59, 130, 246, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: #6366f1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
-/* Bouton Edit - Émeraude */
-.note-actions .btn-icon:nth-child(2) {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.12));
-  border-color: rgba(16, 185, 129, 0.3);
+/* Edit Button - Emerald/Teal */
+.note-actions .btn-edit {
+  background: rgba(16, 185, 129, 0.05);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.1);
 }
 
-.note-actions .btn-icon:nth-child(2):hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+.note-actions .btn-edit:hover {
+  background: #10b981;
+  color: white;
   border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Delete Button - Red */
+.note-actions .btn-delete {
+  background: rgba(239, 68, 68, 0.05);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.1);
+}
+
+.note-actions .btn-delete:hover {
+  background: #ef4444;
   color: white;
-  transform: translateY(-4px) scale(1.08);
-  box-shadow:
-    0 12px 28px rgba(16, 185, 129, 0.45),
-    0 6px 12px rgba(16, 185, 129, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-/* Bouton Delete - Rouge */
-.note-actions .btn-icon:nth-child(3),
-.note-actions .btn-icon:last-child {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(220, 38, 38, 0.12));
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.note-actions .btn-icon:nth-child(3):hover,
-.note-actions .btn-icon:last-child:hover {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   border-color: #ef4444;
-  color: white;
-  transform: translateY(-4px) scale(1.08);
-  box-shadow:
-    0 12px 28px rgba(239, 68, 68, 0.45),
-    0 6px 12px rgba(239, 68, 68, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* Animation au clic */

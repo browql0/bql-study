@@ -17,82 +17,96 @@
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
-    height: 75px !important;
+    height: 70px !important;
     background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(226, 232, 240, 0.8);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
     z-index: 9999;
-    padding: 0 8px;
-    justify-content: space-between;
+    padding: 0 16px;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    justify-content: space-around;
     align-items: center;
-    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Safe area adjustment for iPhone X+ */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .user-nav {
+      height: calc(60px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   }
 
   .user-nav-item {
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
     background: none !important;
     border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
     -webkit-tap-highlight-color: transparent;
     box-shadow: none !important;
+    padding: 8px 0;
   }
 
   .user-nav-item svg {
     width: 24px;
     height: 24px;
     color: #94a3b8;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     stroke-width: 2;
     position: relative;
     z-index: 10;
   }
 
-  /* Badge bleu uniquement pour l'état actif */
+  /* Active State - Clean & Pro */
+  .user-nav-item.active svg {
+    color: #3b82f6 !important;
+    transform: translateY(-4px);
+    filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.4));
+  }
+
+  /* Active Indicator Dot */
   .user-nav-item.active::after {
     content: '';
     position: absolute;
-    top: 50%;
+    bottom: 8px;
     left: 50%;
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, #4f8ff0 0%, #5a9fff 100%);
-    border-radius: 18px;
-    transform: translate(-50%, -50%);
-    z-index: 0;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    background: #3b82f6;
+    border-radius: 50%;
+    animation: fadeInScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .user-nav-item.active svg {
-    color: white !important;
-    transform: scale(1.1);
-  }
-
-  /* Hover léger */
+  /* Hover State */
   .user-nav-item:hover:not(.active) svg {
-    color: #4f8ff0;
-    transform: scale(1.05);
+    color: #64748b;
+    transform: translateY(-2px);
   }
 
-  /* Tap responsive */
-  .user-nav-item:active {
-    transform: scale(0.96);
+  /* Tap Interaction */
+  .user-nav-item:active svg {
+    transform: scale(0.9);
   }
 
-  @keyframes slideInUp {
+  @keyframes fadeInScale {
     from {
       opacity: 0;
-      transform: translateY(100%);
+      transform: translateX(-50%) scale(0);
     }
+
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(-50%) scale(1);
     }
   }
 }
@@ -101,14 +115,24 @@
    DARK MODE
    ============================================ */
 [data-theme="dark"] .user-nav {
-  background: rgba(30, 41, 59, 0.95) !important;
-  border-top-color: rgba(51, 65, 85, 0.8);
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-top-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="dark"] .user-nav-item svg {
-  color: #cbd5e1;
+  color: #64748b;
+}
+
+[data-theme="dark"] .user-nav-item.active svg {
+  color: #60a5fa !important;
+  filter: drop-shadow(0 4px 8px rgba(96, 165, 250, 0.3));
+}
+
+[data-theme="dark"] .user-nav-item.active::after {
+  background: #60a5fa;
 }
 
 [data-theme="dark"] .user-nav-item:hover:not(.active) svg {
-  color: #818cf8;
+  color: #94a3b8;
 }

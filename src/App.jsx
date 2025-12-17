@@ -80,7 +80,7 @@ function AppContent() {
       try {
         const { deviceService } = await import('./services/deviceService');
         const authResult = await deviceService.checkDeviceAuthorization();
-        
+
         if (!authResult.authorized && authResult.reason === 'device_not_registered') {
           // L'appareil n'est plus autorisé (probablement supprimé par un admin)
           console.log('Appareil non autorisé, déconnexion...');
@@ -95,7 +95,7 @@ function AppContent() {
 
     // Vérifier toutes les 30 secondes
     const interval = setInterval(checkDeviceAuthorization, 30000);
-    
+
     // Vérifier aussi lors des interactions utilisateur importantes (clics, touches)
     const handleUserInteraction = () => {
       checkDeviceAuthorization();
@@ -241,7 +241,7 @@ function AppContent() {
                 console.warn('Erreur lors de la désactivation de l\'appareil:', deviceError);
                 // Continuer la déconnexion même si la désactivation échoue
               }
-              
+
               const { supabase } = await import('./lib/supabase');
               await supabase.auth.signOut();
               setDeviceLimitError(null);
@@ -349,6 +349,7 @@ function AppContent() {
                       onSelectSubject={setSelectedSubject}
                       hasSubscription={hasSubscription}
                       onUpgrade={() => setShowPayment(true)}
+                      onOpenDashboard={() => setShowDashboard(true)}
                     />
                   )}
                 </div>

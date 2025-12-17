@@ -14,7 +14,7 @@ const UserProfile = ({ onClose, onOpenPayment }) => {
   const { currentUser } = useApp();
   const [subscription, setSubscription] = useState(null);
   const [studentInfo, setStudentInfo] = useState(null);
-  const [isEditing, setIsEditing] = useState(false); 
+  const [isEditing, setIsEditing] = useState(false);
 
   const loadSubscriptionInfo = useCallback(async () => {
     if (currentUser?.id) {
@@ -98,9 +98,9 @@ const UserProfile = ({ onClose, onOpenPayment }) => {
   return (
     <div className="user-profile-page-container">
       <div className="user-profile-modal">
-        
+
         {/* 1. Header Bar (Style Bibliothèque/Ressources - CENTRÉ) */}
-        <div className="list-header"> 
+        <div className="list-header">
           <div className="section-title-wrapper">
             <div className="section-title-icon">
               <User size={28} strokeWidth={2.5} />
@@ -112,10 +112,10 @@ const UserProfile = ({ onClose, onOpenPayment }) => {
               </h2>
             </div>
           </div>
-          
+
           {/* NOTE : Le bouton de fermeture/retour est délibérément absent pour maintenir le centrage */}
         </div>
-        
+
         <div className="profile-modal-body">
           {/* PREMIUM HERO SECTION */}
           <div className="profile-hero-section">
