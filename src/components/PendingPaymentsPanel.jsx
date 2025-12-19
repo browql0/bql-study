@@ -113,14 +113,41 @@ const PendingPaymentsPanel = () => {
       // Récupérer les infos du paiement avant validation
       const payment = pendingPayments.find(p => p.id === paymentId);
 
+      // 1. Appeler le RPC pour valider dans la table pending_payments
       const { data, error } = await supabase.rpc('approve_pending_payment', {
         payment_id: paymentId
       });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Erreur lors de la validation');
 
-      if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la validation');
+      // 2. Mettre à jour manuellement le profil pour garantir que total_spent est correct
+      // (Au cas où le RPC ne le ferait pas ou mal)
+      if (payment?.user_id) {
+        try {
+          // Fetch current stats
+          const { data: userProfile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('total_spent, total_payments')
+            .eq('id', payment.user_id)
+            .single();
+
+          if (!fetchError && userProfile) {
+            const currentSpent = userProfile.total_spent || 0;
+            const currentPayments = userProfile.total_payments || 0;
+            const newSpent = currentSpent + (payment.amount || 0);
+
+            await supabase.from('profiles').update({
+              total_spent: newSpent,
+              total_payments: currentPayments + 1,
+              payment_amount: payment.amount, // Update last payment amount
+              last_payment_date: new Date().toISOString()
+            }).eq('id', payment.user_id);
+          }
+        } catch (updateErr) {
+          console.error('Erreur mise à jour profil (total_spent):', updateErr);
+          // Non-blocking, we continue
+        }
       }
 
       // Notifier l'utilisateur
@@ -143,7 +170,7 @@ const PendingPaymentsPanel = () => {
 
       setConfirmationMessage({
         title: 'Paiement validé !',
-        message: 'L\'abonnement de l\'utilisateur a été activé avec succès.',
+        message: 'L\'abonnement de l\'utilisateur a été activé et le montant ajouté au total.',
         type: 'success'
       });
       setShowConfirmation(true);

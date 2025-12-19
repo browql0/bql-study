@@ -1,13 +1,29 @@
 /* ============================================
    VOUCHERS TAB - PURE PREMIUM GLASS DESIGN
    ============================================ */
-/* Matched with PendingPaymentsPanel.css & RevenueTab.css */
+/* Matched with StatsTab.css */
+
+:root {
+  --stats-primary: #3b82f6;
+  --stats-success: #10b981;
+  --stats-warning: #f59e0b;
+  --stats-danger: #ef4444;
+  --stats-bg-gradient: linear-gradient(135deg, #eff6ff 0%, #f5f7fa 100%);
+  --stats-card-bg: rgba(255, 255, 255, 0.9);
+  --stats-glass-border: 1px solid rgba(255, 255, 255, 0.5);
+  --stats-shadow-soft: 0 10px 30px -5px rgba(59, 130, 246, 0.1);
+  --stats-shadow-hover: 0 20px 40px -5px rgba(59, 130, 246, 0.15);
+  --stats-radius: 20px;
+}
 
 .dashboard-vouchers {
   max-width: 1400px;
   margin: 0 auto;
   animation: fadeIn 0.4s ease;
   padding-bottom: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 @keyframes fadeIn {
@@ -23,206 +39,201 @@
 }
 
 /* ============================================
-   STATS HEADER (Premium Style)
+   HEADER SECTION
    ============================================ */
-.vouchers-stats-header {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-
-.voucher-stat-card {
-  position: relative;
-  background: var(--bg-secondary);
-  padding: 24px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.voucher-stat-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  padding: 1.5px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.voucher-stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.15);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  flex-shrink: 0;
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 800;
-  /* Gradient Text */
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  line-height: 1.1;
-}
-
-.stat-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
-}
-
-/* ============================================
-   HEADER & ACTIONS
-   ============================================ */
-.wallet-header-actions {
+.stats-header-premium {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
 
-.wallet-title h3 {
-  font-size: 28px;
+.stats-title-gradient {
+  font-size: 32px;
   font-weight: 800;
-  color: var(--text-primary);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  /* Premium Text Gradient */
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  margin: 0 0 4px 0;
+  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
-.wallet-count {
-  padding: 6px 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: white;
-  border-radius: 99px;
-  font-size: 14px;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+.stats-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.header-actions-row {
+  display: flex;
+  gap: 12px;
 }
 
 .btn-create-ticket {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 14px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-create-ticket::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(255, 255, 255, 0.2), transparent);
-  opacity: 0;
-  transition: opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn-create-ticket:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
-}
-
-.btn-create-ticket:hover::after {
-  opacity: 1;
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
 }
 
 /* ============================================
-   GRID & CARDS (Standard Premium)
+   HERO STATS GRID
+   ============================================ */
+.hero-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.hero-stat-card {
+  position: relative;
+  background: white;
+  border-radius: var(--stats-radius);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+  box-shadow: var(--stats-shadow-soft);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.hero-stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--stats-shadow-hover);
+}
+
+.hero-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #cbd5e1;
+  transition: 0.3s;
+}
+
+.hero-stat-card.total::before {
+  background: #3b82f6;
+}
+
+.hero-stat-card.active::before {
+  background: #10b981;
+}
+
+.hero-stat-card.used::before {
+  background: #f59e0b;
+}
+
+.hero-stat-card.total .hero-stat-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.hero-stat-card.active .hero-stat-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.hero-stat-card.used .hero-stat-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.hero-stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.hero-stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-stat-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.hero-stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.hero-stat-glow {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ============================================
+   VOUCHERS GRID
    ============================================ */
 .vouchers-wallet-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 24px;
-  margin-bottom: 24px;
+  margin-top: 24px;
 }
 
 .voucher-card-premium {
   position: relative;
-  background: var(--bg-secondary);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--stats-radius);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  /* Glass effect */
-  backdrop-filter: blur(10px);
-}
-
-.voucher-card-premium::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  padding: 1.5px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  box-shadow: var(--stats-shadow-soft);
 }
 
 .voucher-card-premium:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--stats-shadow-hover);
 }
 
-/* Card Header */
 .voucher-card-header {
   padding: 24px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
 }
 
 .voucher-icon-wrapper {
@@ -233,25 +244,21 @@
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  position: relative;
 }
 
-/* Plan Variants for Icons */
 .voucher-icon-wrapper.premium {
   background: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
 }
 
 .voucher-icon-wrapper.monthly {
   background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .voucher-icon-wrapper.basic {
-  background: rgba(148, 163, 184, 0.1);
-  color: #94a3b8;
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
 }
 
 .voucher-plan-badge {
@@ -264,24 +271,25 @@
 }
 
 .voucher-plan-badge.premium {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .voucher-plan-badge.monthly {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: #dbeafe;
+  color: #2563eb;
 }
 
-/* Card Body */
+.voucher-plan-badge.basic {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .voucher-card-body {
   padding: 24px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   text-align: center;
 }
@@ -289,22 +297,22 @@
 .voucher-amount-display {
   font-size: 36px;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #1e293b;
   margin-bottom: 8px;
   letter-spacing: -1px;
 }
 
 .voucher-amount-display span {
   font-size: 16px;
-  color: var(--text-secondary);
+  color: #64748b;
   font-weight: 600;
   margin-left: 2px;
 }
 
 .voucher-code-display {
-  background: rgba(99, 102, 241, 0.05);
-  border: 1px dashed rgba(99, 102, 241, 0.3);
-  color: #6366f1;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #3b82f6;
   padding: 10px 20px;
   border-radius: 12px;
   font-family: 'Monaco', monospace;
@@ -314,24 +322,18 @@
   margin-bottom: 16px;
   cursor: pointer;
   transition: all 0.2s;
-  position: relative;
 }
 
 .voucher-code-display:hover {
-  background: rgba(99, 102, 241, 0.1);
-  transform: scale(1.05);
-}
-
-.voucher-code-display:active {
-  transform: scale(0.95);
+  background: #eff6ff;
+  border-color: #3b82f6;
+  transform: scale(1.02);
 }
 
 .voucher-stats-row {
   display: flex;
   gap: 16px;
   margin-top: auto;
-  width: 100%;
-  justify-content: center;
 }
 
 .mini-stat {
@@ -339,15 +341,14 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #64748b;
   font-weight: 500;
 }
 
-/* Card Footer */
 .voucher-card-footer {
   padding: 20px 24px;
-  background: rgba(0, 0, 0, 0.02);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -355,7 +356,7 @@
 
 .voucher-expiry {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #64748b;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -370,26 +371,47 @@
 .action-btn-small {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid transparent;
+  background: white;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.2s;
-  /* background: var(--bg-primary); */
-  color: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .action-btn-small:hover {
-  background: white;
-  color: #6366f1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  color: #3b82f6;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .action-btn-small.delete:hover {
   color: #ef4444;
-  background: #fee2e2;
+  background: #fef2f2;
+  border-color: #fee2e2;
+}
+
+.empty-wallet-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.empty-wallet-state h4 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
 }
 
 /* Modal form style reuse */
@@ -407,26 +429,24 @@
 }
 
 .modal-content {
-  background: var(--bg-secondary);
+  background: white;
   padding: 32px;
   border-radius: 24px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   max-width: 600px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .modal-content h3 {
   font-size: 24px;
   font-weight: 800;
   margin: 0 0 24px 0;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .voucher-form {
-  /* same as before */
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -447,7 +467,7 @@
 .form-group label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: #64748b;
   margin-bottom: 4px;
 }
 
@@ -457,32 +477,87 @@
   width: 100%;
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  background: var(--bg-primary);
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   font-size: 14px;
   transition: all 0.2s;
 }
 
 .form-group input:focus {
-  border-color: #6366f1;
+  border-color: #3b82f6;
+  background: white;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 12px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btn-danger {
+  flex: 1;
+  padding: 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
 }
 
 /* Mobile */
 @media (max-width: 768px) {
-  .vouchers-wallet-grid {
+  .hero-stats-grid {
     grid-template-columns: 1fr;
   }
 
-  .wallet-header-actions {
+  .stats-header-premium {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
   }
 
-  .btn-create-ticket {
-    width: 100%;
-    justify-content: center;
+  .vouchers-wallet-grid {
+    grid-template-columns: 1fr;
   }
 }

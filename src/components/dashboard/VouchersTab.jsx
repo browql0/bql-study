@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Gift, Plus, Edit2, Trash2, Copy, CheckCircle, Tag, Wallet, Crown, Calendar, Users } from 'lucide-react';
+import { Gift, Plus, Edit2, Trash2, Copy, CheckCircle, Tag, Users, Calendar, TrendingUp, Award, Zap } from 'lucide-react';
 import { voucherService } from '../../services/voucherService';
 import './VouchersTab.css';
 
@@ -47,7 +47,7 @@ const VouchersTab = () => {
     fetchVouchers();
   }, [fetchVouchers]);
 
-  // ... (Handlers remain mostly the same, just UI changes)
+  // Handlers
   const handleAddVoucher = async (voucherData) => {
     try {
       const result = await voucherService.createVoucher(voucherData);
@@ -147,7 +147,7 @@ const VouchersTab = () => {
   };
 
   const getPlanIcon = (planType) => {
-    if (planType === 'premium' || planType === 'yearly') return <Crown size={24} />;
+    if (planType === 'premium' || planType === 'yearly') return <Award size={24} />;
     return <Gift size={24} />;
   };
 
@@ -168,52 +168,68 @@ const VouchersTab = () => {
 
   return (
     <div className="dashboard-vouchers">
-      {/* Premium Stats Header */}
-      <div className="vouchers-stats-header">
-        <div className="voucher-stat-card">
-          <div className="stat-icon">
-            <Gift size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.total}</span>
-            <span className="stat-label">Total Codes</span>
-          </div>
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Gestion des Codes</h2>
+          <p className="stats-subtitle">Créez et suivez vos codes promotionnels</p>
         </div>
-        <div className="voucher-stat-card">
-          <div className="stat-icon">
-            <CheckCircle size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.active}</span>
-            <span className="stat-label">Actifs</span>
-          </div>
-        </div>
-        <div className="voucher-stat-card">
-          <div className="stat-icon">
-            <Tag size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.used}</span>
-            <span className="stat-label">Utilisés</span>
-          </div>
+        <div className="header-actions-row">
+          <button className="btn-create-ticket" onClick={handleAddNew}>
+            <Plus size={20} /> Nouveau Code
+          </button>
         </div>
       </div>
 
-      {/* Header & Actions */}
-      <div className="wallet-header-actions">
-        <div className="wallet-title">
-          <h3>
-            <Tag size={28} className="text-slate-700" />
-            Gestion des Codes
-            <span className="wallet-count">{vouchers.length}</span>
-          </h3>
+      {/* Hero Stats Grid */}
+      <div className="hero-stats-grid">
+        <div className="hero-stat-card total">
+          <div className="hero-stat-icon">
+            <Gift size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Total Codes</span>
+            <span className="hero-stat-value">{voucherStats.total}</span>
+            <div className="hero-stat-trend positive">
+              <Tag size={12} style={{ marginRight: 4 }} />
+              <span>Actifs et expirés</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
         </div>
-        <button className="btn-create-ticket" onClick={handleAddNew}>
-          <Plus size={20} /> Créer un Code
-        </button>
+
+        <div className="hero-stat-card active">
+          <div className="hero-stat-icon">
+            <CheckCircle size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Actifs</span>
+            <span className="hero-stat-value">{voucherStats.active}</span>
+            <div className="hero-stat-trend positive">
+              <Zap size={12} style={{ marginRight: 4 }} />
+              <span>Prêts à l'emploi</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
+
+        <div className="hero-stat-card used">
+          <div className="hero-stat-icon">
+            <Users size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Utilisés</span>
+            <span className="hero-stat-value">{voucherStats.used}</span>
+            <div className="hero-stat-trend neutral">
+              <TrendingUp size={12} style={{ marginRight: 4 }} />
+              <span>Utilisation globale</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
       </div>
 
-      {/* Premium Cards Grid */}
+      {/* Vouchers Grid */}
       <div className="vouchers-wallet-grid">
         {vouchers.length === 0 ? (
           <div className="empty-wallet-state">
@@ -223,7 +239,6 @@ const VouchersTab = () => {
           </div>
         ) : (
           vouchers.map(voucher => {
-            const isExpired = voucher.expires_at && new Date(voucher.expires_at) < new Date();
             const planClass = getPlanClass(voucher.plan_type);
 
             return (
@@ -299,7 +314,7 @@ const VouchersTab = () => {
         )}
       </div>
 
-      {/* Reused Modals */}
+      {/* Form Modal */}
       {showVoucherForm && (
         <div className="voucher-form-modal" onClick={(e) => {
           if (e.target.className === 'voucher-form-modal') setShowVoucherForm(false);
@@ -388,6 +403,7 @@ const VouchersTab = () => {
         </div>
       )}
 
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="voucher-form-modal" onClick={(e) => {
           if (e.target.className === 'voucher-form-modal') setShowDeleteModal(false);

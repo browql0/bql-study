@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Shield, Ban, CheckCircle, Eye } from 'lucide-react';
+import { Search, Filter, Shield, Ban, CheckCircle, Eye, Trash2, TrendingUp, Users, Award, Calendar, X, AlertTriangle, Crown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { settingsService } from '../../services/settingsService';
 import './UsersTab.css';
@@ -38,11 +38,30 @@ const UsersTab = () => {
   const [durationModal, setDurationModal] = useState({ show: false, userId: null });
   const [pricing, setPricing] = useState({ monthly: 120, quarterly: 320, yearly: 600 });
 
+  // UI States
+  const [viewMode, setViewMode] = useState('grid');
+  const [toasts, setToasts] = useState([]);
+
+  // Fetch Pricing
+  useEffect(() => {
+    const loadPricing = async () => {
+      try {
+        const data = await settingsService.getSettings();
+        if (data && data.pricing) {
+          setPricing(data.pricing);
+        }
+      } catch (err) {
+        console.error("Error loading pricing", err);
+      }
+    };
+    loadPricing();
+  }, []);
+
   const fetchAllUsers = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Récupérer les utilisateurs avec toutes les infos
+      // 1. Fetch Users
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
         .select('*')
@@ -50,47 +69,51 @@ const UsersTab = () => {
 
       if (usersError) throw usersError;
 
-      // Récupérer les paiements pour chaque utilisateur
+      // 2. Fetch Completed Payments to calculate accurate totals
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('user_id, amount, created_at, plan_type')
-        .in('status', ['success', 'completed']);
+        .select('user_id, amount, status')
+        .eq('status', 'completed');
 
-      if (paymentsError) console.warn('Erreur paiements:', paymentsError);
+      if (paymentsError) {
+        console.error("Error fetching payments:", paymentsError);
+        // Continue without payments data if error, fallback to profile data
+      }
 
-      // Récupérer aussi les paiements manuels approuvés (virement/cash)
-      const { data: manualPayments, error: manualError } = await supabase
-        .from('pending_payments')
-        .select('user_id, amount, created_at, plan_type')
-        .eq('status', 'approved');
+      // 3. Aggregate payments by user
+      const paymentsMap = {};
+      if (paymentsData) {
+        paymentsData.forEach(p => {
+          if (!paymentsMap[p.user_id]) paymentsMap[p.user_id] = 0;
+          paymentsMap[p.user_id] += (p.amount || 0);
+        });
+      }
 
-      if (manualError) console.warn('Erreur paiements manuels:', manualError);
+      const enhancedUsers = usersData.map(user => {
+        const isPremium = user.subscription_status === 'premium' || user.subscription_status === 'trial';
+        const isActive = isPremium && new Date(user.subscription_end_date) > new Date();
 
-      // Enrichir les données utilisateurs avec les infos de paiement
-      const enrichedUsers = usersData.map(user => {
-        const userPayments = paymentsData?.filter(p => p.user_id === user.id) || [];
-        const userManualPayments = manualPayments?.filter(p => p.user_id === user.id) || [];
-        const allPayments = [...userPayments, ...userManualPayments];
+        // LOG: Affiche le statut d'abonnement et la date de fin pour chaque utilisateur
+        console.log(`[DEBUG] Utilisateur: ${user.email} | Statut: ${user.subscription_status} | Fin: ${user.subscription_end_date}`);
 
-        const lastPayment = allPayments.sort((a, b) =>
-          new Date(b.created_at) - new Date(a.created_at)
-        )[0];
+        // Use calculated total if available, otherwise fallback to profile data
+        // This fixes the issue where profile.total_spent might be 0 but payments exist
+        const calculatedTotal = paymentsMap[user.id] !== undefined ? paymentsMap[user.id] : (user.total_spent || user.payment_amount || 0);
 
         return {
           ...user,
-          total_payments: allPayments.length,
-          total_spent: allPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
-          last_payment_date: lastPayment?.created_at,
-          last_payment_amount: lastPayment?.amount,
-          plan_type: lastPayment?.plan_type || null,
-          subscription_active: user.subscription_status === 'premium' || user.subscription_status === 'trial' || user.subscription_status === 'active'
+          subscription_active: isActive,
+          real_total_spent: calculatedTotal // Store specific calculated field
         };
       });
 
-      setUsers(enrichedUsers);
-      setFilteredUsers(enrichedUsers);
+      setUsers(enhancedUsers);
+      setFilteredUsers(enhancedUsers);
+      // LOG: Affiche la liste complète des utilisateurs après update
+      console.log('[DEBUG] Utilisateurs chargés:', enhancedUsers);
     } catch (error) {
-      console.error('Erreur lors du chargement des utilisateurs:', error);
+      console.error('Erreur chargement utilisateurs:', error);
+      showToast('Erreur', 'Impossible de charger les utilisateurs', 'error');
     } finally {
       setLoading(false);
     }
@@ -98,73 +121,51 @@ const UsersTab = () => {
 
   useEffect(() => {
     fetchAllUsers();
-    loadPricing();
   }, [fetchAllUsers]);
 
-  const loadPricing = async () => {
-    try {
-      const settings = await settingsService.getSettings();
-      if (settings?.pricing) {
-        setPricing(settings.pricing);
-      }
-    } catch (error) {
-      console.error('Erreur chargement pricing:', error);
-    }
-  };
-
-  // Filtrage des utilisateurs
+  // Filtering Logic
   useEffect(() => {
+    if (!users) return;
     let filtered = [...users];
 
-    // Filtrer par recherche
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(user =>
-        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        (user.email?.toLowerCase().includes(term)) ||
+        (user.name?.toLowerCase().includes(term)) ||
+        (user.id?.toLowerCase().includes(term))
       );
     }
 
-    // Filtrer par rôle
     if (roleFilter !== 'all') {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
 
-    // Filtrer par abonnement
     if (subscriptionFilter !== 'all') {
       filtered = filtered.filter(user => {
-        switch (subscriptionFilter) {
-          case 'premium':
-            return user.subscription_status === 'premium';
-          case 'none':
-            return !user.subscription_status || user.subscription_status === 'free';
-          default:
-            return true;
-        }
+        if (subscriptionFilter === 'premium') return user.subscription_status === 'premium';
+        if (subscriptionFilter === 'none') return !user.subscription_status || user.subscription_status === 'free';
+        return true;
       });
     }
 
     setFilteredUsers(filtered);
   }, [users, searchTerm, roleFilter, subscriptionFilter]);
 
-  const showNotification = (message, type = 'info') => {
-    const notification = document.createElement('div');
-    notification.className = `custom-notification notification-${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.classList.add('show'), 10);
+  // Toast System
+  const showToast = (title, message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, title, message, type }]);
     setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
   };
-  const now = new Date();
-  // const endDate = new Date();
-  // endDate.setMonth(endDate.getMonth() + 1);
 
+  const now = new Date();
+
+  // Actions
   const handleGrantTrial = async (userId) => {
     try {
-      // Donner un essai gratuit de 7 jours
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 7);
 
@@ -181,15 +182,14 @@ const UsersTab = () => {
 
       if (error) throw error;
       await fetchAllUsers();
-      showNotification('Essai gratuit de 7 jours accordé !', 'success');
+      showToast('Essai Validé', 'L\'essai gratuit de 7 jours a été activé.', 'success');
     } catch (error) {
       console.error('Erreur:', error);
-      showNotification('Erreur lors de l\'attribution de l\'essai', 'error');
+      showToast('Erreur', 'Impossible d\'activer l\'essai gratuit.', 'error');
     }
   };
 
   const handleGrantPremium = (userId) => {
-    // Ouvrir le modal de sélection de durée
     setDurationModal({ show: true, userId: userId });
   };
 
@@ -198,25 +198,31 @@ const UsersTab = () => {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + months);
 
-      // Déterminer le type de plan et le montant
       let planType, paymentAmount;
-      if (months === 1) {
-        planType = 'monthly';
-        paymentAmount = pricing.monthly || 120;
-      } else if (months === 3) {
-        planType = 'quarterly';
-        paymentAmount = pricing.quarterly || 320;
-      } else if (months === 6) {
-        planType = 'yearly';
-        paymentAmount = pricing.yearly || 600;
-      }
+      if (months === 1) { planType = 'monthly'; paymentAmount = pricing.monthly || 120; }
+      else if (months === 3) { planType = 'quarterly'; paymentAmount = pricing.quarterly || 320; }
+      else if (months === 6) { planType = 'yearly'; paymentAmount = pricing.yearly || 600; }
+
+      // First fetch current stats to increment correctly
+      const { data: currentUser, error: fetchError } = await supabase
+        .from('profiles')
+        .select('total_spent, total_payments')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentSpent = currentUser.total_spent || 0;
+      const currentPayments = currentUser.total_payments || 0;
 
       const { error } = await supabase
         .from('profiles')
         .update({
           subscription_status: 'premium',
           plan_type: planType,
-          payment_amount: paymentAmount,
+          payment_amount: paymentAmount, // Store last payment amount
+          total_spent: currentSpent + paymentAmount,
+          total_payments: currentPayments + 1,
           subscription_end_date: endDate.toISOString(),
           last_payment_date: new Date().toISOString()
         })
@@ -224,11 +230,11 @@ const UsersTab = () => {
 
       if (error) throw error;
       await fetchAllUsers();
-      showNotification(`Accès premium ${months} mois accordé !`, 'success');
+      showToast('Premium Activé', `L'accès premium de ${months} mois a été accordé !`, 'success');
       setDurationModal({ show: false, userId: null });
     } catch (error) {
       console.error('Erreur:', error);
-      showNotification('Erreur lors de l\'attribution du premium', 'error');
+      showToast('Échec de l\'opération', 'Une erreur est survenue lors de l\'attribution.', 'error');
     }
   };
 
@@ -241,18 +247,18 @@ const UsersTab = () => {
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({
-              subscription_status: 'expired',
-              subscription_end_date: null
-            })
+            .update({ subscription_status: 'expired', subscription_end_date: null })
             .eq('id', userId);
+
+          // LOG: Vérifie la réponse de la requête
+          console.log(`[DEBUG] Révocation accès pour userId=${userId} | Erreur:`, error);
 
           if (error) throw error;
           await fetchAllUsers();
-          showNotification('Accès révoqué avec succès !', 'success');
+          showToast('Accès Révoqué', 'L\'abonnement a été annulé avec succès.', 'success');
         } catch (error) {
           console.error('Erreur:', error);
-          showNotification('Erreur lors de la révocation', 'error');
+          showToast('Erreur', 'Impossible de révoquer l\'accès.', 'error');
         }
         setConfirmModal({ show: false, title: '', message: '', onConfirm: null });
       }
@@ -272,40 +278,45 @@ const UsersTab = () => {
           const newRole = isAdmin ? 'spectator' : 'admin';
           const { error } = await supabase
             .from('profiles')
-            .update({
-              role: newRole,
-              updated_at: new Date().toISOString()
-            })
+            .update({ role: newRole, updated_at: new Date().toISOString() })
             .eq('id', userId);
 
           if (error) throw error;
 
           await syncLoggedInUserRole(userId, newRole);
-
-          // Forcer le rafraîchissement des données
           await fetchAllUsers();
 
-          showNotification(
-            isAdmin ? 'Utilisateur rétrogradé en spectateur !' : 'Utilisateur promu administrateur !',
+          showToast(
+            isAdmin ? 'Rétrogradation réussie' : 'Promotion réussie',
+            isAdmin ? 'L\'utilisateur est maintenant spectateur.' : 'L\'utilisateur est maintenant administrateur.',
             'success'
           );
         } catch (error) {
           console.error('Erreur:', error);
-          showNotification('Erreur lors du changement de rôle', 'error');
+          showToast('Erreur', 'Le changement de rôle a échoué.', 'error');
         }
         setConfirmModal({ show: false, title: '', message: '', onConfirm: null });
       }
     });
   };
 
-  if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="spinner"></div>
-        <p>Chargement des utilisateurs...</p>
-      </div>
-    );
-  }
+  const handleViewDetails = (user) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+  };
+
+  // Sort & Statistics
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+
+    if (sortBy === 'created_at') { aVal = new Date(aVal).getTime(); bVal = new Date(bVal).getTime(); }
+    if (sortBy === 'total_spent' || sortBy === 'total_payments') { aVal = aVal || 0; bVal = bVal || 0; }
+    if (sortBy === 'name' || sortBy === 'email') { aVal = (aVal || '').toLowerCase(); bVal = (bVal || '').toLowerCase(); }
+
+    return sortOrder === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+  });
+
   const userStats = {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
@@ -320,586 +331,314 @@ const UsersTab = () => {
     premiumRate: users.length > 0 ? ((users.filter(u => u.subscription_status === 'premium').length / users.length) * 100).toFixed(1) : 0
   };
 
-  const handleViewDetails = (user) => {
-    setSelectedUser(user);
-    setShowUserModal(true);
-  };
-
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
-  };
-
-  // Tri des utilisateurs avec gestion améliorée
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    let aVal = a[sortBy];
-    let bVal = b[sortBy];
-
-    // Gestion des dates
-    if (sortBy === 'created_at') {
-      aVal = new Date(aVal).getTime();
-      bVal = new Date(bVal).getTime();
-    }
-
-    // Gestion des valeurs numériques (dépenses, paiements)
-    if (sortBy === 'total_spent' || sortBy === 'total_payments') {
-      aVal = aVal || 0;
-      bVal = bVal || 0;
-    }
-
-    // Gestion des chaînes de caractères (nom, email)
-    if (sortBy === 'name' || sortBy === 'email') {
-      aVal = (aVal || '').toLowerCase();
-      bVal = (bVal || '').toLowerCase();
-    }
-
-    if (sortOrder === 'asc') {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
-  });
+  if (loading) {
+    return (
+      <div className="dashboard-loading">
+        <div className="spinner"></div>
+        <p>Chargement des utilisateurs...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-users">
-      {/* Stats Cards */}
-      <div className="users-stats-header">
-        <div className="user-stat-card stat-gradient-blue">
-          <div className="stat-icon">
-            <Shield size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{userStats.total}</span>
-            <span className="stat-label">Total Utilisateurs</span>
-            <span className="stat-trend">+{userStats.newThisWeek} cette semaine</span>
-          </div>
-        </div>
-        <div className="user-stat-card stat-gradient-green">
-          <div className="stat-icon">
-            <CheckCircle size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{userStats.premium}</span>
-            <span className="stat-label">Premium</span>
-            <span className="stat-trend">{userStats.premiumRate}% conversion</span>
-          </div>
-        </div>
-        <div className="user-stat-card stat-gradient-orange">
-          <div className="stat-icon">
-            <Shield size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{userStats.admins}</span>
-            <span className="stat-label">Administrateurs</span>
-            <span className="stat-trend">{userStats.spectators} spectateurs</span>
-          </div>
-        </div>
-        <div className="user-stat-card stat-gradient-purple">
-          <div className="stat-icon">
-            <Eye size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{userStats.free}</span>
-            <span className="stat-label">Gratuits</span>
-            <span className="stat-trend">Sans abonnement</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Advanced Filters & Controls V2 */}
-      <div className="users-controls-v2">
-        <div className="search-container-v2">
-          <div className="search-icon-wrapper">
-            <Search size={20} />
-          </div>
-          <input
-            type="text"
-            className="search-input-v2"
-            placeholder="Rechercher un utilisateur par nom ou email..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <button className="search-clear" onClick={() => setSearchTerm('')}>×</button>
-          )}
-        </div>
-
-        <div className="filters-row-v2">
-          <div className="filter-group-v2">
-            <Shield size={18} className="filter-icon-v2" />
-            <select className="filter-select-v2" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-              <option value="all">Tous les rôles</option>
-              <option value="admin">👑 Administrateur</option>
-              <option value="spectator">👁️ Spectateur</option>
-            </select>
-          </div>
-
-          <div className="filter-group-v2">
-            <CheckCircle size={18} className="filter-icon-v2" />
-            <select className="filter-select-v2" value={subscriptionFilter} onChange={e => setSubscriptionFilter(e.target.value)}>
-              <option value="all">Tous les abonnements</option>
-              <option value="premium">⭐ Premium</option>
-              <option value="none">🆓 Sans abonnement</option>
-            </select>
-          </div>
-
-          <div className="sort-controls-v2">
-            <select className="sort-select-v2" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="created_at">📅 Date d'inscription</option>
-              <option value="name">🔤 Nom</option>
-              <option value="email">📧 Email</option>
-              <option value="total_spent">💰 Dépenses</option>
-            </select>
-            <button
-              className={`sort-order-btn-v2 ${sortOrder}`}
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              title={sortOrder === 'asc' ? 'Croissant' : 'Décroissant'}
+      {/* Toast Container */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`toast-notification ${toast.type}`}>
+            <div className="toast-icon-wrapper">
+              {toast.type === 'success' ? <CheckCircle size={20} strokeWidth={3} /> : <AlertTriangle size={20} strokeWidth={3} />}
+            </div>
+            <div className="toast-content">
+              <h4>{toast.title}</h4>
+              <p>{toast.message}</p>
+            </div>
+            <div
+              style={{ marginLeft: 'auto', color: '#94a3b8', cursor: 'pointer' }}
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
             >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </button>
+              <X size={16} />
+            </div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="results-summary-v2">
-          <span className="results-count">
-            <strong>{filteredUsers.length}</strong> utilisateur{filteredUsers.length > 1 ? 's' : ''} trouvé{filteredUsers.length > 1 ? 's' : ''}
-          </span>
-          {(searchTerm || roleFilter !== 'all' || subscriptionFilter !== 'all') && (
-            <button className="clear-filters-btn" onClick={() => {
-              setSearchTerm('');
-              setRoleFilter('all');
-              setSubscriptionFilter('all');
-            }}>
-              Réinitialiser les filtres
-            </button>
-          )}
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Gestion Utilisateurs</h2>
+          <p className="stats-subtitle">Gérez votre communauté avec style et efficacité.</p>
         </div>
       </div>
 
-      {/* Modern Users Grid V2 */}
-      <div className="users-grid-v2">
-        {sortedUsers.length === 0 ? (
-          <div className="no-results-v2">
-            <div className="no-results-icon">🔍</div>
-            <h3>Aucun utilisateur trouvé</h3>
-            <p>Essayez d'ajuster vos filtres de recherche</p>
+      {/* Hero Stats Grid */}
+      <div className="hero-stats-grid">
+        <div className="hero-stat-card total">
+          <div className="hero-stat-icon">
+            <Users size={28} />
           </div>
-        ) : (
-          sortedUsers.map((user, index) => {
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Total Membres</span>
+            <span className="hero-stat-value">{userStats.total}</span>
+          </div>
+        </div>
+
+        <div className="hero-stat-card premium">
+          <div className="hero-stat-icon">
+            <Award size={28} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Premium</span>
+            <span className="hero-stat-value">{userStats.premium}</span>
+          </div>
+        </div>
+
+        <div className="hero-stat-card admins">
+          <div className="hero-stat-icon">
+            <Shield size={28} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Admins</span>
+            <span className="hero-stat-value">{userStats.admins}</span>
+          </div>
+        </div>
+
+        <div className="hero-stat-card free">
+          <div className="hero-stat-icon">
+            <Eye size={28} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Gratuits</span>
+            <span className="hero-stat-value">{userStats.free}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Glass Controls Bar */}
+      <div className="users-controls-premium">
+        <div className="controls-left">
+          <div className="view-toggle-wrapper">
+            <button
+              className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Vue Grille"
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', width: '14px' }}>
+                <div style={{ width: '5px', height: '5px', background: 'currentColor', borderRadius: '1px' }}></div>
+                <div style={{ width: '5px', height: '5px', background: 'currentColor', borderRadius: '1px' }}></div>
+                <div style={{ width: '5px', height: '5px', background: 'currentColor', borderRadius: '1px' }}></div>
+                <div style={{ width: '5px', height: '5px', background: 'currentColor', borderRadius: '1px' }}></div>
+              </div>
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+              title="Vue Liste"
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '14px' }}>
+                <div style={{ width: '14px', height: '2px', background: 'currentColor', borderRadius: '1px' }}></div>
+                <div style={{ width: '14px', height: '2px', background: 'currentColor', borderRadius: '1px' }}></div>
+                <div style={{ width: '14px', height: '2px', background: 'currentColor', borderRadius: '1px' }}></div>
+              </div>
+            </button>
+          </div>
+
+          <div className="search-input-wrapper">
+            <Search className="search-icon" size={18} style={{ left: '16px', color: '#64748b' }} />
+            <input
+              type="text"
+              className="search-input-premium"
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="results-count">
+            {filteredUsers.length} membres
+          </div>
+        </div>
+
+        <div className="controls-right">
+          <select
+            className="filter-select-premium"
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+          >
+            <option value="all">Tous les rôles</option>
+            <option value="admin">Admins</option>
+            <option value="spectator">Spectateurs</option>
+          </select>
+
+          <select
+            className="filter-select-premium"
+            value={subscriptionFilter}
+            onChange={e => setSubscriptionFilter(e.target.value)}
+          >
+            <option value="all">Tous les plans</option>
+            <option value="premium">Premium</option>
+            <option value="none">Gratuit</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Content Area (Grid or List) */}
+      {viewMode === 'grid' ? (
+        <div className="users-grid-premium">
+          {sortedUsers.map(user => {
             const isPremium = user.subscription_status === 'premium';
-            const isAdmin = user.role === 'admin';
-            const userInitial = user.name?.charAt(0).toUpperCase() || 'U';
-
             return (
-              <div
-                key={user.id}
-                className="user-card-v2"
-                style={{ '--card-index': index }}
-              >
-                {/* Card Header with Avatar */}
-                <div className="user-card-header-v2">
-                  <div className="user-avatar-v2">
-                    <div className="avatar-letter-v2">{userInitial}</div>
-                    <div className={`avatar-status-indicator ${user.subscription_active ? 'active' : 'inactive'}`}></div>
+              <div key={user.id} className="user-card-premium">
+                <div className="user-card-header">
+                  <div className={`user-avatar-premium ${isPremium ? 'premium' : ''}`}>
+                    {user.name?.charAt(0).toUpperCase() || 'U'}
+                    <div className={`user-status-dot ${user.subscription_active ? 'active' : ''}`}></div>
                   </div>
-
-                  <div className="user-main-info-v2">
-                    <h4 className="user-card-name">{user.name || 'Utilisateur'}</h4>
-                    <p className="user-card-email">{user.email}</p>
-
-                    <div className="user-badges-v2">
-                      <span className={`badge-v2-mini badge-role-${user.role}`}>
-                        {isAdmin ? <Shield size={12} /> : <Eye size={12} />}
-                        <span>{isAdmin ? 'Admin' : 'Spectateur'}</span>
-                      </span>
-
-                      {isPremium && (
-                        <span className="badge-v2-mini badge-premium">
-                          ⭐ <span>Premium</span>
-                        </span>
-                      )}
-                    </div>
+                  <div className="user-info">
+                    <div className="user-name">{user.name}</div>
+                    <div className="user-email">{user.email}</div>
                   </div>
                 </div>
 
-                {/* Card Stats */}
-                <div className="user-card-stats-v2">
-                  <div className="stat-item-v2">
-                    <div className="stat-icon-v2">💰</div>
-                    <div className="stat-content-v2">
-                      <span className="stat-value-card">{user.total_spent || 0}€</span>
-                      <span className="stat-label-card">Dépensé</span>
-                    </div>
+                <div className="user-card-body">
+                  <div className="user-stat-pill">
+                    <span className="user-stat-val">{user.real_total_spent || 0} DH</span>
+                    <span className="user-stat-lbl">PAYÉ</span>
                   </div>
-
-                  <div className="stat-divider-v2"></div>
-
-                  <div className="stat-item-v2">
-                    <div className="stat-icon-v2">🧾</div>
-                    <div className="stat-content-v2">
-                      <span className="stat-value-card">{user.total_payments || 0}</span>
-                      <span className="stat-label-card">Paiements</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-divider-v2"></div>
-
-                  <div className="stat-item-v2">
-                    <div className="stat-icon-v2">📅</div>
-                    <div className="stat-content-v2">
-                      <span className="stat-value-card">{new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                      <span className="stat-label-card">Inscrit</span>
-                    </div>
+                  <div className="user-stat-pill">
+                    <span className="user-stat-val">{new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    <span className="user-stat-lbl">Inscrit</span>
                   </div>
                 </div>
 
-                {/* Card Actions */}
-                <div className="user-card-actions-v2">
-                  <button
-                    className="card-action-btn view-details-btn"
-                    onClick={() => handleViewDetails(user)}
-                    title="Voir les détails complets"
-                  >
-                    <Eye size={18} />
-                    <span>Détails</span>
-                  </button>
-
-                  <div className="quick-actions-v2">
-                    <button
-                      className="quick-action-btn trial-action"
-                      onClick={() => handleGrantTrial(user.id)}
-                      title="Donner essai gratuit (7 jours)"
-                    >
-                      🎁
+                <div className="user-card-footer">
+                  <div className="user-actions">
+                    <button className="action-btn-icon view" onClick={() => handleViewDetails(user)}>
+                      <Eye size={20} />
                     </button>
-
-                    <button
-                      className="quick-action-btn premium-action"
-                      onClick={() => handleGrantPremium(user.id)}
-                      title="Accorder Premium mensuel"
-                    >
-                      <CheckCircle size={16} />
+                    <button className="action-btn-icon" onClick={() => handleGrantPremium(user.id)}>
+                      <Award size={20} />
                     </button>
-
-                    <button
-                      className="quick-action-btn revoke-action"
-                      onClick={() => handleRevokeAccess(user.id)}
-                      title="Révoquer l'accès"
-                    >
-                      <Ban size={16} />
-                    </button>
-
-                    <button
-                      className={`quick-action-btn ${isAdmin ? 'demote-action' : 'admin-action'}`}
-                      onClick={() => handleToggleAdmin(user.id, user.role)}
-                      title={isAdmin ? 'Rétrograder en spectateur' : 'Promouvoir administrateur'}
-                    >
-                      <Shield size={16} />
+                    <button className="action-btn-icon delete" onClick={() => handleRevokeAccess(user.id)}>
+                      <Ban size={20} />
                     </button>
                   </div>
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      ) : (
+        /* New Premium List View */
+        <div className="users-table-container">
+          <table className="users-table-premium">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Total Payé</th>
+                <th>Inscription</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedUsers.map(user => {
+                const isPremium = user.subscription_status === 'premium';
+                return (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="table-user-cell">
+                        <div className={`table-avatar ${isPremium ? 'premium' : ''}`}>
+                          {user.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{user.name}</div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`user-badge ${user.role}`}>{user.role}</span>
+                    </td>
+                    <td>
+                      {isPremium ?
+                        <span className="user-badge premium">Premium</span> :
+                        <span className="user-badge spectator">Gratuit</span>
+                      }
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{user.real_total_spent || 0} DH</td>
+                    <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="user-actions" style={{ justifyContent: 'flex-end' }}>
+                        <button className="action-btn-icon view" style={{ width: '36px', height: '36px' }} onClick={() => handleViewDetails(user)}>
+                          <Eye size={16} />
+                        </button>
+                        <button className="action-btn-icon" style={{ width: '36px', height: '36px' }} onClick={() => handleGrantPremium(user.id)}>
+                          <Award size={16} />
+                        </button>
+                        <button className="action-btn-icon delete" style={{ width: '36px', height: '36px' }} onClick={() => handleRevokeAccess(user.id)}>
+                          <Ban size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* User Details Modal - Ultra Modern Design */}
+      {/* Detail Modal */}
       {showUserModal && selectedUser && (
-        <div className="user-modal-overlay-v2" onClick={() => setShowUserModal(false)}>
+        <div className="user-modal-overlay-v2" style={{ zIndex: 9000 }} onClick={() => setShowUserModal(false)}>
           <div className="user-modal-wrapper" onClick={(e) => e.stopPropagation()}>
-
-            {/* Floating Particles Background */}
-            <div className="modal-particles">
-              <div className="particle"></div>
-              <div className="particle"></div>
-              <div className="particle"></div>
-              <div className="particle"></div>
-              <div className="particle"></div>
-            </div>
-
-            {/* Premium Header Section */}
-            <div className="modal-header-v2">
-              <div className="header-background-glow"></div>
-              <button className="btn-close-v2" onClick={() => setShowUserModal(false)}>
-                <span className="close-icon">×</span>
+            <div className="modal-hero-header-bg">
+              <button className="modal-close-btn" onClick={() => setShowUserModal(false)}>
+                <X size={24} />
               </button>
-
-              <div className="header-content-v2">
-                {/* Avatar avec effet 3D */}
-                <div className="avatar-container-v2">
-                  <div className="avatar-ring"></div>
-                  <div className="avatar-circle-v2">
-                    <span className="avatar-letter">{selectedUser.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  </div>
-                  <div className="avatar-status-v2"></div>
-                </div>
-
-                {/* User Info */}
-                <div className="user-info-header-v2">
-                  <h2 className="user-name-v2">{selectedUser.name || 'Utilisateur'}</h2>
-                  <p className="user-email-v2">{selectedUser.email}</p>
-
-                  {/* Badges Premium */}
-                  <div className="badges-container-v2">
-                    <div className={`badge-v2 badge-role ${selectedUser.role}`}>
-                      {selectedUser.role === 'admin' ? <Shield size={16} /> : <Eye size={16} />}
-                      <span>{selectedUser.role === 'admin' ? 'Administrateur' : 'Spectateur'}</span>
-                    </div>
-                    <div className={`badge-v2 badge-status ${selectedUser.subscription_active ? 'active' : 'inactive'}`}>
-                      <div className="status-dot"></div>
-                      <span>{selectedUser.subscription_active ? 'Abonnement Actif' : 'Inactif'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* Modal Body - Redesigned */}
-            <div className="modal-body-v2">
-
-              {/* Stats Overview Cards */}
-              <div className="stats-overview-v2">
-                <div className="stat-card-v2 stat-payments">
-                  <div className="stat-icon-v2">
-                    <CheckCircle size={24} />
-                  </div>
-                  <div className="stat-data-v2">
-                    <span className="stat-value-v2">{selectedUser.total_payments || 0}</span>
-                    <span className="stat-label-v2">Transactions</span>
-                  </div>
-                  <div className="stat-trend-v2">
-                    <span className="trend-indicator up">↑</span>
-                  </div>
+            <div className="modal-content-premium" style={{ marginTop: '-40px', position: 'relative', zIndex: 2 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '24px' }}>
+                <div className="modal-avatar-xl">
+                  {selectedUser.name?.charAt(0).toUpperCase()}
                 </div>
+                <h3 className="modal-hero-name" style={{ marginTop: '16px' }}>{selectedUser.name}</h3>
+                <p className="modal-hero-email">{selectedUser.email}</p>
+              </div>
 
-                <div className="stat-card-v2 stat-revenue">
-                  <div className="stat-icon-v2">
-                    <span className="currency-symbol">DH</span>
-                  </div>
-                  <div className="stat-data-v2">
-                    <span className="stat-value-v2">{selectedUser.total_spent || 0}</span>
-                    <span className="stat-label-v2">Revenus Générés</span>
-                  </div>
-                  <div className="stat-trend-v2">
-                    <span className="trend-indicator up">+{Math.round((selectedUser.total_spent || 0) * 0.1)}</span>
-                  </div>
+              <div className="stats-grid-modal">
+                <div className="modal-stat-card">
+                  <span className="modal-stat-label">ID Utilisateur</span>
+                  <span className="modal-stat-value mono" style={{ fontSize: '13px' }}>{selectedUser.id}</span>
                 </div>
-
-                <div className="stat-card-v2 stat-plan">
-                  <div className="stat-icon-v2">
-                    <Shield size={24} />
-                  </div>
-                  <div className="stat-data-v2">
-                    <span className="stat-value-v2">
-                      {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
-                        ? (selectedUser.plan_type === 'monthly' ? '📅 Mensuel'
-                          : selectedUser.plan_type === 'quarterly' ? '📆 Trimestriel'
-                            : selectedUser.plan_type === 'yearly' ? '🗓️ Annuel'
-                              : 'Premium')
-                        : selectedUser.subscription_status === 'trial' ? '🎁 Essai'
-                          : 'Gratuit'}
-                    </span>
-                    <span className="stat-label-v2">Type de Plan</span>
-                  </div>
-                  <div className={`stat-badge-v2 ${selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? 'premium' : selectedUser.subscription_status === 'trial' ? 'trial' : 'free'}`}>
-                    {selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? '⭐' : selectedUser.subscription_status === 'trial' ? '🎁' : '🆓'}
-                  </div>
+                <div className="modal-stat-card">
+                  <span className="modal-stat-label">Total Payé</span>
+                  <span className="modal-stat-value green">{selectedUser.real_total_spent || 0} DH</span>
+                </div>
+                <div className="modal-stat-card">
+                  <span className="modal-stat-label">Abonnement</span>
+                  <span className="modal-stat-value">{selectedUser.subscription_status === 'premium' ? 'Premium' : 'Gratuit'}</span>
                 </div>
               </div>
 
-              {/* Information Sections */}
-              <div className="info-sections-v2">
-
-                {/* General Information */}
-                <div className="info-section-v2">
-                  <div className="section-header-v2">
-                    <span className="section-icon-v2">📋</span>
-                    <h3 className="section-title-v2">Informations Générales</h3>
-                    <div className="section-line-v2"></div>
-                  </div>
-                  <div className="section-content-v2">
-                    <div className="info-grid-v2">
-                      <div className="info-item-v2">
-                        <div className="info-item-icon"><Shield size={18} /></div>
-                        <div className="info-item-content">
-                          <span className="info-label-v2">ID Utilisateur</span>
-                          <span className="info-value-v2 mono">{selectedUser.id}</span>
-                        </div>
-                      </div>
-                      <div className="info-item-v2">
-                        <div className="info-item-icon">📅</div>
-                        <div className="info-item-content">
-                          <span className="info-label-v2">Date d'inscription</span>
-                          <span className="info-value-v2">{new Date(selectedUser.created_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}</span>
-                        </div>
-                      </div>
-                      {selectedUser.last_sign_in_at && (
-                        <div className="info-item-v2">
-                          <div className="info-item-icon">🕐</div>
-                          <div className="info-item-content">
-                            <span className="info-label-v2">Dernière connexion</span>
-                            <span className="info-value-v2">{new Date(selectedUser.last_sign_in_at).toLocaleString('fr-FR')}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subscription Information */}
-                <div className="info-section-v2 section-premium">
-                  <div className="section-header-v2">
-                    <span className="section-icon-v2">⭐</span>
-                    <h3 className="section-title-v2">Abonnement & Accès</h3>
-                    <div className="section-line-v2"></div>
-                  </div>
-                  <div className="section-content-v2">
-                    <div className="subscription-details-v2">
-                      <div className="subscription-card-v2 primary">
-                        <div className="subscription-icon-v2">
-                          {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium' ? '⭐'
-                            : selectedUser.subscription_status === 'trial' ? '🎁' : '🆓'}
-                        </div>
-                        <div className="subscription-info-v2">
-                          <span className="subscription-label-v2">Type d'abonnement</span>
-                          <span className={`subscription-value-v2 ${selectedUser.subscription_status === 'premium' || selectedUser.subscription_status === 'active' ? 'premium' : selectedUser.subscription_status === 'trial' ? 'trial' : 'free'}`}>
-                            {selectedUser.subscription_status === 'active' || selectedUser.subscription_status === 'premium'
-                              ? (selectedUser.plan_type === 'monthly' ? `⭐ Premium Mensuel (${pricing.monthly} DH/mois)`
-                                : selectedUser.plan_type === 'quarterly' ? `⭐ Premium Trimestriel (${pricing.quarterly} DH/3 mois)`
-                                  : selectedUser.plan_type === 'yearly' ? `⭐ Premium Annuel (${pricing.yearly} DH/6 mois)`
-                                    : '⭐ Premium')
-                              : selectedUser.subscription_status === 'trial' ? '🎁 Période d\'essai (7 jours)'
-                                : '🆓 Abonnement gratuit'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment History */}
-                {(selectedUser.total_payments > 0 || selectedUser.last_payment_date) && (
-                  <div className="info-section-v2 section-payments">
-                    <div className="section-header-v2">
-                      <span className="section-icon-v2">💰</span>
-                      <h3 className="section-title-v2">Historique de Paiements</h3>
-                      <div className="section-line-v2"></div>
-                    </div>
-                    <div className="section-content-v2">
-                      <div className="payment-history-grid-v2">
-                        <div className="payment-card-v2">
-                          <div className="payment-card-icon">📊</div>
-                          <div className="payment-card-data">
-                            <span className="payment-card-value">{selectedUser.total_payments || 0}</span>
-                            <span className="payment-card-label">Transactions</span>
-                          </div>
-                        </div>
-                        <div className="payment-card-v2 highlight">
-                          <div className="payment-card-icon">💵</div>
-                          <div className="payment-card-data">
-                            <span className="payment-card-value">{selectedUser.total_spent || 0} DH</span>
-                            <span className="payment-card-label">Montant Total</span>
-                          </div>
-                        </div>
-                        {selectedUser.last_payment_date && (
-                          <>
-                            <div className="payment-card-v2">
-                              <div className="payment-card-icon">📅</div>
-                              <div className="payment-card-data">
-                                <span className="payment-card-value">{new Date(selectedUser.last_payment_date).toLocaleDateString('fr-FR')}</span>
-                                <span className="payment-card-label">Dernier Paiement</span>
-                              </div>
-                            </div>
-                            <div className="payment-card-v2">
-                              <div className="payment-card-icon">💳</div>
-                              <div className="payment-card-data">
-                                <span className="payment-card-value">{selectedUser.last_payment_amount || 0} DH</span>
-                                <span className="payment-card-label">Montant</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <h4 style={{ fontSize: '16px', fontWeight: 700, margin: '24px 0 16px 0', color: '#1e293b' }}>Actions Rapides</h4>
+              <div className="modal-actions-grid">
+                <button className="btn-create-ticket success" onClick={() => handleGrantTrial(selectedUser.id)}>
+                  <Award size={20} /> Trial 7J
+                </button>
+                <button className="btn-create-ticket primary" onClick={() => handleGrantPremium(selectedUser.id)}>
+                  <CheckCircle size={20} /> Abonner
+                </button>
+                <button className="btn-create-ticket danger" onClick={() => handleRevokeAccess(selectedUser.id)}>
+                  <Ban size={20} /> Révoquer
+                </button>
+                <button className="btn-create-ticket purple" onClick={() => handleToggleAdmin(selectedUser.id, selectedUser.role)}>
+                  <Shield size={20} /> Role
+                </button>
               </div>
-
-              {/* Actions Section */}
-              <div className="actions-section-v2">
-                <div className="section-header-v2">
-                  <span className="section-icon-v2">⚡</span>
-                  <h3 className="section-title-v2">Actions Rapides</h3>
-                  <div className="section-line-v2"></div>
-                </div>
-                <div className="actions-grid-v2">
-                  <button className="action-btn-v2 action-trial" onClick={() => {
-                    handleGrantTrial(selectedUser.id);
-                    setShowUserModal(false);
-                  }}>
-                    <div className="action-icon-v2">
-                      🎁
-                    </div>
-                    <div className="action-content-v2">
-                      <span className="action-title-v2">Essai Gratuit</span>
-                      <span className="action-desc-v2">Donner 7 jours d'essai</span>
-                    </div>
-                    <div className="action-arrow-v2">→</div>
-                  </button>
-
-                  <button className="action-btn-v2 action-premium" onClick={() => {
-                    handleGrantPremium(selectedUser.id);
-                    setShowUserModal(false);
-                  }}>
-                    <div className="action-icon-v2">
-                      <CheckCircle size={24} />
-                    </div>
-                    <div className="action-content-v2">
-                      <span className="action-title-v2">Premium Mensuel</span>
-                      <span className="action-desc-v2">Activer abonnement mensuel</span>
-                    </div>
-                    <div className="action-arrow-v2">→</div>
-                  </button>
-
-                  <button className="action-btn-v2 action-revoke" onClick={() => {
-                    handleRevokeAccess(selectedUser.id);
-                    setShowUserModal(false);
-                  }}>
-                    <div className="action-icon-v2">
-                      <Ban size={24} />
-                    </div>
-                    <div className="action-content-v2">
-                      <span className="action-title-v2">Révoquer Accès</span>
-                      <span className="action-desc-v2">Supprimer tous les accès</span>
-                    </div>
-                    <div className="action-arrow-v2">→</div>
-                  </button>
-
-                  <button className="action-btn-v2 action-admin" onClick={() => {
-                    handleToggleAdmin(selectedUser.id, selectedUser.role);
-                    setShowUserModal(false);
-                  }}>
-                    <div className="action-icon-v2">
-                      <Shield size={24} />
-                    </div>
-                    <div className="action-content-v2">
-                      <span className="action-title-v2">{selectedUser.role === 'admin' ? 'Rétrograder' : 'Promouvoir Admin'}</span>
-                      <span className="action-desc-v2">{selectedUser.role === 'admin' ? 'Retirer droits admin' : 'Accorder droits admin'}</span>
-                    </div>
-                    <div className="action-arrow-v2">→</div>
-                  </button>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
@@ -907,160 +646,52 @@ const UsersTab = () => {
 
       {/* Confirmation Modal */}
       {confirmModal.show && (
-        <div className="user-modal-overlay-v2" onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}>
-          <div className="confirm-modal-wrapper" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-modal-header">
-              <h3 className="confirm-modal-title">{confirmModal.title}</h3>
+        <div className="user-modal-overlay-v2" onClick={() => setConfirmModal({ ...confirmModal, show: false })}>
+          <div className="user-modal-wrapper" style={{ maxWidth: '400px', padding: '32px', textAlign: 'center' }}>
+            <div style={{ width: '60px', height: '60px', background: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={32} color="#ef4444" />
             </div>
-            <div className="confirm-modal-body">
-              <p className="confirm-modal-message">{confirmModal.message}</p>
-            </div>
-            <div className="confirm-modal-actions">
-              <button
-                className="confirm-btn cancel-btn"
-                onClick={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null })}
-              >
-                ✕ Annuler
-              </button>
-              <button
-                className="confirm-btn confirm-btn-primary"
-                onClick={confirmModal.onConfirm}
-              >
-                ✓ Confirmer
-              </button>
+            <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>{confirmModal.title}</h3>
+            <p style={{ color: '#64748b', marginBottom: '24px' }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-create-ticket" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setConfirmModal({ ...confirmModal, show: false })}>Annuler</button>
+              <button className="btn-create-ticket danger" style={{ flex: 1, justifyContent: 'center' }} onClick={confirmModal.onConfirm}>Confirmer</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Duration Selection Modal */}
+      {/* Duration Modal */}
       {durationModal.show && (
         <div className="user-modal-overlay-v2" onClick={() => setDurationModal({ show: false, userId: null })}>
-          <div className="confirm-modal-wrapper duration-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <div className="confirm-modal-header">
-              <h3 className="confirm-modal-title">🎁 Choisir la durée Premium</h3>
-              <p style={{ fontSize: '14px', marginTop: '8px', color: 'var(--text-secondary)' }}>
-                Sélectionnez la durée d'accès premium pour cet utilisateur
-              </p>
+          <div className="user-modal-wrapper" style={{ maxWidth: '850px', padding: '32px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h3 className="stats-title-gradient">Choisir une offre</h3>
+              <p className="stats-subtitle" style={{ margin: '0 auto' }}>Sélectionnez la durée de l'abonnement pour cet utilisateur</p>
             </div>
-            <div className="duration-options" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px',
-              padding: '24px'
-            }}>
-              <div
-                className="duration-card"
-                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 1)}
-                style={{
-                  cursor: 'pointer',
-                  padding: '24px',
-                  borderRadius: '16px',
-                  border: '2px solid #e2e8f0',
-                  textAlign: 'center',
-                  transition: 'all 0.3s ease',
-                  background: 'var(--card-bg, white)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = '#4f8ff0';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 143, 240, 0.15)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📅</div>
-                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>1 Mois</h4>
-                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.monthly || 120} DH</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Mensuel</p>
-              </div>
-
-              <div
-                className="duration-card popular"
-                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 3)}
-                style={{
-                  cursor: 'pointer',
-                  padding: '24px',
-                  borderRadius: '16px',
-                  border: '2px solid #4f8ff0',
-                  textAlign: 'center',
-                  transition: 'all 0.3s ease',
-                  background: 'linear-gradient(135deg, rgba(79, 143, 240, 0.08), rgba(100, 181, 246, 0.08))',
-                  position: 'relative'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(79, 143, 240, 0.2)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{
-                  position: 'absolute',
-                  top: '-12px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'linear-gradient(135deg, #4f8ff0, #64b5f6)',
-                  color: 'white',
-                  padding: '6px 16px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 4px 12px rgba(79, 143, 240, 0.3)'
-                }}>Populaire</div>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📆</div>
-                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>3 Mois</h4>
-                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.quarterly || 320} DH</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Trimestriel</p>
-              </div>
-
-              <div
-                className="duration-card"
-                onClick={() => handleGrantPremiumWithDuration(durationModal.userId, 6)}
-                style={{
-                  cursor: 'pointer',
-                  padding: '24px',
-                  borderRadius: '16px',
-                  border: '2px solid #e2e8f0',
-                  textAlign: 'center',
-                  transition: 'all 0.3s ease',
-                  background: 'var(--card-bg, white)'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = '#4f8ff0';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 143, 240, 0.15)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗓️</div>
-                <h4 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>6 Mois</h4>
-                <p style={{ fontSize: '28px', fontWeight: '800', color: '#4f8ff0', marginBottom: '4px' }}>{pricing.yearly || 600} DH</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Semestriel</p>
-              </div>
-            </div>
-            <div className="confirm-modal-actions">
-              <button
-                className="confirm-btn cancel-btn"
-                onClick={() => setDurationModal({ show: false, userId: null })}
-              >
-                ✕ Annuler
-              </button>
+            <div className="plans-grid">
+              {[
+                { m: 1, p: pricing.monthly, t: 'Mensuel', icon: <Calendar size={28} /> },
+                { m: 3, p: pricing.quarterly, t: 'Trimestriel', featured: true, icon: <TrendingUp size={28} /> },
+                { m: 6, p: pricing.yearly, t: 'Semestriel', icon: <Crown size={28} /> }
+              ].map(plan => (
+                <div key={plan.m} className={`plan-card ${plan.featured ? 'featured' : ''}`} onClick={() => handleGrantPremiumWithDuration(durationModal.userId, plan.m)}>
+                  {plan.featured && <div className="plan-badge">populaire</div>}
+                  <div className="plan-price">{plan.p} DHS</div>
+                  <div className="plan-period">/ {plan.m} mois</div>
+                  <div style={{ margin: '16px 0', fontSize: '18px', fontWeight: 700, color: '#334155' }}>
+                    {plan.t}
+                  </div>
+                  <button className={`btn-create-ticket ${plan.featured ? 'primary' : ''}`} style={{ width: '100%', justifyContent: 'center' }}>
+                    Sélectionner
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

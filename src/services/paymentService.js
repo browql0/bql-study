@@ -56,9 +56,19 @@ export const paymentService = {
 
       // Si mode simulation, traiter le paiement immédiatement
       if (paymentGateway === 'simulation') {
-        // Mettre à jour le profil directement
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + selectedPlan.duration);
+
+        // Fetch current stats to increment
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('total_spent, total_payments')
+          .eq('id', userId)
+          .single();
+
+        const currentSpent = userProfile?.total_spent || 0;
+        const currentPayments = userProfile?.total_payments || 0;
+        const newSpent = currentSpent + selectedPlan.amount;
 
         const { error: updateError } = await supabase
           .from('profiles')
@@ -67,7 +77,9 @@ export const paymentService = {
             subscription_end_date: endDate.toISOString(),
             last_payment_date: new Date().toISOString(),
             payment_amount: selectedPlan.amount,
-            plan_type: plan
+            plan_type: plan,
+            total_spent: newSpent,
+            total_payments: currentPayments + 1
           })
           .eq('id', userId);
 
@@ -298,6 +310,17 @@ export const paymentService = {
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + payment.subscription_duration);
 
+        // Fetch current stats
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('total_spent, total_payments')
+          .eq('id', payment.user_id)
+          .single();
+
+        const currentSpent = userProfile?.total_spent || 0;
+        const currentPayments = userProfile?.total_payments || 0;
+        const newSpent = currentSpent + payment.amount;
+
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -305,7 +328,9 @@ export const paymentService = {
             subscription_end_date: endDate.toISOString(),
             last_payment_date: new Date().toISOString(),
             payment_amount: payment.amount,
-            plan_type: payment.plan_type
+            plan_type: payment.plan_type,
+            total_spent: newSpent,
+            total_payments: currentPayments + 1
           })
           .eq('id', payment.user_id);
 

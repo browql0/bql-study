@@ -8,10 +8,12 @@ const ProtectedContent = ({
   onUpgrade,
   message = "Accès réservé aux membres Premium"
 }) => {
+  // Correction universelle : blocage si accès non valide
   if (hasAccess) {
     return <>{children}</>;
   }
 
+  // Blocage universel
   return (
     <div className="protected-content">
       <div className="protected-overlay">
@@ -20,7 +22,7 @@ const ProtectedContent = ({
             <Lock size={48} />
           </div>
           <h3>Contenu Premium</h3>
-          <p>{message}</p>
+          <p>{message || "Votre accès premium ou période d'essai est expiré. Abonnez-vous pour débloquer le contenu."}</p>
           <button 
             className="btn-primary btn-upgrade"
             onClick={onUpgrade}
@@ -40,6 +42,7 @@ const ProtectedContent = ({
       </div>
     </div>
   );
+  
 };
 
 export default ProtectedContent;

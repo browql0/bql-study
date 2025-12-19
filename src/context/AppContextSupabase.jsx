@@ -61,10 +61,10 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const authStateChangeResult = onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Charger le rôle depuis la table profiles au lieu de user_metadata
+        // Charger le rôle et l'abonnement depuis la table profiles
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('role, name, created_at')
+          .select('role, name, created_at, subscription_status, subscription_end_date')
           .eq('id', session.user.id)
           .single();
 
@@ -74,7 +74,9 @@ export const AppProvider = ({ children }) => {
           name: profileData?.name || session.user.user_metadata?.name || session.user.email,
           username: session.user.email,
           role: profileData?.role || 'spectator',
-          created_at: profileData?.created_at
+          created_at: profileData?.created_at,
+          subscription_status: profileData?.subscription_status,
+          subscription_end_date: profileData?.subscription_end_date
         };
 
         await syncAuthRoleWithProfile(session.user, userData.role);
@@ -211,15 +213,20 @@ export const AppProvider = ({ children }) => {
         async (payload) => {
           console.log('Profil mis à jour en temps réel:', payload);
 
-          // Mettre à jour le rôle si il a changé
-          if (payload.new.role !== currentUser.role) {
+          // Vérifier si des champs importants ont changé
+          const roleChanged = payload.new.role !== currentUser.role;
+          const statusChanged = payload.new.subscription_status !== currentUser.subscription_status;
+
+          if (roleChanged || statusChanged) {
             setCurrentUser(prev => ({
               ...prev,
               role: payload.new.role,
+              subscription_status: payload.new.subscription_status,
+              subscription_end_date: payload.new.subscription_end_date,
               name: payload.new.name || prev.name
             }));
 
-            // Recharger la page pour appliquer les changements de permission
+            // Recharger la page pour appliquer les changements majeurs
             window.location.reload();
           }
         }
