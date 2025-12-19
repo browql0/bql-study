@@ -220,14 +220,6 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     return photo.storage_path || photo.url || '';
   };
 
-  if (photos.length === 0) {
-    return (
-      <div className="empty-state scale-in">
-        <p>Aucune photo pour le moment</p>
-      </div>
-    );
-  }
-
   // Gestion du clavier pour la navigation
   useEffect(() => {
     if (selectedPhotoIndex === null) return;
@@ -250,6 +242,14 @@ const PhotoGallery = ({ subjectId, section, photos }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedPhotoIndex, photos.length]);
+
+  if (photos.length === 0) {
+    return (
+      <div className="empty-state scale-in">
+        <p>Aucune photo pour le moment</p>
+      </div>
+    );
+  }
 
   const selectedPhoto = selectedPhotoIndex !== null ? photos[selectedPhotoIndex] : null;
 
