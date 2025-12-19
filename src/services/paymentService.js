@@ -12,7 +12,7 @@ export const paymentService = {
     try {
       // Récupérer les prix depuis la base de données
       const pricing = await settingsService.getPricing();
-      
+
       const plans = {
         monthly: { amount: pricing.monthly, duration: 1 },
         quarterly: { amount: pricing.quarterly, duration: 3 },
@@ -39,6 +39,8 @@ export const paymentService = {
         .from('payments')
         .insert({
           user_id: userId,
+          user_name: userData.name,
+          user_email: userData.email,
           amount: selectedPlan.amount,
           currency: 'MAD',
           status: paymentGateway === 'simulation' ? 'completed' : 'pending',
@@ -248,7 +250,7 @@ export const paymentService = {
       .sort()
       .map(key => `${key}=${params[key]}`)
       .join('&');
-    
+
     const signatureString = `${sortedParams}&key=${apiKey}`;
     return await this.generateHash(signatureString);
   },
@@ -324,10 +326,10 @@ export const paymentService = {
   async verifyCMIWebhook(data, hash) {
     const storeKey = import.meta.env.VITE_CMI_STORE_KEY;
     const storeId = import.meta.env.VITE_CMI_STORE_ID;
-    
+
     const hashString = `${storeId}${data.oid}${data.amount}${data.currency}${data.status}${storeKey}`;
     const expectedHash = await this.generateHash(hashString);
-    
+
     return hash === expectedHash;
   },
 
@@ -337,16 +339,16 @@ export const paymentService = {
    */
   async verifyTijariWebhook(data, signature) {
     const apiKey = import.meta.env.VITE_TIJARI_API_KEY;
-    
+
     const sortedParams = Object.keys(data)
       .filter(key => key !== 'signature')
       .sort()
       .map(key => `${key}=${data[key]}`)
       .join('&');
-    
+
     const signatureString = `${sortedParams}&key=${apiKey}`;
     const expectedSignature = await this.generateHash(signatureString);
-    
+
     return signature === expectedSignature;
   }
 };

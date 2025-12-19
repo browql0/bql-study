@@ -170,6 +170,29 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
+  // Heartbeat: Update last_sign_in_at every 2 minutes while active
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const updateHeartbeat = async () => {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_sign_in_at: new Date().toISOString() })
+          .eq('id', currentUser.id);
+      } catch (err) {
+        // Silently fail on heartbeat
+      }
+    };
+
+    // Initial beat
+    updateHeartbeat();
+
+    // Loop
+    const interval = setInterval(updateHeartbeat, 2 * 60 * 1000); // Every 2 mins
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
   // Écouter les changements de profil en temps réel
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -308,6 +331,15 @@ export const AppProvider = ({ children }) => {
       if (error) {
         return { success: false, error };
       }
+
+      // Update profile last_sign_in_at
+      if (data?.user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ last_sign_in_at: new Date().toISOString() })
+          .eq('id', data.user.id);
+      }
+
       return { success: true, user: data.user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -344,7 +376,7 @@ export const AppProvider = ({ children }) => {
       // Utiliser le nom exact du JSON pour l'enregistrement
       const exactName = nameValidation.exactName || name;
 
-      // VÉRIFICATION FINALE juste avant l'inscription pour éviter les race conditions
+      // VÉRIFICATION FINALE
       const { isNameAlreadyUsed } = await import('../services/studentNameService');
       const nameStillUsed = await isNameAlreadyUsed(exactName);
       if (nameStillUsed) {
@@ -353,24 +385,20 @@ export const AppProvider = ({ children }) => {
 
       const { data, error } = await authSignUp(normalizedEmail, password, exactName);
       if (error) {
-        // Le message d'erreur est déjà amélioré dans authService
         return { success: false, error };
       }
 
       // Vérifier et créer le profil avec trial si nécessaire
       if (data?.user?.id) {
         try {
-          // Attendre un peu pour que le trigger s'exécute
           await new Promise(resolve => setTimeout(resolve, 1000));
 
-          // Vérifier si le profil existe et a le trial
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('id, subscription_status, subscription_end_date')
+            .select('id, subscription_status')
             .eq('id', data.user.id)
             .single();
 
-          // Si le profil n'existe pas ou n'a pas le trial, le créer/corriger
           if (profileError || !profile || profile.subscription_status !== 'trial') {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 7);
@@ -392,7 +420,8 @@ export const AppProvider = ({ children }) => {
                   voucher_expired: false
                 },
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString()
               }, {
                 onConflict: 'id'
               });
@@ -400,16 +429,17 @@ export const AppProvider = ({ children }) => {
             if (upsertError) {
               console.warn('Erreur lors de la création/correction du profil avec trial:', upsertError);
             }
+          } else {
+            // If profile already existed (by trigger), ensure last_sign_in_at is set
+            await supabase.from('profiles').update({ last_sign_in_at: new Date().toISOString() }).eq('id', data.user.id);
           }
         } catch (profileCheckError) {
           console.warn('Erreur lors de la vérification du profil:', profileCheckError);
-          // On continue quand même car l'inscription a réussi
         }
       }
 
       // Notifier les admins d'un nouvel utilisateur (In-App + Push)
       try {
-        // Notification In-App
         const { notificationsService } = await import('../services/notificationsService');
         await notificationsService.notifyAllAdmins(
           'new_user',
@@ -418,7 +448,6 @@ export const AppProvider = ({ children }) => {
           { newUserId: data.user.id }
         );
 
-        // Notification Push
         const { notifyAdmins } = await import('../services/pushNotificationService');
         await notifyAdmins(
           'new_user',
@@ -431,14 +460,10 @@ export const AppProvider = ({ children }) => {
 
       return { success: true, user: data.user, message: 'Vérifiez votre email pour confirmer votre inscription' };
     } catch (error) {
-      // Gérer les erreurs inattendues
       let errorMessage = error.message || 'Une erreur est survenue lors de l\'inscription';
-
-      if (error.message?.includes('already registered') ||
-        error.message?.includes('already exists')) {
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         errorMessage = 'Cet email est déjà utilisé par un autre compte';
       }
-
       return { success: false, error: errorMessage };
     }
   };

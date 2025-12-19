@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Users, UserCheck, UserX, Activity, TrendingUp, Calendar, Clock, Shield, Eye, Mail, Award, Zap } from 'lucide-react';
+import { useApp } from '../../context/AppContextSupabase';
+import { Users, UserCheck, Activity, TrendingUp, Calendar, Clock, Shield, Eye, Mail, Award, Zap, AlertTriangle } from 'lucide-react';
 import './StatsTab.css';
 
 const StatCard = ({ icon, label, value, type, color, trend }) => (
@@ -23,20 +24,25 @@ const StatCard = ({ icon, label, value, type, color, trend }) => (
   </div>
 );
 
-const getActivityStatus = (lastSignIn) => {
-  if (!lastSignIn) return { status: 'Jamais connecté', color: '#6b7280', icon: '⚪' };
-  
+const getActivityStatus = (lastSignIn, createdAt) => {
+  if (!lastSignIn) {
+    // If created less than 24h ago, count as "New" instead of "Never connected"
+    const created = new Date(createdAt).getTime();
+    if (Date.now() - created < 24 * 60 * 60 * 1000) return { status: 'Nouveau', color: '#3b82f6', icon: '✨' };
+    return { status: 'Jamais connecté', color: '#6b7280', icon: '⚪' };
+  }
+
   const now = Date.now();
   const lastSignInTime = new Date(lastSignIn).getTime();
   const diff = now - lastSignInTime;
 
-  const fiveMinutes = 5 * 60 * 1000;
-  const oneHour = 60 * 60 * 1000;
+  const fiveMinutes = 15 * 60 * 1000; // Expanded to 15m
+  const oneHour = 2 * 60 * 60 * 1000; // Expanded to 2h
   const oneDay = 24 * 60 * 60 * 1000;
   const oneWeek = 7 * oneDay;
 
   if (diff < fiveMinutes) return { status: 'En ligne', color: '#10b981', icon: '🟢' };
-  if (diff < oneHour) return { status: 'Actif', color: '#06b6d4', icon: '🔵' };
+  if (diff < oneHour) return { status: 'Récemment', color: '#06b6d4', icon: '🔵' }; // Renamed from "Actif"
   if (diff < oneDay) return { status: 'Aujourd\'hui', color: '#3b82f6', icon: '🟦' };
   if (diff < oneWeek) return { status: 'Cette semaine', color: '#f59e0b', icon: '🟡' };
   return { status: 'Inactif', color: '#ef4444', icon: '🔴' };
@@ -47,11 +53,11 @@ const getSubscriptionBadge = (user) => {
     const endDate = new Date(user.subscription_end_date);
     if (endDate > new Date()) {
       const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-      return { 
-        label: 'Premium', 
-        color: '#10b981', 
+      return {
+        label: 'Premium',
+        color: '#10b981',
         icon: '👑',
-        daysLeft: daysLeft 
+        daysLeft: daysLeft
       };
     }
   }
@@ -62,6 +68,7 @@ const getSubscriptionBadge = (user) => {
 };
 
 const StatsTab = () => {
+  const { currentUser } = useApp();
   const [stats, setStats] = useState({
     totalUsers: 0,
     onlineUsers: 0,
@@ -69,9 +76,50 @@ const StatsTab = () => {
     inactiveUsers: 0,
     adminUsers: 0,
     spectatorUsers: 0,
+    premiumUsersCount: 0,
+    trialUsersCount: 0,
     recentSignups: []
   });
+  const [trends, setTrends] = useState({ total: 0, active: 0, premium: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Calculate real trends helper
+  // Calculate real trends helper
+  const calculateTrends = (profiles) => {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const sevenDays = 7 * oneDay;
+
+    // 1. Total Users Trend (Weekly Growth)
+    const usersLastWeek = profiles.filter(p => (now - new Date(p.created_at).getTime()) > sevenDays).length;
+    const totalTrend = usersLastWeek > 0
+      ? (((profiles.length - usersLastWeek) / usersLastWeek) * 100)
+      : 100;
+
+    // 2. Active Users Trend (Momentum: <24h vs 24-48h)
+    const activeLast24h = profiles.filter(p => p.last_sign_in_at && (now - new Date(p.last_sign_in_at).getTime()) < oneDay).length;
+    const activePrev24h = profiles.filter(p => p.last_sign_in_at && (now - new Date(p.last_sign_in_at).getTime()) >= oneDay && (now - new Date(p.last_sign_in_at).getTime()) < 2 * oneDay).length;
+
+    // Avoid division by zero, assuming 1 if 0 to show growth from 0
+    const activeTrend = activePrev24h > 0
+      ? ((activeLast24h - activePrev24h) / activePrev24h) * 100
+      : (activeLast24h > 0 ? 100 : 0);
+
+    // 3. Premium Trend (New Premium users in last 7 days vs Total Premium base)
+    const currentPremium = profiles.filter(p => p.subscription_status === 'premium').length;
+    const newPremium = profiles.filter(p => p.subscription_status === 'premium' && (now - new Date(p.created_at).getTime()) < sevenDays).length;
+    const oldPremium = currentPremium - newPremium;
+
+    const premiumTrend = oldPremium > 0
+      ? ((newPremium / oldPremium) * 100)
+      : (currentPremium > 0 ? 100 : 0);
+
+    return {
+      total: totalTrend.toFixed(1),
+      active: activeTrend.toFixed(1),
+      premium: premiumTrend.toFixed(1)
+    };
+  };
 
   const fetchUserStats = useCallback(async () => {
     try {
@@ -117,6 +165,9 @@ const StatsTab = () => {
       const adminUsers = profiles.filter(user => user.role === 'admin');
       const spectatorUsers = profiles.filter(user => user.role === 'spectator' || !user.role);
 
+      const premiumUsersCount = profiles.filter(user => user.subscription_status === 'premium').length;
+      const trialUsersCount = profiles.filter(user => user.subscription_status === 'trial').length;
+
       setStats({
         totalUsers: profiles.length,
         onlineUsers: onlineUsers.length,
@@ -124,8 +175,12 @@ const StatsTab = () => {
         inactiveUsers: profiles.length - activeUsers.length,
         adminUsers: adminUsers.length,
         spectatorUsers: spectatorUsers.length,
+        premiumUsersCount,
+        trialUsersCount,
         recentSignups: profiles.slice(0, 10)
       });
+
+      setTrends(calculateTrends(profiles));
 
     } catch (error) {
       console.error('Error fetching user stats:', error);
@@ -134,385 +189,218 @@ const StatsTab = () => {
     }
   }, []);
 
+  // Fetch stats on mount
   useEffect(() => {
     fetchUserStats();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchUserStats();
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, [fetchUserStats]);
 
-  if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="spinner"></div>
-        <p>Chargement des statistiques...</p>
-      </div>
-    );
-  }
-
-  // Calculate trends (mock data - you can replace with real calculations)
-  const trends = {
-    total: +5.2,
-    online: +12.4,
-    active: +8.1,
-    inactive: -3.2,
-    admin: 0,
-    spectator: +7.5
-  };
-
   return (
-    <div className="dashboard-stats-enhanced fade-in">
-      {/* Overview Cards */}
-      <div className="stats-overview">
-        <StatCard 
-          icon={<Users size={28} />} 
-          label="Total Utilisateurs" 
-          value={stats.totalUsers} 
-          type="total"
-          color="#3b82f6"
-          trend={trends.total}
-        />
-        <StatCard 
-          icon={<Activity size={28} />} 
-          label="En ligne" 
-          value={stats.onlineUsers} 
-          type="online"
-          color="#10b981"
-          trend={trends.online}
-        />
-        <StatCard 
-          icon={<UserCheck size={28} />} 
-          label="Actifs (24h)" 
-          value={stats.activeUsers} 
-          type="active"
-          color="#06b6d4"
-          trend={trends.active}
-        />
-        <StatCard 
-          icon={<UserX size={28} />} 
-          label="Inactifs" 
-          value={stats.inactiveUsers} 
-          type="inactive"
-          color="#ef4444"
-          trend={trends.inactive}
-        />
-      </div>
-
-      {/* Role Distribution */}
-      <div className="stats-row">
-        <div className="stats-card role-distribution">
-          <div className="card-header">
-            <Shield size={20} />
-            <h3>Rôles</h3>
-          </div>
-          <div className="role-stats">
-            <div className="role-item">
-              <div className="role-icon admin-role">
-                <Shield size={window.innerWidth < 768 ? 20 : 24} />
-              </div>
-              <div className="role-info">
-                <span className="role-count">{stats.adminUsers}</span>
-                <span className="role-label">Administrateurs</span>
-              </div>
-              <div className="role-percentage">
-                {stats.totalUsers > 0 ? ((stats.adminUsers / stats.totalUsers) * 100).toFixed(1) : 0}%
-              </div>
-            </div>
-            <div className="role-item">
-              <div className="role-icon spectator-role">
-                <Eye size={window.innerWidth < 768 ? 20 : 24} />
-              </div>
-              <div className="role-info">
-                <span className="role-count">{stats.spectatorUsers}</span>
-                <span className="role-label">Spectateurs</span>
-              </div>
-              <div className="role-percentage">
-                {stats.totalUsers > 0 ? ((stats.spectatorUsers / stats.totalUsers) * 100).toFixed(1) : 0}%
-              </div>
-            </div>
-          </div>
-          <div className="role-bar">
-            <div 
-              className="role-bar-segment admin" 
-              style={{ width: stats.totalUsers > 0 ? `${(stats.adminUsers / stats.totalUsers) * 100}%` : '0%' }}
-            />
-            <div 
-              className="role-bar-segment spectator" 
-              style={{ width: stats.totalUsers > 0 ? `${(stats.spectatorUsers / stats.totalUsers) * 100}%` : '0%' }}
-            />
-          </div>
+    <div className="stats-dashboard-container fade-in">
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Statistiques</h2>
+          <p className="stats-subtitle">Vue d'ensemble de l'activité et de la croissance</p>
         </div>
-
-        {/* Quick Stats */}
-        <div className="stats-card quick-stats">
-          <div className="card-header">
-            <Zap size={20} />
-            <h3>Stats Rapides</h3>
-          </div>
-          <div className="quick-stats-grid">
-            <div className="quick-stat-item">
-              <Mail size={window.innerWidth < 768 ? 18 : 20} />
-              <div>
-                <span className="quick-stat-value">{stats.totalUsers}</span>
-                <span className="quick-stat-label">Emails</span>
-              </div>
-            </div>
-            <div className="quick-stat-item">
-              <Award size={window.innerWidth < 768 ? 18 : 20} />
-              <div>
-                <span className="quick-stat-value">
-                  {stats.recentSignups?.filter(u => u.subscription_status === 'premium').length || 0}
-                </span>
-                <span className="quick-stat-label">Premium</span>
-              </div>
-            </div>
-            <div className="quick-stat-item">
-              <TrendingUp size={window.innerWidth < 768 ? 18 : 20} />
-              <div>
-                <span className="quick-stat-value">
-                  {stats.recentSignups?.length || 0}
-                </span>
-                <span className="quick-stat-label">Nouveaux</span>
-              </div>
-            </div>
-            <div className="quick-stat-item">
-              <Activity size={window.innerWidth < 768 ? 18 : 20} />
-              <div>
-                <span className="quick-stat-value">
-                  {((stats.activeUsers / (stats.totalUsers || 1)) * 100).toFixed(0)}%
-                </span>
-                <span className="quick-stat-label">Activité</span>
-              </div>
-            </div>
-          </div>
+        <div className="stats-header-actions">
+          {/* Place for future actions like date filter */}
         </div>
       </div>
 
-      {/* Recent Users Table */}
-      <div className="stats-card recent-users-table">
-        <div className="card-header">
-          <Calendar size={20} />
-          <h3>Utilisateurs Récents</h3>
-          <span className="card-badge">{stats.recentSignups?.length || 0} utilisateurs</span>
-        </div>
-        
-        {/* Desktop Table */}
-        <div className="table-container">
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th>Utilisateur</th>
-                <th>Statut</th>
-                <th>Rôle</th>
-                <th>Abonnement</th>
-                <th>Inscription</th>
-                <th>Dernière Activité</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.recentSignups && stats.recentSignups.length > 0 ? (
-                stats.recentSignups.map((user) => {
-                  const activity = getActivityStatus(user.last_sign_in_at);
-                  const subscription = getSubscriptionBadge(user);
-                  return (
-                    <tr key={user.id} className="user-row">
-                      <td>
-                        <div className="user-cell">
-                          <div className="user-avatar-mini">
-                            {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="user-info-mini">
-                            <span className="user-name-mini">{user.name || 'Sans nom'}</span>
-                            <span className="user-email-mini">{user.email}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span 
-                          className="status-badge"
-                          style={{ 
-                            color: activity.color,
-                            backgroundColor: `${activity.color}20`,
-                            borderColor: `${activity.color}50`
-                          }}
-                        >
-                          <span className="status-icon">{activity.icon}</span>
-                          {activity.status}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`role-badge ${user.role || 'spectator'}`}>
-                          {user.role === 'admin' ? (
-                            <>
-                              <Shield size={14} />
-                              Admin
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={14} />
-                              Spectateur
-                            </>
-                          )}
-                        </span>
-                      </td>
-                      <td>
-                        <span 
-                          className="subscription-badge"
-                          style={{ 
-                            color: subscription.color,
-                            backgroundColor: `${subscription.color}20`,
-                            borderColor: `${subscription.color}50`
-                          }}
-                        >
-                          <span>{subscription.icon}</span>
-                          {subscription.label}
-                          {subscription.daysLeft && (
-                            <span className="days-left"> ({subscription.daysLeft}j)</span>
-                          )}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="date-cell">
-                          <Clock size={14} />
-                          <span>{new Date(user.created_at).toLocaleDateString('fr-FR', { 
-                            day: '2-digit', 
-                            month: 'short',
-                            year: 'numeric'
-                          })}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="date-cell">
-                          {user.last_sign_in_at ? (
-                            <>
-                              <Activity size={14} />
-                              <span>{new Date(user.last_sign_in_at).toLocaleDateString('fr-FR', { 
-                                day: '2-digit', 
-                                month: 'short'
-                              })}</span>
-                            </>
-                          ) : (
-                            <span className="no-activity">Jamais</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="6" className="empty-table">
-                    <div className="empty-state">
-                      <Users size={48} />
-                      <p>Aucune inscription récente</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Hero Stats Grid */}
+      <div className="hero-stats-grid">
+        <div className="hero-stat-card total">
+          <div className="hero-stat-icon">
+            <Users size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Total Utilisateurs</span>
+            <span className="hero-stat-value">{stats.totalUsers}</span>
+            <div className="hero-stat-trend positive">
+              <TrendingUp size={16} style={{ transform: trends.total < 0 ? 'rotate(180deg)' : 'none' }} />
+              <span>{trends.total > 0 ? '+' : ''}{trends.total}% vs 7j</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
         </div>
 
-        {/* Mobile Cards */}
-        <div className="mobile-users-list">
-          {stats.recentSignups && stats.recentSignups.length > 0 ? (
-            stats.recentSignups.map((user) => {
-              const activity = getActivityStatus(user.last_sign_in_at);
-              const subscription = getSubscriptionBadge(user);
+        <div className="hero-stat-card active">
+          <div className="hero-stat-icon">
+            <Activity size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Actifs (24h)</span>
+            <span className="hero-stat-value">{stats.activeUsers}</span>
+            <div className={`hero-stat-trend ${trends.active >= 0 ? 'positive' : 'neutral'}`}>
+              <TrendingUp size={16} style={{ transform: trends.active < 0 ? 'rotate(180deg)' : 'none' }} />
+              <span>{trends.active > 0 ? '+' : ''}{trends.active}% activity</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
+
+        <div className="hero-stat-card premium">
+          <div className="hero-stat-icon">
+            <Award size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Abonnés Premium</span>
+            <span className="hero-stat-value">
+              {stats.recentSignups?.filter(u => u.subscription_status === 'premium').length || 0}
+            </span>
+            <div className={`hero-stat-trend ${trends.premium > 0 ? 'positive' : 'neutral'}`}>
+              <TrendingUp size={16} style={{ transform: trends.premium < 0 ? 'rotate(180deg)' : 'none' }} />
+              <span>{trends.premium > 0 ? '+' : ''}{trends.premium}% croissance</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="stats-main-grid">
+        {/* Left Column: Engagement */}
+        <div className="stats-column-left">
+          {/* Engagement Visual */}
+          <div className="glass-card engagement-card">
+            <div className="card-header-modern">
+              <h3> <Zap size={20} /> Engagement</h3>
+            </div>
+            <div className="engagement-meter-container">
+              <div className="engagement-circle">
+                <svg viewBox="0 0 36 36" className="circular-chart blue">
+                  <path className="circle-bg"
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path className="circle"
+                    strokeDasharray={`${stats.totalUsers > 0 ? ((stats.activeUsers / stats.totalUsers) * 100) : 0}, 100`}
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <text x="18" y="17" className="percentage">
+                    {stats.totalUsers > 0 ? ((stats.activeUsers / stats.totalUsers) * 100).toFixed(0) : 0}%
+                  </text>
+                  <text x="18" y="24" className="circular-label">
+                    Taux d'activité
+                  </text>
+                </svg>
+              </div>
+              <div className="engagement-details">
+                <div className="detail-item">
+                  <span className="dot online"></span>
+                  <span className="label">En ligne</span>
+                  <span className="value">{stats.onlineUsers}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="dot offline"></span>
+                  <span className="label">Hors ligne</span>
+                  <span className="value">{stats.totalUsers - stats.onlineUsers}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Roles */}
+        <div className="stats-column-right">
+          {/* Role Distribution (Mini) */}
+          <div className="glass-card roles-card">
+            <div className="card-header-modern">
+              <h3> <Shield size={20} /> Répartition</h3>
+            </div>
+            <div className="roles-mini-list">
+              {/* Admins */}
+              <div className="role-mini-item">
+                <div className="role-mini-icon admin"><Shield size={16} /></div>
+                <div className="role-mini-info">
+                  <span>Administrateurs</span>
+                  <div className="role-bar-bg">
+                    <div className="role-bar-fill admin" style={{ width: `${(stats.adminUsers / (stats.totalUsers || 1)) * 100}%` }}></div>
+                  </div>
+                </div>
+                <span className="role-mini-count">{stats.adminUsers}</span>
+              </div>
+
+              {/* Members (Spectators) */}
+              <div className="role-mini-item">
+                <div className="role-mini-icon spectator"><Users size={16} /></div>
+                <div className="role-mini-info">
+                  <span>Membres Total</span>
+                  <div className="role-bar-bg">
+                    <div className="role-bar-fill spectator" style={{ width: `${(stats.spectatorUsers / (stats.totalUsers || 1)) * 100}%` }}></div>
+                  </div>
+                </div>
+                <span className="role-mini-count">{stats.spectatorUsers}</span>
+              </div>
+
+              <div className="card-divider-micro"></div>
+
+              {/* Premium */}
+              <div className="role-mini-item">
+                <div className="role-mini-icon premium"><Award size={16} /></div>
+                <div className="role-mini-info">
+                  <span>Premium (Payant)</span>
+                  <div className="role-bar-bg">
+                    <div className="role-bar-fill premium" style={{ width: `${(stats.premiumUsersCount / (stats.totalUsers || 1)) * 100}%`, backgroundColor: '#10b981' }}></div>
+                  </div>
+                </div>
+                <span className="role-mini-count">{stats.premiumUsersCount}</span>
+              </div>
+
+              {/* Trial */}
+              <div className="role-mini-item">
+                <div className="role-mini-icon trial"><Clock size={16} /></div>
+                <div className="role-mini-info">
+                  <span>Essai Gratuit</span>
+                  <div className="role-bar-bg">
+                    <div className="role-bar-fill trial" style={{ width: `${(stats.trialUsersCount / (stats.totalUsers || 1)) * 100}%`, backgroundColor: '#3b82f6' }}></div>
+                  </div>
+                </div>
+                <span className="role-mini-count">{stats.trialUsersCount}</span>
+              </div>
+
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row: Recent Users List (Full Width) */}
+      <div className="stats-bottom-row" style={{ marginTop: '24px' }}>
+        <div className="glass-card recent-users-card">
+          <div className="card-header-modern">
+            <h3> <Calendar size={20} /> Inscriptions Récentes</h3>
+            <button className="header-action-btn">Voir tout</button>
+          </div>
+
+          <div className="recent-users-list-modern">
+            {stats.recentSignups && stats.recentSignups.map((user) => {
+              const activity = getActivityStatus(user.last_sign_in_at, user.created_at);
               return (
-                <div key={user.id} className="mobile-user-card">
-                  <div className="mobile-user-header">
-                    <div className="mobile-user-avatar">
-                      {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="mobile-user-info">
-                      <span className="mobile-user-name">{user.name || 'Sans nom'}</span>
-                      <span className="mobile-user-email">{user.email}</span>
-                    </div>
+                <div key={user.id} className="user-item-modern">
+                  <div className="user-avatar-modern">
+                    {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
                   </div>
-                  <div className="mobile-user-badges">
-                    <span 
-                      className="status-badge"
-                      style={{ 
-                        color: activity.color,
-                        backgroundColor: `${activity.color}20`,
-                        borderColor: `${activity.color}50`
-                      }}
-                    >
-                      <span className="status-icon">{activity.icon}</span>
-                      {activity.status}
-                    </span>
-                    <span className={`role-badge ${user.role || 'spectator'}`}>
-                      {user.role === 'admin' ? (
-                        <>
-                          <Shield size={14} />
-                          Admin
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={14} />
-                          Spectateur
-                        </>
-                      )}
-                    </span>
-                    <span 
-                      className="subscription-badge"
-                      style={{ 
-                        color: subscription.color,
-                        backgroundColor: `${subscription.color}20`,
-                        borderColor: `${subscription.color}50`
-                      }}
-                    >
-                      <span>{subscription.icon}</span>
-                      {subscription.label}
-                      {subscription.daysLeft && (
-                        <span className="days-left"> ({subscription.daysLeft}j)</span>
-                      )}
-                    </span>
+                  <div className="user-info-modern">
+                    <span className="user-name">{user.name || 'Utilisateur'}</span>
+                    <span className="user-role-text">{user.role === 'admin' ? 'Admin' : 'Spectateur'}</span>
                   </div>
-                  <div className="mobile-user-meta">
-                    <div className="mobile-meta-item">
-                      <span className="mobile-meta-label">Inscription</span>
-                      <span className="mobile-meta-value">
-                        <Clock size={12} />
-                        {new Date(user.created_at).toLocaleDateString('fr-FR', { 
-                          day: '2-digit', 
-                          month: 'short',
-                          year: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <div className="mobile-meta-item">
-                      <span className="mobile-meta-label">Activité</span>
-                      <span className="mobile-meta-value">
-                        {user.last_sign_in_at ? (
-                          <>
-                            <Activity size={12} />
-                            {new Date(user.last_sign_in_at).toLocaleDateString('fr-FR', { 
-                              day: '2-digit', 
-                              month: 'short',
-                              year: '2-digit'
-                            })}
-                          </>
-                        ) : (
-                          <span>Jamais</span>
-                        )}
-                      </span>
-                    </div>
+                  <div className="user-status-indicator">
+                    <span className={`status-dot ${activity.status === 'En ligne' ? 'online' : 'offline'}`}></span>
+                    <span className="status-text">{activity.status}</span>
                   </div>
                 </div>
               );
-            })
-          ) : (
-            <div className="empty-state">
-              <Users size={48} />
-              <p>Aucune inscription récente</p>
-            </div>
-          )}
+            })}
+            {(!stats.recentSignups || stats.recentSignups.length === 0) && (
+              <div className="empty-state-modern">
+                <p>Aucun utilisateur récent</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
