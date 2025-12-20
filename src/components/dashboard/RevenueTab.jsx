@@ -56,7 +56,7 @@ const TransactionItem = ({ transaction }) => {
       <div className="trans-info">
         <div className="trans-title-row">
           <span className="trans-title">{transaction.user_name || transaction.user_email} </span>
-          <span className="trans-amount mobile-only">{transaction.amount} DH</span>
+          <span className="trans-amount mobile-only"> {transaction.amount} DH</span>
         </div>
         <div className="trans-footer-row">
           <span className="trans-subtitle">{transaction.plan_type} • {new Date(transaction.created_at).toLocaleDateString()}</span>
@@ -86,12 +86,11 @@ const RevenueTab = () => {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('plan_type');
+        .select('subscription_status');
 
-      if (profilesError) throw profilesError;
-
-      const premiumCount = profiles?.filter(p => p.plan_type === 'premium').length || 0;
-      const basicCount = profiles?.filter(p => p.plan_type === 'basic').length || 0;
+      const premiumCount = profiles?.filter(p => p.subscription_status === 'premium').length || 0;
+      const basicCount = profiles?.filter(p => p.subscription_status === 'trial').length || 0;
+      const freeCount = profiles?.filter(p => p.subscription_status === 'expired').length || 0;
 
       const monthlyRevenue = (premiumCount * premiumPrice) + (basicCount * basicPrice);
 
@@ -136,25 +135,32 @@ const RevenueTab = () => {
         user_name: p.user_name || p.account_holder_name
       })));
 
-      const totalRevenue = allPayments.reduce((sum, payment) => {
-        // For online payments: completed, success
-        // For manual payments: approved
-        const isSuccessful = payment.status === 'completed' ||
-          payment.status === 'success' ||
-          payment.status === 'approved';
-        console.log(`Payment ${payment.id}: status="${payment.status}", isSuccessful=${isSuccessful}, amount=${payment.amount}`);
-        return isSuccessful ? sum + (payment.amount || 0) : sum;
-      }, 0) || 0;
+      const now = new Date();
+      // Clone dates to avoid mutation issues
+      const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
+      const sevenDaysAgo = new Date(new Date().setDate(now.getDate() - 7));
 
-      const successfulCount = allPayments.filter(p =>
+      const successfulPayments = allPayments.filter(p =>
         p.status === 'completed' ||
         p.status === 'success' ||
         p.status === 'approved'
-      ).length;
+      );
 
-      console.log('💰 Total Revenue:', totalRevenue);
+      const actualTotalRevenue = successfulPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-      // For recent transactions, fetch user profiles if user_name is missing
+      const actualMonthlyRevenue = successfulPayments
+        .filter(p => new Date(p.created_at) >= thirtyDaysAgo)
+        .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      const actualWeeklyRevenue = successfulPayments
+        .filter(p => new Date(p.created_at) >= sevenDaysAgo)
+        .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      const avgBasket = successfulPayments.length > 0
+        ? actualTotalRevenue / successfulPayments.length
+        : 0;
+
+      //For recent transactions, fetch user profiles if user_name is missing
       const recentPayments = allPayments.slice(0, 10);
       const userIds = [...new Set(recentPayments
         .filter(p => !p.user_name && p.user_id)
@@ -187,12 +193,15 @@ const RevenueTab = () => {
       }));
 
       setStats({
-        totalRevenue,
-        monthlyRevenue,
+        totalRevenue: actualTotalRevenue,
+        monthlyRevenue: actualMonthlyRevenue,
+        weeklyRevenue: actualWeeklyRevenue,
+        avgTransaction: avgBasket,
         premiumCount,
         basicCount,
+        freeCount,
         recentTransactions,
-        successfulCount
+        successfulCount: successfulPayments.length
       });
     } catch (error) {
       console.error('Erreur chargement revenus:', error);
@@ -219,11 +228,7 @@ const RevenueTab = () => {
 
   if (!stats) return <div className="dashboard-error"><p>Erreur de données.</p></div>;
 
-  const { totalRevenue, monthlyRevenue, premiumCount, basicCount, recentTransactions, successfulCount } = stats;
-  const weeklyRevenue = (monthlyRevenue / 4).toFixed(0);
-  const avgTransaction = successfulCount > 0
-    ? (totalRevenue / successfulCount).toFixed(0)
-    : 0;
+  const { totalRevenue, monthlyRevenue, weeklyRevenue, avgTransaction, premiumCount, basicCount, freeCount, recentTransactions } = stats;
 
   return (
     <div className="dashboard-revenue-enhanced fade-in">
@@ -252,7 +257,7 @@ const RevenueTab = () => {
         />
         <RevenueCard
           icon={<TrendingUp />}
-          label="Revenu Mensuel (Est.)"
+          label="Revenu Mensuel"
           value={monthlyRevenue.toFixed(0)}
           color="#3b82f6"
           trend="up"
@@ -260,14 +265,14 @@ const RevenueTab = () => {
         />
         <RevenueCard
           icon={<Calendar />}
-          label="Revenu Hebdo (Est.)"
-          value={weeklyRevenue}
+          label="Revenu Hebdo"
+          value={weeklyRevenue.toFixed(0)}
           color="#f59e0b"
         />
         <RevenueCard
           icon={<PieChart />}
-          label="Moyenne Panier"
-          value={avgTransaction}
+          label="Ticket Moyen"
+          value={avgTransaction.toFixed(0)}
           color="#8b5cf6"
         />
       </div>
@@ -304,7 +309,7 @@ const RevenueTab = () => {
                 </div>
                 <div className="quick-info">
                   <span className="quick-value">{premiumCount}</span>
-                  <span className="quick-label">Premium Actifs</span>
+                  <span className="quick-label">Abonnements Actifs</span>
                 </div>
               </div>
               <div className="quick-stat-item">
@@ -313,16 +318,16 @@ const RevenueTab = () => {
                 </div>
                 <div className="quick-info">
                   <span className="quick-value">{basicCount}</span>
-                  <span className="quick-label">Basic Actifs</span>
+                  <span className="quick-label">Free Trial</span>
                 </div>
               </div>
               <div className="quick-stat-item">
                 <div className="quick-icon" style={{ background: '#f59e0b' }}>
-                  <DollarSign />
+                  <Users />
                 </div>
                 <div className="quick-info">
-                  <span className="quick-value">{(monthlyRevenue / 30).toFixed(0)} DH</span>
-                  <span className="quick-label">Par Jour</span>
+                  <span className="quick-value">{freeCount}</span>
+                  <span className="quick-label">Sans Abonnement</span>
                 </div>
               </div>
             </div>

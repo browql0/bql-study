@@ -167,7 +167,7 @@ const StatsTab = () => {
 
       const premiumUsersCount = profiles.filter(user => user.subscription_status === 'premium').length;
       const trialUsersCount = profiles.filter(user => user.subscription_status === 'trial').length;
-
+      const freeUsersCount = profiles.filter(user => user.subscription_status === 'expired').length;
       setStats({
         totalUsers: profiles.length,
         onlineUsers: onlineUsers.length,
@@ -177,6 +177,7 @@ const StatsTab = () => {
         spectatorUsers: spectatorUsers.length,
         premiumUsersCount,
         trialUsersCount,
+        freeUsersCount,
         recentSignups: profiles.slice(0, 10)
       });
 
@@ -246,7 +247,7 @@ const StatsTab = () => {
           <div className="hero-stat-content">
             <span className="hero-stat-label">Abonnés Premium</span>
             <span className="hero-stat-value">
-              {stats.recentSignups?.filter(u => u.subscription_status === 'premium').length || 0}
+              {stats.premiumUsersCount}
             </span>
             <div className={`hero-stat-trend ${trends.premium > 0 ? 'positive' : 'neutral'}`}>
               <TrendingUp size={16} style={{ transform: trends.premium < 0 ? 'rotate(180deg)' : 'none' }} />
@@ -360,6 +361,18 @@ const StatsTab = () => {
                   </div>
                 </div>
                 <span className="role-mini-count">{stats.trialUsersCount}</span>
+              </div>
+
+              {/* Free / No Subscription */}
+              <div className="role-mini-item">
+                <div className="role-mini-icon free"><AlertTriangle size={16} /></div>
+                <div className="role-mini-info">
+                  <span>Sans Abonnement</span>
+                  <div className="role-bar-bg">
+                    <div className="role-bar-fill free" style={{ width: `${(stats.freeUsersCount / (stats.totalUsers || 1)) * 100}%`, backgroundColor: '#f59e0b' }}></div>
+                  </div>
+                </div>
+                <span className="role-mini-count">{stats.freeUsersCount}</span>
               </div>
 
 

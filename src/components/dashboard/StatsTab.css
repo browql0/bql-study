@@ -397,6 +397,10 @@
   background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
+.role-mini-icon.free {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
 .role-mini-info {
   flex: 1;
   display: flex;
@@ -437,6 +441,10 @@
 
 .role-bar-fill.trial {
   background: #3b82f6;
+}
+
+.role-bar-fill.free {
+  background: #f59e0b;
 }
 
 .role-mini-count {
