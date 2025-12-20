@@ -73,24 +73,24 @@ const PendingPaymentsPanel = () => {
         setShowConfirmation(true);
         return;
       }
-      
+
       // Extraire le path de l'URL
       const urlParts = proofUrl.split('.r2.dev/');
       const filePath = urlParts.length > 1 ? urlParts[1] : proofUrl;
-      
+
       // Charger via le worker avec auth
       const viewUrl = `${import.meta.env.VITE_CLOUDFLARE_WORKER_URL}/view?path=${encodeURIComponent(filePath)}`;
-      
+
       const response = await fetch(viewUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Impossible de charger l\'image');
       }
-      
+
       // Créer un blob et l'afficher dans le modal
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -112,15 +112,42 @@ const PendingPaymentsPanel = () => {
     try {
       // Récupérer les infos du paiement avant validation
       const payment = pendingPayments.find(p => p.id === paymentId);
-      
+
+      // 1. Appeler le RPC pour valider dans la table pending_payments
       const { data, error } = await supabase.rpc('approve_pending_payment', {
         payment_id: paymentId
       });
 
       if (error) throw error;
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la validation');
+      if (!data.success) throw new Error(data.error || 'Erreur lors de la validation');
+
+      // 2. Mettre à jour manuellement le profil pour garantir que total_spent est correct
+      // (Au cas où le RPC ne le ferait pas ou mal)
+      if (payment?.user_id) {
+        try {
+          // Fetch current stats
+          const { data: userProfile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('total_spent, total_payments')
+            .eq('id', payment.user_id)
+            .single();
+
+          if (!fetchError && userProfile) {
+            const currentSpent = userProfile.total_spent || 0;
+            const currentPayments = userProfile.total_payments || 0;
+            const newSpent = currentSpent + (payment.amount || 0);
+
+            await supabase.from('profiles').update({
+              total_spent: newSpent,
+              total_payments: currentPayments + 1,
+              payment_amount: payment.amount, // Update last payment amount
+              last_payment_date: new Date().toISOString()
+            }).eq('id', payment.user_id);
+          }
+        } catch (updateErr) {
+          console.error('Erreur mise à jour profil (total_spent):', updateErr);
+          // Non-blocking, we continue
+        }
       }
 
       // Notifier l'utilisateur
@@ -143,11 +170,11 @@ const PendingPaymentsPanel = () => {
 
       setConfirmationMessage({
         title: 'Paiement validé !',
-        message: 'L\'abonnement de l\'utilisateur a été activé avec succès.',
+        message: 'L\'abonnement de l\'utilisateur a été activé et le montant ajouté au total.',
         type: 'success'
       });
       setShowConfirmation(true);
-      
+
       await loadPendingPayments();
       setSelectedPayment(null);
     } catch (error) {
@@ -174,18 +201,18 @@ const PendingPaymentsPanel = () => {
 
     setProcessing(true);
     setShowRejectModal(false);
-    
+
     try {
       // Récupérer les infos du paiement avant rejet
       const payment = pendingPayments.find(p => p.id === rejectPaymentId);
-      
+
       const { data, error } = await supabase.rpc('reject_pending_payment', {
         payment_id: rejectPaymentId,
         rejection_reason: rejectReason || null
       });
 
       if (error) throw error;
-      
+
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors du rejet');
       }
@@ -215,7 +242,7 @@ const PendingPaymentsPanel = () => {
         type: 'success'
       });
       setShowConfirmation(true);
-      
+
       await loadPendingPayments();
       setSelectedPayment(null);
       setRejectPaymentId(null);
@@ -252,18 +279,20 @@ const PendingPaymentsPanel = () => {
 
   if (loading) {
     return (
-      <div className="pending-payments-loading">
+      <div className="loading-wrapper fade-in">
         <div className="spinner"></div>
-        <p>Chargement des paiements...</p>
+        <p style={{ marginTop: 20 }}>Chargement des paiements...</p>
       </div>
     );
   }
 
   return (
-    <div className="pending-payments-panel">
+    <div className="pending-payments-panel fade-in">
       <div className="panel-header">
         <div className="header-title">
-          <Clock size={24} />
+          <div className="header-title-icon">
+            <Clock size={28} />
+          </div>
           <h2>Paiements en attente</h2>
         </div>
         <div className="pending-count-badge">
@@ -272,109 +301,122 @@ const PendingPaymentsPanel = () => {
       </div>
 
       {pendingPayments.length === 0 ? (
-        <div className="empty-state">
-          <CheckCircle size={48} />
-          <h3>Aucun paiement en attente</h3>
-          <p>Tous les paiements ont été traités</p>
+        <div className="empty-wrapper fade-in">
+          <div className="empty-icon-wrapper">
+            <CheckCircle size={40} />
+          </div>
+          <h3 className="empty-title">Tout est à jour !</h3>
+          <p className="empty-desc">Aucun paiement en attente de validation pour le moment.</p>
         </div>
       ) : (
         <div className="payments-grid">
-          {pendingPayments.map((payment) => (
-            <div key={payment.id} className="payment-card">
-              <div className="payment-card-header">
-                <div className="payment-method-badge">
-                  {payment.payment_method === 'bank_transfer' ? (
-                    <>
-                      <Building2 size={16} />
-                      <span>Virement</span>
-                    </>
-                  ) : (
-                    <>
-                      <Banknote size={16} />
-                      <span>Cash</span>
-                    </>
+          {pendingPayments.map((payment) => {
+            const userName = payment.profiles?.name || 'Utilisateur';
+            const userInitial = userName.charAt(0).toUpperCase();
+
+            return (
+              <div key={payment.id} className="payment-card-premium">
+                <div className="payment-card-header">
+                  <div className={`payment-method-badge ${payment.payment_method === 'bank_transfer' ? 'transfer' : 'cash'}`}>
+                    {payment.payment_method === 'bank_transfer' ? (
+                      <>
+                        <Building2 size={14} /> Virement
+                      </>
+                    ) : (
+                      <>
+                        <Banknote size={14} /> Cash
+                      </>
+                    )}
+                  </div>
+                  <span className="payment-date">
+                    {formatDate(payment.created_at)}
+                  </span>
+                </div>
+
+                <div className="payment-card-body">
+                  <div className="payment-user-section">
+                    <div className="user-avatar-placeholder">
+                      {userInitial}
+                    </div>
+                    <div className="user-info-text">
+                      <span className="user-name">{userName}</span>
+                      <span className="user-email">{payment.profiles?.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="payment-info-grid">
+                    <div className="info-item">
+                      <span className="info-label">Plan Choisi</span>
+                      <span className="info-value">{formatPlanName(payment.plan_type)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Montant</span>
+                      <span className="info-value amount-value">{payment.amount} DH</span>
+                    </div>
+                  </div>
+
+                  {payment.payment_method === 'bank_transfer' && (
+                    <div className="additional-info-box">
+                      <div className="info-row">
+                        <User size={14} />
+                        <span>Titulaire: <strong>{payment.account_holder_name}</strong></span>
+                      </div>
+                      <div className="info-row">
+                        <FileText size={14} />
+                        <span>Réf: <strong>{payment.transfer_reference || 'N/A'}</strong></span>
+                      </div>
+                    </div>
+                  )}
+
+                  {payment.payment_method === 'cash' && (
+                    <div className="additional-info-box">
+                      <div className="info-row">
+                        <Phone size={14} />
+                        <span>{payment.contact_phone}</span>
+                      </div>
+                      <div className="info-row">
+                        <Calendar size={14} />
+                        <span>RDV: {formatDate(payment.preferred_date)}</span>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <span className="payment-date">
-                  {formatDate(payment.created_at)}
-                </span>
-              </div>
 
-              <div className="payment-card-body">
-                <div className="payment-user-info">
-                  <User size={18} />
-                  <div>
-                    <span className="user-name">{payment.profiles?.name || 'Utilisateur'}</span>
-                    <span className="user-email">{payment.profiles?.email}</span>
-                  </div>
-                </div>
+                <div className="payment-card-footer">
+                  {payment.payment_method === 'bank_transfer' && payment.transfer_proof_url && (
+                    <button
+                      className="action-btn btn-proof tooltip"
+                      data-tooltip="Voir la preuve"
+                      onClick={() => handleViewProof(payment.transfer_proof_url)}
+                    >
+                      <Eye size={18} />
+                    </button>
+                  )}
 
-                <div className="payment-details">
-                  <div className="detail-row">
-                    <span className="detail-label">Plan</span>
-                    <span className="detail-value">{formatPlanName(payment.plan_type)}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Montant</span>
-                    <span className="detail-value-amount">{payment.amount} DH</span>
-                  </div>
-                </div>
-
-                {payment.payment_method === 'bank_transfer' && (
-                  <div className="transfer-info">
-                    <p><strong>Titulaire :</strong> {payment.account_holder_name}</p>
-                    <p><strong>Date :</strong> {formatDate(payment.transfer_date)}</p>
-                    {payment.transfer_reference && (
-                      <p><strong>Référence :</strong> {payment.transfer_reference}</p>
-                    )}
-                  </div>
-                )}
-
-                {payment.payment_method === 'cash' && (
-                  <div className="cash-info">
-                    <p><Phone size={14} /> {payment.contact_phone}</p>
-                    <p><Calendar size={14} /> RDV souhaité : {formatDate(payment.preferred_date)}</p>
-                    {payment.notes && (
-                      <p className="cash-notes"><FileText size={14} /> {payment.notes}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="payment-card-actions">
-                {payment.payment_method === 'bank_transfer' && payment.transfer_proof_url && (
                   <button
-                    className="btn-view-proof"
-                    onClick={() => handleViewProof(payment.transfer_proof_url)}
+                    className="action-btn btn-approve"
+                    onClick={() => handleApprove(payment.id)}
+                    disabled={processing}
                   >
-                    <Eye size={16} />
-                    Voir la preuve
+                    <CheckCircle size={18} />
+                    Valider
                   </button>
-                )}
-                
-                <button
-                  className="btn-approve"
-                  onClick={() => handleApprove(payment.id)}
-                  disabled={processing}
-                >
-                  <CheckCircle size={16} />
-                  Valider
-                </button>
-                
-                <button
-                  className="btn-reject"
-                  onClick={() => handleReject(payment.id)}
-                  disabled={processing}
-                >
-                  <XCircle size={16} />
-                  Rejeter
-                </button>
+
+                  <button
+                    className="action-btn btn-reject"
+                    onClick={() => handleReject(payment.id)}
+                    disabled={processing}
+                  >
+                    <XCircle size={18} />
+                    Rejeter
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      
+
       <ImageModal
         isOpen={showImageModal}
         onClose={() => setShowImageModal(false)}
@@ -383,10 +425,10 @@ const PendingPaymentsPanel = () => {
       />
 
       {showRejectModal && (
-        <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
+        <div className="modal-overlay fade-in" onClick={() => setShowRejectModal(false)}>
           <div className="reject-modal" onClick={(e) => e.stopPropagation()}>
             <div className="reject-modal-header">
-              <XCircle size={24} style={{ color: '#ef4444' }} />
+              <XCircle size={24} />
               <h3>Rejeter le paiement</h3>
             </div>
             <div className="reject-modal-body">
@@ -423,7 +465,7 @@ const PendingPaymentsPanel = () => {
           </div>
         </div>
       )}
-      
+
       <ConfirmationModal
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}

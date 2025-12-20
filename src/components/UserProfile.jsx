@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContextSupabase';
 import {
   User, Mail, Shield, Calendar, Edit2, Save, X, Key, LogOut, Gift,
-  Crown, CreditCard, Clock, Sparkles, Lock, UserCircle, Hash, Users, Bell, FileText, Image, AlertCircle, RotateCcw, Users as UsersIcon, Home
+  Crown, CreditCard, Clock, Sparkles, Lock, UserCircle, Hash, Users, Bell, FileText, Image, AlertCircle, RotateCcw, Users as UsersIcon, Home, CheckCircle
 } from 'lucide-react';
 import { subscriptionService } from '../services/subscriptionService';
 import { getStudentInfo } from '../services/studentNameService';
@@ -67,8 +67,8 @@ const UserProfile = ({ onClose, onOpenPayment }) => {
   const getPlanName = () => {
     if (!subscription?.last_payment_date) return null;
     const amount = subscription.payment_amount;
-    if (amount === 20) return 'Mensuel';
-    if (amount === 50) return 'Trimestriel';
+    if (amount === 20 || amount === 25) return 'Mensuel';
+    if (amount === 50 || amount === 60 || amount === 65) return 'Trimestriel';
     if (amount === 100) return 'Semestre';
     return 'Premium';
   };
@@ -151,85 +151,183 @@ const UserProfile = ({ onClose, onOpenPayment }) => {
             </div>
           </div>
 
-          {/* SUBSCRIPTION SECTION */}
-          {(subscription?.subscription_status === 'premium' || subscription?.subscription_status === 'trial') && !isSubscriptionExpired() ? (
-            <>
-              <h3 className="subscription-section-title">
-                <Crown size={20} className="text-primary" />
-                Abonnement Actif
-              </h3>
+          {/* SUBSCRIPTION SECTION - ULTRA PREMIUM */}
+          <div className="subscription-wrapper">
+            {(subscription?.subscription_status === 'premium' || subscription?.subscription_status === 'trial') && !isSubscriptionExpired() ? (
+              <>
+                {/* ACTIVE SUBSCRIPTION - Premium States */}
+                {subscription.subscription_status === 'trial' ? (
+                  /* TRIAL CARD */
+                  <div className="subscription-premium-card trial-card">
+                    <div className="card-glow trial-glow"></div>
+                    <div className="card-pattern"></div>
 
-              <div className={`subscription-card-premium ${subscription.subscription_status === 'trial' ? 'trial' : ''}`}>
-                <div className="sub-card-pattern" />
-
-                <div className="sub-card-content">
-                  <div className="sub-info">
-                    <h3>Votre Plan</h3>
-                    <div className="sub-plan-name">
-                      {subscription.subscription_status === 'trial' ? 'Essai Gratuit' : (getPlanName() || 'Premium')}
+                    <div className="card-header">
+                      <div className="card-icon trial-icon">
+                        <Gift size={28} />
+                      </div>
+                      <div className="card-title-block">
+                        <h3>Essai Gratuit</h3>
+                        <p>Découvrez toutes les fonctionnalités</p>
+                      </div>
+                      <div className="card-badge trial-badge">
+                        <Sparkles size={14} />
+                        Période d'essai
+                      </div>
                     </div>
-                    <div className="sub-status-badge">
-                      <Sparkles size={14} />
-                      {subscription.subscription_status === 'trial' ? 'Période d\'essai' : 'Compte Actif'}
+
+                    <div className="card-body">
+                      <div className="subscription-details">
+                        <div className="detail-item">
+                          <Calendar size={18} />
+                          <span>Expire le <strong>{subscription.subscription_end_date ? new Date(subscription.subscription_end_date).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          }) : 'Bientôt'}</strong></span>
+                        </div>
+                        <div className="detail-item">
+                          <Sparkles size={18} />
+                          <span>Accès <strong>illimité</strong> pendant l'essai</span>
+                        </div>
+                      </div>
+
+                      {onOpenPayment && (
+                        <button
+                          className="card-action-btn trial-btn"
+                          onClick={() => {
+                            onClose();
+                            onOpenPayment();
+                          }}
+                        >
+                          <Crown size={18} />
+                          Passer au Premium
+                        </button>
+                      )}
                     </div>
                   </div>
+                ) : (
+                  /* PREMIUM CARDS - Based on Plan */
+                  <div className={`subscription-premium-card ${getPlanName() === 'Mensuel' ? 'monthly-card' :
+                    getPlanName() === 'Trimestriel' ? 'quarterly-card' :
+                      getPlanName() === 'Semestre' ? 'yearly-card' : 'premium-card'
+                    }`}>
+                    <div className={`card-glow ${getPlanName() === 'Mensuel' ? 'monthly-glow' :
+                      getPlanName() === 'Trimestriel' ? 'quarterly-glow' :
+                        getPlanName() === 'Semestre' ? 'yearly-glow' : 'premium-glow'
+                      }`}></div>
+                    <div className="card-pattern"></div>
 
-                  <div className="sub-icon-wrapper">
-                    <Crown size={32} color="white" />
+                    <div className="card-header">
+                      <div className={`card-icon ${getPlanName() === 'Mensuel' ? 'monthly-icon' :
+                        getPlanName() === 'Trimestriel' ? 'quarterly-icon' :
+                          getPlanName() === 'Semestre' ? 'yearly-icon' : 'premium-icon'
+                        }`}>
+                        <Crown size={28} />
+                      </div>
+                      <div className="card-title-block">
+                        <h3>{getPlanName() || 'Premium'}</h3>
+                        <p>Accès complet à toutes les fonctionnalités</p>
+                      </div>
+                      <div className={`card-badge ${getPlanName() === 'Mensuel' ? 'monthly-badge' :
+                        getPlanName() === 'Trimestriel' ? 'quarterly-badge' :
+                          getPlanName() === 'Semestre' ? 'yearly-badge' : 'premium-badge'
+                        }`}>
+                        <Sparkles size={14} />
+                        Actif
+                      </div>
+                    </div>
+
+                    <div className="card-body">
+                      <div className="subscription-details">
+                        <div className="detail-item">
+                          <Calendar size={18} />
+                          <span>Expire le <strong>{subscription.subscription_end_date ? new Date(subscription.subscription_end_date).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          }) : 'Illimité'}</strong></span>
+                        </div>
+                        <div className="detail-item">
+                          <CreditCard size={18} />
+                          <span>Montant payé: <strong>{subscription.payment_amount || 0} DH</strong></span>
+                        </div>
+                        {subscription.last_payment_date && (
+                          <div className="detail-item">
+                            <Clock size={18} />
+                            <span>Dernier paiement: <strong>{new Date(subscription.last_payment_date).toLocaleDateString('fr-FR')}</strong></span>
+                          </div>
+                        )}
+                      </div>
+
+                      {onOpenPayment && (
+                        <button
+                          className={`card-action-btn ${getPlanName() === 'Mensuel' ? 'monthly-btn' :
+                            getPlanName() === 'Trimestriel' ? 'quarterly-btn' :
+                              getPlanName() === 'Semestre' ? 'yearly-btn' : 'premium-btn'
+                            }`}
+                          onClick={() => {
+                            onClose();
+                            onOpenPayment();
+                          }}
+                        >
+                          <RotateCcw size={18} />
+                          Renouveler
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* FREE / NO SUBSCRIPTION CARD */
+              <div className="subscription-premium-card free-card">
+                <div className="card-glow free-glow"></div>
+                <div className="card-pattern"></div>
+
+                <div className="card-header">
+                  <div className="card-icon free-icon">
+                    <Lock size={32} />
+                  </div>
+                  <div className="card-title-block centered">
+                    <h3>Passez au Premium</h3>
+                    <p>Débloquez toutes les fonctionnalités et profitez d'une expérience d'apprentissage sans limites</p>
                   </div>
                 </div>
 
-                <div className="sub-card-footer">
-                  <div>
-                    <span className="sub-date-label">Expire le</span>
-                    <span className="sub-date-value">
-                      {subscription.subscription_end_date ? new Date(subscription.subscription_end_date).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      }) : 'Illimité'}
-                    </span>
+                <div className="card-body">
+                  <div className="features-list">
+                    <div className="feature-item">
+                      <CheckCircle size={18} className="check-icon" />
+                      <span>Accès à tous les cours</span>
+                    </div>
+                    <div className="feature-item">
+                      <CheckCircle size={18} className="check-icon" />
+                      <span>Quiz et exercices illimités</span>
+                    </div>
+                    <div className="feature-item">
+                      <CheckCircle size={18} className="check-icon" />
+                      <span>Support prioritaire</span>
+                    </div>
                   </div>
 
                   {onOpenPayment && (
                     <button
-                      className="renew-btn"
+                      className="card-action-btn free-btn"
                       onClick={() => {
                         onClose();
                         onOpenPayment();
                       }}
                     >
-                      Gérer <CreditCard size={14} />
+                      <Crown size={20} />
+                      Voir les offres
                     </button>
                   )}
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="subscription-expired-card" style={{ margin: '0 24px 32px' }}>
-              <div className="expired-icon-wrapper">
-                <Lock size={40} />
-              </div>
-              <h3 className="expired-title">
-                Passez au Premium
-              </h3>
-              <p className="expired-description">
-                Débloquez toutes les fonctionnalités et profitez d'une expérience d'apprentissage sans limites.
-              </p>
-              {onOpenPayment && (
-                <button
-                  className="subscribe-button"
-                  onClick={() => {
-                    onClose();
-                    onOpenPayment();
-                  }}
-                >
-                  <Crown size={18} />
-                  Voir les offres
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+
 
           {/* INFO GRID SECTION */}
           <div className="profile-info-section">

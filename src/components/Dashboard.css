@@ -12,15 +12,15 @@
    VARIABLES GLOBALES
    ============================================ */
 :root {
-  --dashboard-primary: #667eea;
-  --dashboard-secondary: #764ba2;
-  --dashboard-bg: #f8fafc;
+  --dashboard-primary: #4f8ff0;
+  --dashboard-secondary: #3b82f6;
+  --dashboard-bg: #f5f7fa;
   --dashboard-text: #1e293b;
   --dashboard-text-secondary: #64748b;
   --dashboard-border: #e2e8f0;
-  --dashboard-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --dashboard-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   --dashboard-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --dashboard-gradient: linear-gradient(135deg, #667eea, #764ba2);
+  --dashboard-gradient: linear-gradient(135deg, #4f8ff0, #3b82f6);
 }
 
 /* ============================================
@@ -31,6 +31,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -58,16 +59,21 @@
 }
 
 .dashboard-header {
-  background: white;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--dashboard-border);
-  padding: 24px 32px;
-  box-shadow: var(--dashboard-shadow);
+  padding: 16px 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   position: sticky;
   top: 0;
   z-index: 100;
   display: flex;
   align-items: center;
   gap: 20px;
+  height: 70px;
+  /* Match standard header height */
+  transition: all 0.3s ease;
 }
 
 .dashboard-header h1 {
@@ -110,7 +116,7 @@
     letter-spacing: -0.03em;
     position: relative;
     margin: 0 auto;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4f8ff0 0%, #3b82f6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

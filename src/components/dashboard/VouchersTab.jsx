@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Gift, Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
+import { Gift, Plus, Edit2, Trash2, Copy, CheckCircle, Tag, Users, Calendar, TrendingUp, Award, Zap } from 'lucide-react';
 import { voucherService } from '../../services/voucherService';
 import './VouchersTab.css';
 
@@ -27,11 +27,10 @@ const VouchersTab = () => {
       const data = await voucherService.getAllVouchers();
       setVouchers(data);
 
-      // Calculer les statistiques
       const now = new Date();
       const stats = {
         total: data.length,
-        active: data.filter(v => 
+        active: data.filter(v =>
           !v.expires_at || new Date(v.expires_at) > now
         ).length,
         used: data.filter(v => v.times_used > 0).length
@@ -48,18 +47,19 @@ const VouchersTab = () => {
     fetchVouchers();
   }, [fetchVouchers]);
 
+  // Handlers
   const handleAddVoucher = async (voucherData) => {
     try {
       const result = await voucherService.createVoucher(voucherData);
       if (result.success) {
-        await fetchVouchers(); // Rafraîchir la liste
-        showNotification('Voucher créé avec succès !', 'success');
+        await fetchVouchers();
+        showNotification('Code promo créé avec succès !', 'success');
       } else {
         throw new Error(result.error || 'Erreur lors de la création');
       }
     } catch (error) {
-      console.error('Erreur lors de l\'ajout du voucher:', error);
-      showNotification('Erreur lors de l\'ajout du voucher: ' + error.message, 'error');
+      console.error('Erreur:', error);
+      showNotification(error.message, 'error');
     }
   };
 
@@ -67,14 +67,12 @@ const VouchersTab = () => {
     try {
       const result = await voucherService.updateVoucher(id, voucherData);
       if (result.success) {
-        await fetchVouchers(); // Rafraîchir la liste
-        showNotification('Voucher modifié avec succès !', 'success');
-      } else {
-        throw new Error(result.error || 'Erreur lors de la modification');
+        await fetchVouchers();
+        showNotification('Code promo mis à jour !', 'success');
       }
     } catch (error) {
-      console.error('Erreur lors de la modification du voucher:', error);
-      showNotification('Erreur lors de la modification du voucher: ' + error.message, 'error');
+      console.error('Erreur:', error);
+      showNotification(error.message, 'error');
     }
   };
 
@@ -87,14 +85,11 @@ const VouchersTab = () => {
     try {
       const result = await voucherService.deleteVoucher(voucherToDelete);
       if (result.success) {
-        await fetchVouchers(); // Rafraîchir la liste
-        showNotification('Voucher supprimé avec succès !', 'success');
-      } else {
-        throw new Error(result.error || 'Erreur lors de la suppression');
+        await fetchVouchers();
+        showNotification('Code supprimé avec succès !', 'success');
       }
     } catch (error) {
-      console.error('Erreur lors de la suppression du voucher:', error);
-      showNotification('Erreur lors de la suppression du voucher: ' + error.message, 'error');
+      showNotification(error.message, 'error');
     } finally {
       setShowDeleteModal(false);
       setVoucherToDelete(null);
@@ -106,12 +101,16 @@ const VouchersTab = () => {
     notification.className = `custom-notification notification-${type}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-    
     setTimeout(() => notification.classList.add('show'), 10);
     setTimeout(() => {
       notification.classList.remove('show');
       setTimeout(() => notification.remove(), 300);
     }, 3000);
+  };
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard.writeText(code);
+    showNotification('Code copié !', 'info');
   };
 
   const handleAddNew = () => {
@@ -147,150 +146,253 @@ const VouchersTab = () => {
     setShowVoucherForm(false);
   };
 
+  const getPlanIcon = (planType) => {
+    if (planType === 'premium' || planType === 'yearly') return <Award size={24} />;
+    return <Gift size={24} />;
+  };
+
+  const getPlanClass = (planType) => {
+    if (planType === 'premium' || planType === 'yearly') return 'premium';
+    if (planType === 'monthly') return 'monthly';
+    return 'basic';
+  };
+
   if (loading) {
     return (
       <div className="dashboard-loading">
         <div className="spinner"></div>
-        <p>Chargement des vouchers...</p>
+        <p>Chargement des codes...</p>
       </div>
     );
   }
 
   return (
     <div className="dashboard-vouchers">
-      {/* Voucher Stats Cards */}
-      <div className="vouchers-stats-header">
-        <div className="voucher-stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#10b98115', color: '#10b981' }}>
-            <Gift size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.total}</span>
-            <span className="stat-label">Total Vouchers</span>
-          </div>
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Gestion des Codes</h2>
+          <p className="stats-subtitle">Créez et suivez vos codes promotionnels</p>
         </div>
-        <div className="voucher-stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}>
-            <Gift size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.active}</span>
-            <span className="stat-label">Actifs</span>
-          </div>
-        </div>
-        <div className="voucher-stat-card">
-          <div className="stat-icon" style={{ backgroundColor: '#f59e0b15', color: '#f59e0b' }}>
-            <DollarSign size={24} />
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{voucherStats.used}</span>
-            <span className="stat-label">Utilisés</span>
-          </div>
+        <div className="header-actions-row">
+          <button className="btn-create-ticket" onClick={handleAddNew}>
+            <Plus size={20} /> Nouveau Code
+          </button>
         </div>
       </div>
 
-      <div className="vouchers-header-actions">
-        <button className="btn-create-voucher" onClick={handleAddNew}>
-          <Plus size={20} /> Créer un nouveau voucher
-        </button>
+      {/* Hero Stats Grid */}
+      <div className="hero-stats-grid">
+        <div className="hero-stat-card total">
+          <div className="hero-stat-icon">
+            <Gift size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Total Codes</span>
+            <span className="hero-stat-value">{voucherStats.total}</span>
+            <div className="hero-stat-trend positive">
+              <Tag size={12} style={{ marginRight: 4 }} />
+              <span>Actifs et expirés</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
+
+        <div className="hero-stat-card active">
+          <div className="hero-stat-icon">
+            <CheckCircle size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Actifs</span>
+            <span className="hero-stat-value">{voucherStats.active}</span>
+            <div className="hero-stat-trend positive">
+              <Zap size={12} style={{ marginRight: 4 }} />
+              <span>Prêts à l'emploi</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
+
+        <div className="hero-stat-card used">
+          <div className="hero-stat-icon">
+            <Users size={32} />
+          </div>
+          <div className="hero-stat-content">
+            <span className="hero-stat-label">Utilisés</span>
+            <span className="hero-stat-value">{voucherStats.used}</span>
+            <div className="hero-stat-trend neutral">
+              <TrendingUp size={12} style={{ marginRight: 4 }} />
+              <span>Utilisation globale</span>
+            </div>
+          </div>
+          <div className="hero-stat-glow"></div>
+        </div>
       </div>
 
+      {/* Vouchers Grid */}
+      <div className="vouchers-wallet-grid">
+        {vouchers.length === 0 ? (
+          <div className="empty-wallet-state">
+            <Gift size={48} />
+            <h4>Aucun code disponible</h4>
+            <p>Créez votre premier code promotionnel pour commencer.</p>
+          </div>
+        ) : (
+          vouchers.map(voucher => {
+            const planClass = getPlanClass(voucher.plan_type);
+
+            return (
+              <div key={voucher.id} className="voucher-card-premium">
+                {/* Card Header */}
+                <div className="voucher-card-header">
+                  <div className={`voucher-icon-wrapper ${planClass}`}>
+                    {getPlanIcon(voucher.plan_type)}
+                  </div>
+                  <span className={`voucher-plan-badge ${planClass}`}>
+                    {voucher.plan_type}
+                  </span>
+                </div>
+
+                {/* Card Body */}
+                <div className="voucher-card-body">
+                  <div className="voucher-amount-display">
+                    {voucher.amount}<span>DH</span>
+                  </div>
+
+                  <div
+                    className="voucher-code-display"
+                    onClick={() => handleCopyCode(voucher.code)}
+                    title="Cliquer pour copier"
+                  >
+                    {voucher.code}
+                  </div>
+
+                  <div className="voucher-stats-row">
+                    <div className="mini-stat">
+                      <Users size={14} />
+                      {voucher.times_used} / {voucher.max_uses}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="voucher-card-footer">
+                  <div className="voucher-expiry">
+                    <Calendar size={14} />
+                    {voucher.expires_at
+                      ? new Date(voucher.expires_at).toLocaleDateString()
+                      : 'Illimité'}
+                  </div>
+
+                  <div className="voucher-actions">
+                    <button
+                      className="action-btn-small"
+                      onClick={() => handleCopyCode(voucher.code)}
+                      title="Copier"
+                    >
+                      <Copy size={16} />
+                    </button>
+                    <button
+                      className="action-btn-small"
+                      onClick={() => handleEdit(voucher)}
+                      title="Modifier"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      className="action-btn-small delete"
+                      onClick={() => handleDeleteVoucher(voucher.id)}
+                      title="Supprimer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Form Modal */}
       {showVoucherForm && (
         <div className="voucher-form-modal" onClick={(e) => {
-          if (e.target.className === 'voucher-form-modal') {
-            setShowVoucherForm(false);
-          }
+          if (e.target.className === 'voucher-form-modal') setShowVoucherForm(false);
         }}>
           <div className="modal-content">
-            <h3>{editingVoucher ? 'Modifier le voucher' : 'Créer un nouveau voucher'}</h3>
+            <h3>{editingVoucher ? 'Modifier le Code' : 'Nouveau Code'}</h3>
             <form onSubmit={handleSubmit} className="voucher-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label>Code du voucher *</label>
-                  <input 
-                    type="text" 
-                    value={voucherForm.code} 
-                    onChange={e => setVoucherForm({...voucherForm, code: e.target.value.toUpperCase()})} 
-                    placeholder="EX: PROMO2024" 
-                    required 
+                  <label>Code (ex: PROMO2025) *</label>
+                  <input
+                    type="text"
+                    value={voucherForm.code}
+                    onChange={e => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
+                    required
                   />
                 </div>
                 <div className="form-group">
                   <label>Montant (DH) *</label>
-                  <input 
-                    type="number" 
-                    value={voucherForm.amount} 
-                    onChange={e => setVoucherForm({...voucherForm, amount: parseFloat(e.target.value)})} 
-                    placeholder="20" 
-                    min="0"
-                    step="0.01"
-                    required 
+                  <input
+                    type="number"
+                    value={voucherForm.amount}
+                    onChange={e => setVoucherForm({ ...voucherForm, amount: parseFloat(e.target.value) })}
+                    required
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Durée (mois) *</label>
-                  <input 
-                    type="number" 
-                    value={voucherForm.duration_months} 
-                    onChange={e => setVoucherForm({...voucherForm, duration_months: parseInt(e.target.value)})} 
-                    placeholder="1" 
+                  <label>Durée (mois)</label>
+                  <input
+                    type="number"
+                    value={voucherForm.duration_months}
+                    onChange={e => setVoucherForm({ ...voucherForm, duration_months: parseInt(e.target.value) })}
                     min="1"
-                    required 
+                    required
                   />
                 </div>
                 <div className="form-group">
-                  <label>Utilisations max *</label>
-                  <input 
-                    type="number" 
-                    value={voucherForm.max_uses} 
-                    onChange={e => setVoucherForm({...voucherForm, max_uses: parseInt(e.target.value)})} 
-                    placeholder="1" 
+                  <label>Limite d'utilisation</label>
+                  <input
+                    type="number"
+                    value={voucherForm.max_uses}
+                    onChange={e => setVoucherForm({ ...voucherForm, max_uses: parseInt(e.target.value) })}
                     min="1"
-                    required 
+                    required
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Type de plan *</label>
-                  <select 
-                    value={voucherForm.plan_type} 
-                    onChange={e => setVoucherForm({...voucherForm, plan_type: e.target.value})}
+                  <label>Type de Plan</label>
+                  <select
+                    value={voucherForm.plan_type}
+                    onChange={e => setVoucherForm({ ...voucherForm, plan_type: e.target.value })}
                   >
                     <option value="basic">Basic</option>
-                    <option value="premium">Premium</option>
                     <option value="monthly">Mensuel</option>
                     <option value="quarterly">Trimestriel</option>
                     <option value="yearly">Annuel</option>
+                    <option value="premium">Premium</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Date d'expiration</label>
-                  <input 
-                    type="datetime-local" 
-                    value={voucherForm.expires_at} 
-                    onChange={e => setVoucherForm({...voucherForm, expires_at: e.target.value})} 
+                  <label>Expiration</label>
+                  <input
+                    type="datetime-local"
+                    value={voucherForm.expires_at}
+                    onChange={e => setVoucherForm({ ...voucherForm, expires_at: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label>Notes (optionnel)</label>
-                <textarea 
-                  value={voucherForm.notes} 
-                  onChange={e => setVoucherForm({...voucherForm, notes: e.target.value})} 
-                  placeholder="Notes internes sur ce voucher..."
-                  rows="3"
-                />
               </div>
 
               <div className="form-actions">
                 <button type="submit" className="btn-primary">
-                  {editingVoucher ? 'Mettre à jour' : 'Créer le voucher'}
+                  {editingVoucher ? 'Enregistrer' : 'Créer'}
                 </button>
                 <button type="button" className="btn-secondary" onClick={() => setShowVoucherForm(false)}>
                   Annuler
@@ -301,206 +403,34 @@ const VouchersTab = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
         <div className="voucher-form-modal" onClick={(e) => {
-          if (e.target.className === 'voucher-form-modal') {
-            setShowDeleteModal(false);
-            setVoucherToDelete(null);
-          }
+          if (e.target.className === 'voucher-form-modal') setShowDeleteModal(false);
         }}>
-          <div className="modal-content delete-modal">
-            <div className="delete-modal-icon">
-              <Trash2 size={48} />
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{
+              width: '60px', height: '60px', background: '#fee2e2', color: '#ef4444',
+              borderRadius: '50%', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 20px'
+            }}>
+              <Trash2 size={32} />
             </div>
-            <h3>Confirmer la suppression</h3>
-            <p>Êtes-vous sûr de vouloir supprimer ce voucher ? Cette action est irréversible.</p>
+            <h3>Supprimer ce code ?</h3>
+            <p style={{ color: '#64748b', marginBottom: '24px' }}>
+              Cette action est irréversible.
+            </p>
             <div className="form-actions">
-              <button 
-                type="button" 
-                className="btn-danger" 
-                onClick={confirmDelete}
-              >
-                Oui, supprimer
+              <button type="button" className="btn-danger" onClick={confirmDelete}>
+                Confirmer
               </button>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setVoucherToDelete(null);
-                }}
-              >
+              <button type="button" className="btn-secondary" onClick={() => setShowDeleteModal(false)}>
                 Annuler
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <div className="vouchers-list">
-        <div className="vouchers-list-header">
-          <h3>Liste des Vouchers</h3>
-          <span className="vouchers-count">{vouchers.length} voucher(s)</span>
-        </div>
-        
-        {vouchers.length === 0 ? (
-          <div className="empty-state">
-            <Gift size={48} />
-            <p>Aucun voucher créé</p>
-            <button onClick={handleAddNew}>Créer le premier voucher</button>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table View */}
-            <div className="vouchers-table-container desktop-only">
-              <table className="vouchers-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Type</th>
-                  <th>Utilisations</th>
-                  <th>Montant</th>
-                  <th>Durée</th>
-                  <th>Expire le</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vouchers.map(voucher => {
-                  const isExpired = voucher.expires_at && new Date(voucher.expires_at) < new Date();
-                  const isMaxed = voucher.times_used >= voucher.max_uses;
-                  const status = isExpired ? 'expired' : isMaxed ? 'maxed' : 'active';
-                  
-                  return (
-                    <tr key={voucher.id} className={status}>
-                      <td>
-                        <span className="voucher-code">{voucher.code}</span>
-                      </td>
-                      <td>
-                        <span className="voucher-type">{voucher.plan_type}</span>
-                      </td>
-                      <td>
-                        <span className="usage-count">
-                          {voucher.times_used || 0} / {voucher.max_uses}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="voucher-amount">{voucher.amount} DH</span>
-                      </td>
-                      <td>
-                        <span className="voucher-duration">{voucher.duration_months} mois</span>
-                      </td>
-                      <td>
-                        {voucher.expires_at ? (
-                          <span className={isExpired ? 'date-expired' : 'date-valid'}>
-                            {new Date(voucher.expires_at).toLocaleDateString('fr-FR')}
-                          </span>
-                        ) : (
-                          <span className="no-expiry">Jamais</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`status-badge status-${status}`}>
-                          {status === 'active' ? '✓ Actif' : status === 'expired' ? '⏰ Expiré' : '✕ Épuisé'}
-                        </span>
-                      </td>
-                      <td className="actions-cell">
-                        <button 
-                          className="btn-icon btn-edit" 
-                          onClick={() => handleEdit(voucher)}
-                          title="Modifier"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          className="btn-icon btn-delete" 
-                          onClick={() => handleDeleteVoucher(voucher.id)}
-                          title="Supprimer"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="vouchers-mobile-view mobile-only">
-            {vouchers.map(voucher => {
-              const isExpired = voucher.expires_at && new Date(voucher.expires_at) < new Date();
-              const isMaxed = voucher.times_used >= voucher.max_uses;
-              const status = isExpired ? 'expired' : isMaxed ? 'maxed' : 'active';
-              
-              return (
-                <div key={voucher.id} className={`voucher-mobile-card status-${status}`}>
-                  <div className="voucher-mobile-header">
-                    <span className="voucher-code">{voucher.code}</span>
-                    <span className={`status-badge status-${status}`}>
-                      {status === 'active' ? '✓ Actif' : status === 'expired' ? '⏰ Expiré' : '✕ Épuisé'}
-                    </span>
-                  </div>
-                  
-                  <div className="voucher-mobile-info">
-                    <div className="info-row">
-                      <span className="info-label">Type</span>
-                      <span className="info-value voucher-type">{voucher.plan_type}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Montant</span>
-                      <span className="info-value voucher-amount">{voucher.amount} DH</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Durée</span>
-                      <span className="info-value">{voucher.duration_months} mois</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Utilisations</span>
-                      <span className="info-value usage-count">
-                        {voucher.times_used || 0} / {voucher.max_uses}
-                      </span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Expire le</span>
-                      <span className="info-value">
-                        {voucher.expires_at ? (
-                          <span className={isExpired ? 'date-expired' : 'date-valid'}>
-                            {new Date(voucher.expires_at).toLocaleDateString('fr-FR')}
-                          </span>
-                        ) : (
-                          <span className="no-expiry">Jamais</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="voucher-mobile-actions">
-                    <button 
-                      className="btn-mobile btn-edit" 
-                      onClick={() => handleEdit(voucher)}
-                    >
-                      <Edit2 size={18} />
-                      <span>Modifier</span>
-                    </button>
-                    <button 
-                      className="btn-mobile btn-delete" 
-                      onClick={() => handleDeleteVoucher(voucher.id)}
-                    >
-                      <Trash2 size={18} />
-                      <span>Supprimer</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };

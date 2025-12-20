@@ -171,13 +171,13 @@
   position: relative;
   background: #ffffff;
   border-radius: 16px;
-  border: 1.5px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.06),
-    0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  padding: 20px;
+  padding: 24px;
 }
 
 .note-card::before {
@@ -202,7 +202,7 @@
   box-shadow:
     0 12px 24px -4px rgba(79, 143, 240, 0.15),
     0 8px 16px -4px rgba(79, 143, 240, 0.1);
-  border-color: #4f8ff0;
+  border-color: rgba(79, 143, 240, 0.4);
 }
 
 [data-theme="dark"] .note-card {

@@ -1,168 +1,89 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { settingsService } from '../../services/settingsService';
-import { 
-  DollarSign, TrendingUp, TrendingDown, Users, Calendar, 
-  CreditCard, Award, Clock, ArrowUpRight, ArrowDownRight,
-  Receipt, Target, Zap, PieChart
+import {
+  DollarSign, TrendingUp, Users, Calendar,
+  CreditCard, Zap, PieChart, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import './RevenueTab.css';
 
 const RevenueCard = ({ icon, label, value, trend, trendValue, color, suffix = 'DH' }) => (
-  <div className="revenue-card-enhanced">
-    <div className="revenue-card-top">
-      <div className="revenue-icon-wrapper" style={{ backgroundColor: `${color}15`, color: color }}>
-        {React.cloneElement(icon, { size: window.innerWidth < 768 ? 22 : 26 })}
+  <div className="revenue-card-premium">
+    <div className="rev-card-header">
+      <div className="rev-icon-wrapper" style={{ backgroundColor: `${color}15`, color: color }}>
+        {React.cloneElement(icon, { size: 24 })}
       </div>
       {trend && (
-        <div className={`revenue-trend ${trend === 'up' ? 'positive' : 'negative'}`}>
-          {trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+        <div className={`revenue-trend-pill ${trend === 'up' ? 'positive' : 'negative'}`}>
+          {trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           <span>{trendValue}%</span>
         </div>
       )}
     </div>
-    <div className="revenue-card-body">
-      <span className="revenue-value">{value} {suffix}</span>
-      <span className="revenue-label">{label}</span>
+    <div className="rev-card-body">
+      <span className="rev-value">{value} <span style={{ fontSize: '0.6em', opacity: 0.7 }}>{suffix}</span></span>
+      <span className="rev-label">{label}</span>
     </div>
+    <div className="rev-glow" style={{ background: `radial-gradient(circle, ${color}20 0%, transparent 70%)` }}></div>
   </div>
 );
 
 const TransactionItem = ({ transaction }) => {
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'completed': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'failed': return '#ef4444';
-      default: return '#6b7280';
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'completed': return 'completed';
+      case 'success': return 'completed';
+      case 'approved': return 'completed';
+      case 'pending': return 'pending';
+      case 'failed': return 'failed';
+      default: return 'pending';
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch(status) {
-      case 'completed': return 'Complété';
-      case 'pending': return 'En attente';
-      case 'failed': return 'Échoué';
-      default: return 'Inconnu';
-    }
-  };
-
-  const statusColor = getStatusColor(transaction.status);
+  const statusLabel = {
+    completed: 'Succès',
+    success: 'Succès',
+    approved: 'Succès',
+    pending: 'En cours',
+    failed: 'Échoué'
+  }[transaction.status] || transaction.status;
 
   return (
-    <div className="transaction-item">
-      <div className="transaction-icon-box" style={{ backgroundColor: `${statusColor}15` }}>
-        <Receipt size={20} style={{ color: statusColor }} />
+    <div className="transaction-item-modern">
+      <div className="trans-icon">
+        <CreditCard size={20} className="text-gray-500" />
       </div>
-      <div className="transaction-details">
-        <span className="transaction-user">{transaction.user_name || transaction.user_email}</span>
-        <span className="transaction-plan">{transaction.plan_type} - {transaction.duration} mois</span>
-      </div>
-      <div className="transaction-info">
-        <span className="transaction-amount">{transaction.amount} DH</span>
-        <span 
-          className="transaction-status"
-          style={{ 
-            color: statusColor,
-            backgroundColor: `${statusColor}20`,
-            borderColor: `${statusColor}40`
-          }}
-        >
-          {getStatusLabel(transaction.status)}
-        </span>
-      </div>
-      <div className="transaction-date">
-        <Clock size={14} />
-        {new Date(transaction.created_at).toLocaleDateString('fr-FR', { 
-          day: '2-digit', 
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}
-      </div>
-    </div>
-  );
-};
-
-const MobileTransactionCard = ({ transaction }) => {
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'completed': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'failed': return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch(status) {
-      case 'completed': return 'Complété';
-      case 'pending': return 'En attente';
-      case 'failed': return 'Échoué';
-      default: return 'Inconnu';
-    }
-  };
-
-  const statusColor = getStatusColor(transaction.status);
-
-  return (
-    <div className="mobile-transaction-card">
-      <div className="mobile-transaction-header">
-        <div className="mobile-transaction-icon" style={{ backgroundColor: `${statusColor}15` }}>
-          <Receipt size={24} style={{ color: statusColor }} />
+      <div className="trans-info">
+        <div className="trans-title-row">
+          <span className="trans-title">{transaction.user_name || transaction.user_email} </span>
+          <span className="trans-amount mobile-only">{transaction.amount} DH</span>
         </div>
-        <div className="mobile-transaction-info">
-          <span className="mobile-transaction-user">{transaction.user_name || transaction.user_email}</span>
-          <span className="mobile-transaction-plan">{transaction.plan_type} - {transaction.duration} mois</span>
+        <div className="trans-footer-row">
+          <span className="trans-subtitle">{transaction.plan_type} • {new Date(transaction.created_at).toLocaleDateString()}</span>
+          <span className={`trans-status mobile-only ${getStatusClass(transaction.status)}`}>{statusLabel}</span>
         </div>
       </div>
-      <div className="mobile-transaction-details">
-        <div className="mobile-transaction-amount">
-          <span className="amount-label">Montant</span>
-          <span className="amount-value">{transaction.amount} DH</span>
-        </div>
-        <div className="mobile-transaction-status">
-          <span 
-            className="status-badge-mobile"
-            style={{ 
-              color: statusColor,
-              backgroundColor: `${statusColor}20`,
-              borderColor: `${statusColor}40`
-            }}
-          >
-            {getStatusLabel(transaction.status)}
-          </span>
-        </div>
-      </div>
-      <div className="mobile-transaction-footer">
-        <Clock size={14} />
-        <span>{new Date(transaction.created_at).toLocaleDateString('fr-FR', { 
-          day: '2-digit', 
-          month: 'short',
-          year: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}</span>
-      </div>
+      <div className="trans-amount desktop-only">{transaction.amount} DH</div>
+      <span className={`trans-status desktop-only ${getStatusClass(transaction.status)}`}>
+        {statusLabel}
+      </span>
     </div>
   );
 };
 
 const RevenueTab = () => {
-  const [timeRange, setTimeRange] = useState('month'); // month, week, year
+  const [timeRange, setTimeRange] = useState('month');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchRevenueStats = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Récupérer les paramètres
+
       const settings = await settingsService.getSettings();
       const basicPrice = settings.pricing.basic || 5;
       const premiumPrice = settings.pricing.premium || 10;
 
-      // Compter les utilisateurs premium et basic
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('plan_type');
@@ -172,47 +93,109 @@ const RevenueTab = () => {
       const premiumCount = profiles?.filter(p => p.plan_type === 'premium').length || 0;
       const basicCount = profiles?.filter(p => p.plan_type === 'basic').length || 0;
 
-      // Calculer le revenu mensuel estimé
       const monthlyRevenue = (premiumCount * premiumPrice) + (basicCount * basicPrice);
 
-      // Récupérer le revenu total et les transactions
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // Fetch BOTH online payments AND manual payments (pending_payments)
+      const [onlinePaymentsResult, manualPaymentsResult] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('pending_payments')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50)
+      ]);
 
-      if (paymentsError) throw paymentsError;
+      if (onlinePaymentsResult.error) throw onlinePaymentsResult.error;
+      if (manualPaymentsResult.error) throw manualPaymentsResult.error;
 
-      // Calculer le revenu total
-      const totalRevenue = payments?.reduce((sum, payment) => 
-        payment.status === 'completed' || payment.status === 'success' 
-          ? sum + (payment.amount || 0) 
-          : sum, 
-        0
-      ) || 0;
+      // Combine both payment types
+      const onlinePayments = onlinePaymentsResult.data || [];
+      const manualPayments = manualPaymentsResult.data || [];
 
-      // Formater les transactions récentes
-      const recentTransactions = payments?.slice(0, 10).map(payment => ({
+      // Normalize manual payments to match online payment structure
+      const normalizedManualPayments = manualPayments.map(p => ({
+        ...p,
+        payment_method: p.payment_method || 'manual',
+        currency: 'DH',
+        subscription_duration: p.plan_type === 'monthly' ? 1 : p.plan_type === 'quarterly' ? 3 : 6
+      }));
+
+      // Combine and sort by date
+      const allPayments = [...onlinePayments, ...normalizedManualPayments]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      console.log('🔍 Combined payments debug:', allPayments.slice(0, 3).map(p => ({
+        id: p.id,
+        status: p.status,
+        amount: p.amount,
+        method: p.payment_method,
+        user_name: p.user_name || p.account_holder_name
+      })));
+
+      const totalRevenue = allPayments.reduce((sum, payment) => {
+        // For online payments: completed, success
+        // For manual payments: approved
+        const isSuccessful = payment.status === 'completed' ||
+          payment.status === 'success' ||
+          payment.status === 'approved';
+        console.log(`Payment ${payment.id}: status="${payment.status}", isSuccessful=${isSuccessful}, amount=${payment.amount}`);
+        return isSuccessful ? sum + (payment.amount || 0) : sum;
+      }, 0) || 0;
+
+      const successfulCount = allPayments.filter(p =>
+        p.status === 'completed' ||
+        p.status === 'success' ||
+        p.status === 'approved'
+      ).length;
+
+      console.log('💰 Total Revenue:', totalRevenue);
+
+      // For recent transactions, fetch user profiles if user_name is missing
+      const recentPayments = allPayments.slice(0, 10);
+      const userIds = [...new Set(recentPayments
+        .filter(p => !p.user_name && p.user_id)
+        .map(p => p.user_id))];
+
+      let userProfiles = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', userIds);
+
+        if (profiles) {
+          userProfiles = profiles.reduce((acc, profile) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {});
+        }
+      }
+
+      const recentTransactions = recentPayments.map(payment => ({
         id: payment.id,
-        user_name: payment.user_name,
-        user_email: payment.user_email,
+        user_name: payment.user_name || payment.account_holder_name || userProfiles[payment.user_id]?.name || 'Utilisateur',
+        user_email: payment.user_email || userProfiles[payment.user_id]?.email || 'N/A',
         plan_type: payment.plan_type,
-        duration: payment.duration,
+        duration: payment.duration || payment.subscription_duration,
         amount: payment.amount,
         status: payment.status,
         created_at: payment.created_at
-      })) || [];
+      }));
 
       setStats({
         totalRevenue,
         monthlyRevenue,
         premiumCount,
         basicCount,
-        recentTransactions
+        recentTransactions,
+        successfulCount
       });
     } catch (error) {
-      console.error('Erreur lors du chargement des revenus:', error);
+      console.error('Erreur chargement revenus:', error);
       setStats(null);
     } finally {
       setLoading(false);
@@ -221,7 +204,7 @@ const RevenueTab = () => {
 
   useEffect(() => {
     fetchRevenueStats();
-    const interval = setInterval(fetchRevenueStats, 30000); // Actualiser toutes les 30 secondes
+    const interval = setInterval(fetchRevenueStats, 30000);
     return () => clearInterval(interval);
   }, [fetchRevenueStats]);
 
@@ -229,162 +212,121 @@ const RevenueTab = () => {
     return (
       <div className="dashboard-loading">
         <div className="spinner"></div>
-        <p>Chargement des revenus...</p>
+        <p>Analyse des revenus...</p>
       </div>
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="dashboard-error">
-        <p>Erreur lors du chargement des revenus.</p>
-      </div>
-    );
-  }
+  if (!stats) return <div className="dashboard-error"><p>Erreur de données.</p></div>;
 
-  // Real data from stats (connecté à Supabase)
-  const totalRevenue = stats.totalRevenue || 0;
-  const monthlyRevenue = stats.monthlyRevenue || 0;
+  const { totalRevenue, monthlyRevenue, premiumCount, basicCount, recentTransactions, successfulCount } = stats;
   const weeklyRevenue = (monthlyRevenue / 4).toFixed(0);
-  const premiumUsers = stats.premiumCount || 0;
-  const basicUsers = stats.basicCount || 0;
-  const totalActiveUsers = premiumUsers + basicUsers;
-  const conversionRate = totalActiveUsers > 0 ? ((premiumUsers / totalActiveUsers) * 100).toFixed(1) : 0;
-  
-  // Transactions réelles depuis Supabase
-  const recentTransactions = stats.recentTransactions || [];
-  const avgTransaction = recentTransactions.length > 0 
-    ? (totalRevenue / recentTransactions.length).toFixed(0)
+  const avgTransaction = successfulCount > 0
+    ? (totalRevenue / successfulCount).toFixed(0)
     : 0;
 
   return (
     <div className="dashboard-revenue-enhanced fade-in">
-      {/* Time Range Filter */}
-      <div className="revenue-filters">
+      {/* Header */}
+      <div className="revenue-header-premium">
+        <div>
+          <h2 className="revenue-title-gradient">Revenus</h2>
+          <p className="revenue-subtitle">Performance financière et transactions</p>
+        </div>
         <div className="time-range-selector">
-          <button 
-            className={`time-btn ${timeRange === 'week' ? 'active' : ''}`}
-            onClick={() => setTimeRange('week')}
-          >
-            Semaine
-          </button>
-          <button 
-            className={`time-btn ${timeRange === 'month' ? 'active' : ''}`}
-            onClick={() => setTimeRange('month')}
-          >
-            Mois
-          </button>
-          <button 
-            className={`time-btn ${timeRange === 'year' ? 'active' : ''}`}
-            onClick={() => setTimeRange('year')}
-          >
-            Année
-          </button>
+          <button className={`time-btn ${timeRange === 'week' ? 'active' : ''}`} onClick={() => setTimeRange('week')}>Semaine</button>
+          <button className={`time-btn ${timeRange === 'month' ? 'active' : ''}`} onClick={() => setTimeRange('month')}>Mois</button>
+          <button className={`time-btn ${timeRange === 'year' ? 'active' : ''}`} onClick={() => setTimeRange('year')}>Année</button>
         </div>
       </div>
 
-      {/* Revenue Overview Cards - Données réelles Supabase */}
+      {/* Hero Cards */}
       <div className="revenue-overview">
-        <RevenueCard 
+        <RevenueCard
           icon={<DollarSign />}
           label="Revenu Total"
           value={totalRevenue.toFixed(0)}
           color="#10b981"
+          trend="up"
+          trendValue="12"
         />
-        <RevenueCard 
+        <RevenueCard
           icon={<TrendingUp />}
-          label="Revenu Mensuel Estimé"
+          label="Revenu Mensuel (Est.)"
           value={monthlyRevenue.toFixed(0)}
           color="#3b82f6"
+          trend="up"
+          trendValue="8"
         />
-        <RevenueCard 
+        <RevenueCard
           icon={<Calendar />}
-          label="Revenu Hebdo Estimé"
+          label="Revenu Hebdo (Est.)"
           value={weeklyRevenue}
           color="#f59e0b"
         />
-        <RevenueCard 
-          icon={<Receipt />}
-          label="Moy. Transaction"
+        <RevenueCard
+          icon={<PieChart />}
+          label="Moyenne Panier"
           value={avgTransaction}
           color="#8b5cf6"
         />
       </div>
 
-      {/* Stats Grid - Données réelles Supabase */}
-      <div className="revenue-stats-grid">
-        <div className="revenue-stat-box">
-          <div className="stat-box-icon" style={{ backgroundColor: '#10b98115', color: '#10b981' }}>
-            <Users size={24} />
+      {/* Main Grid */}
+      <div className="revenue-main-grid">
+        {/* Left: Transactions List */}
+        <div className="glass-panel transactions-panel">
+          <div className="panel-header">
+            <h3><CreditCard size={18} /> Transactions Récentes</h3>
+            <button className="panel-action">Voir tout</button>
           </div>
-          <div className="stat-box-content">
-            <span className="stat-box-value">{premiumUsers}</span>
-            <span className="stat-box-label">Abonnés Premium</span>
+          <div className="transactions-list-modern">
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((t, i) => <TransactionItem key={i} transaction={t} />)
+            ) : (
+              <div className="empty-state">
+                <p>Aucune transaction récente</p>
+              </div>
+            )}
           </div>
-        </div>
-        <div className="revenue-stat-box">
-          <div className="stat-box-icon" style={{ backgroundColor: '#3b82f615', color: '#3b82f6' }}>
-            <Users size={24} />
-          </div>
-          <div className="stat-box-content">
-            <span className="stat-box-value">{basicUsers}</span>
-            <span className="stat-box-label">Abonnés Basic</span>
-          </div>
-        </div>
-        <div className="revenue-stat-box">
-          <div className="stat-box-icon" style={{ backgroundColor: '#8b5cf615', color: '#8b5cf6' }}>
-            <CreditCard size={24} />
-          </div>
-          <div className="stat-box-content">
-            <span className="stat-box-value">{recentTransactions.length}</span>
-            <span className="stat-box-label">Transactions Récentes</span>
-          </div>
-        </div>
-        <div className="revenue-stat-box">
-          <div className="stat-box-icon" style={{ backgroundColor: '#f59e0b15', color: '#f59e0b' }}>
-            <Zap size={24} />
-          </div>
-          <div className="stat-box-content">
-            <span className="stat-box-value">{totalRevenue > 0 ? (totalRevenue / 30).toFixed(0) : 0} DH</span>
-            <span className="stat-box-label">Revenu/Jour Moy.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="revenue-transactions-card">
-        <div className="card-header">
-          <PieChart size={20} />
-          <h3>Transactions Récentes</h3>
-          <span className="card-badge">{recentTransactions.length} transactions</span>
-        </div>
-        
-        {/* Desktop List */}
-        <div className="transactions-list-desktop">
-          {recentTransactions.length > 0 ? (
-            recentTransactions.map((transaction, index) => (
-              <TransactionItem key={transaction.id || index} transaction={transaction} />
-            ))
-          ) : (
-            <div className="empty-state">
-              <Receipt size={48} />
-              <p>Aucune transaction récente</p>
-            </div>
-          )}
         </div>
 
-        {/* Mobile Cards */}
-        <div className="transactions-list-mobile">
-          {recentTransactions.length > 0 ? (
-            recentTransactions.map((transaction, index) => (
-              <MobileTransactionCard key={transaction.id || index} transaction={transaction} />
-            ))
-          ) : (
-            <div className="empty-state">
-              <Receipt size={48} />
-              <p>Aucune transaction récente</p>
+        {/* Right: Quick Stats */}
+        <div className="sidebar-stats">
+          <div className="glass-panel" style={{ height: '100%' }}>
+            <div className="panel-header">
+              <h3><Zap size={18} /> Abonnements</h3>
             </div>
-          )}
+            <div className="quick-stats-list">
+              <div className="quick-stat-item">
+                <div className="quick-icon" style={{ background: '#10b981' }}>
+                  <Users />
+                </div>
+                <div className="quick-info">
+                  <span className="quick-value">{premiumCount}</span>
+                  <span className="quick-label">Premium Actifs</span>
+                </div>
+              </div>
+              <div className="quick-stat-item">
+                <div className="quick-icon" style={{ background: '#3b82f6' }}>
+                  <Users />
+                </div>
+                <div className="quick-info">
+                  <span className="quick-value">{basicCount}</span>
+                  <span className="quick-label">Basic Actifs</span>
+                </div>
+              </div>
+              <div className="quick-stat-item">
+                <div className="quick-icon" style={{ background: '#f59e0b' }}>
+                  <DollarSign />
+                </div>
+                <div className="quick-info">
+                  <span className="quick-value">{(monthlyRevenue / 30).toFixed(0)} DH</span>
+                  <span className="quick-label">Par Jour</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

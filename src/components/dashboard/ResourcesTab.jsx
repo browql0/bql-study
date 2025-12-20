@@ -10,18 +10,18 @@ const ResourcesTab = () => {
   const [filterType, setFilterType] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ 
-    show: false, 
-    resourceId: null, 
-    resourceTitle: '' 
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    resourceId: null,
+    resourceTitle: ''
   });
-  const [successModal, setSuccessModal] = useState({ 
-    show: false, 
-    message: '' 
+  const [successModal, setSuccessModal] = useState({
+    show: false,
+    message: ''
   });
-  const [errorModal, setErrorModal] = useState({ 
-    show: false, 
-    message: '' 
+  const [errorModal, setErrorModal] = useState({
+    show: false,
+    message: ''
   });
   const [formData, setFormData] = useState({
     title: '',
@@ -59,10 +59,10 @@ const ResourcesTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const resourceData = {
         ...formData,
         tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
@@ -88,15 +88,15 @@ const ResourcesTab = () => {
       setEditingResource(null);
       resetForm();
       loadResources();
-      setSuccessModal({ 
-        show: true, 
-        message: editingResource ? 'La ressource a été mise à jour avec succès.' : 'La ressource a été ajoutée avec succès.' 
+      setSuccessModal({
+        show: true,
+        message: editingResource ? 'La ressource a été mise à jour avec succès.' : 'La ressource a été ajoutée avec succès.'
       });
     } catch (error) {
       console.error('Erreur sauvegarde ressource:', error);
-      setErrorModal({ 
-        show: true, 
-        message: 'Erreur lors de la sauvegarde de la ressource. Veuillez réessayer.' 
+      setErrorModal({
+        show: true,
+        message: 'Erreur lors de la sauvegarde de la ressource. Veuillez réessayer.'
       });
     }
   };
@@ -114,9 +114,9 @@ const ResourcesTab = () => {
 
     const resourceIdToDelete = confirmModal.resourceId;
     const resourceTitleToDelete = confirmModal.resourceTitle;
-    
+
     setConfirmModal({ show: false, resourceId: null, resourceTitle: '' });
-    
+
     try {
       const { error } = await supabase
         .from('resources')
@@ -124,15 +124,15 @@ const ResourcesTab = () => {
         .eq('id', resourceIdToDelete);
 
       if (error) throw error;
-      
+
       // Mise à jour optimiste
       setResources(prevResources => prevResources.filter(r => r.id !== resourceIdToDelete));
-      
-      setSuccessModal({ 
-        show: true, 
-        message: `La ressource "${resourceTitleToDelete}" a été supprimée avec succès.` 
+
+      setSuccessModal({
+        show: true,
+        message: `La ressource "${resourceTitleToDelete}" a été supprimée avec succès.`
       });
-      
+
       // Recharger pour s'assurer de la cohérence
       setTimeout(async () => {
         try {
@@ -143,9 +143,9 @@ const ResourcesTab = () => {
       }, 500);
     } catch (error) {
       console.error('Erreur suppression:', error);
-      setErrorModal({ 
-        show: true, 
-        message: 'Erreur lors de la suppression de la ressource. Veuillez réessayer.' 
+      setErrorModal({
+        show: true,
+        message: 'Erreur lors de la suppression de la ressource. Veuillez réessayer.'
       });
       // Recharger en cas d'erreur
       await loadResources();
@@ -208,13 +208,13 @@ const ResourcesTab = () => {
 
   // Filtrage
   const filteredResources = resources.filter(resource => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       resource.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       resource.subject_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesType = filterType === 'all' || resource.type === filterType;
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -238,6 +238,18 @@ const ResourcesTab = () => {
 
   return (
     <div className="resources-tab">
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Bibliothèque de Ressources</h2>
+          <p className="stats-subtitle">Gérez et organisez vos ressources pédagogiques.</p>
+        </div>
+        <button className="add-resource-btn" onClick={() => setShowModal(true)}>
+          <Plus size={20} />
+          Ajouter une ressource
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="resources-stats">
         <div className="resource-stat-card">
@@ -294,7 +306,7 @@ const ResourcesTab = () => {
             />
           </div>
 
-          <select 
+          <select
             className="type-filter"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
@@ -333,15 +345,15 @@ const ResourcesTab = () => {
                   En vedette
                 </div>
               )}
-              
-              <button 
+
+              <button
                 className="resource-delete-btn"
                 onClick={() => handleDelete(resource.id, resource.title)}
               >
                 <Trash2 size={14} />
               </button>
 
-              <button 
+              <button
                 className="resource-edit-btn"
                 onClick={() => handleEdit(resource)}
               >
@@ -365,7 +377,7 @@ const ResourcesTab = () => {
                 </div>
 
                 <h4>{resource.title}</h4>
-                
+
                 {resource.author && (
                   <p className="resource-author">Par {resource.author}</p>
                 )}
@@ -390,9 +402,9 @@ const ResourcesTab = () => {
                 )}
 
                 {resource.url && (
-                  <a 
-                    href={resource.url} 
-                    target="_blank" 
+                  <a
+                    href={resource.url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="resource-link-btn"
                   >
@@ -410,7 +422,7 @@ const ResourcesTab = () => {
         <div className="resource-modal-overlay" onClick={() => { setShowModal(false); setEditingResource(null); resetForm(); }}>
           <div className="resource-modal" onClick={(e) => e.stopPropagation()}>
             <h2>{editingResource ? 'Modifier la ressource' : 'Ajouter une ressource'}</h2>
-            
+
             <form onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="form-group">
@@ -418,7 +430,7 @@ const ResourcesTab = () => {
                   <input
                     type="text"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
                   />
                 </div>
@@ -427,7 +439,7 @@ const ResourcesTab = () => {
                   <label>Type *</label>
                   <select
                     value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   >
                     <option value="book">Livre</option>
                     <option value="video">Vidéo</option>
@@ -442,7 +454,7 @@ const ResourcesTab = () => {
                 <label>Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows="3"
                 />
               </div>
@@ -453,7 +465,7 @@ const ResourcesTab = () => {
                   <input
                     type="url"
                     value={formData.url}
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                     required
                   />
                 </div>
@@ -463,7 +475,7 @@ const ResourcesTab = () => {
                   <input
                     type="url"
                     value={formData.thumbnail_url}
-                    onChange={(e) => setFormData({...formData, thumbnail_url: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
                   />
                 </div>
               </div>
@@ -474,7 +486,7 @@ const ResourcesTab = () => {
                   <input
                     type="text"
                     value={formData.subject_name}
-                    onChange={(e) => setFormData({...formData, subject_name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, subject_name: e.target.value })}
                   />
                 </div>
 
@@ -483,7 +495,7 @@ const ResourcesTab = () => {
                   <input
                     type="text"
                     value={formData.author}
-                    onChange={(e) => setFormData({...formData, author: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                   />
                 </div>
               </div>
@@ -493,7 +505,7 @@ const ResourcesTab = () => {
                 <input
                   type="text"
                   value={formData.tags}
-                  onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="python, tutoriel, débutant"
                 />
               </div>
@@ -503,7 +515,7 @@ const ResourcesTab = () => {
                   type="checkbox"
                   id="featured"
                   checked={formData.is_featured}
-                  onChange={(e) => setFormData({...formData, is_featured: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
                 />
                 <label htmlFor="featured">Mettre en vedette</label>
               </div>
@@ -538,14 +550,14 @@ const ResourcesTab = () => {
               <p className="confirm-modal-warning">Cette action est irréversible.</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn cancel-btn" 
+              <button
+                className="confirm-btn cancel-btn"
                 onClick={() => setConfirmModal({ show: false, resourceId: null, resourceTitle: '' })}
               >
                 Annuler
               </button>
-              <button 
-                className="confirm-btn confirm-btn-danger" 
+              <button
+                className="confirm-btn confirm-btn-danger"
                 onClick={confirmDeleteResource}
               >
                 Supprimer
@@ -569,8 +581,8 @@ const ResourcesTab = () => {
               <p className="confirm-modal-message">{successModal.message}</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn confirm-btn-primary" 
+              <button
+                className="confirm-btn confirm-btn-primary"
                 onClick={() => setSuccessModal({ show: false, message: '' })}
               >
                 D'accord
@@ -594,8 +606,8 @@ const ResourcesTab = () => {
               <p className="confirm-modal-message">{errorModal.message}</p>
             </div>
             <div className="confirm-modal-actions">
-              <button 
-                className="confirm-btn confirm-btn-primary" 
+              <button
+                className="confirm-btn confirm-btn-primary"
                 onClick={() => setErrorModal({ show: false, message: '' })}
               >
                 Fermer

@@ -26,7 +26,7 @@ export const subscriptionService = {
         console.error('Erreur lors de la vérification de l\'abonnement:', error);
         return false;
       }
-      
+
       // Vérifier explicitement que profileData existe avant de continuer
       if (!profileData) {
         return false;
@@ -35,28 +35,36 @@ export const subscriptionService = {
       // Admin a toujours accès
       if (profileData?.role === 'admin') return true;
 
+      // VÉRIFICATION EXPLICITE : Refuser IMMÉDIATEMENT si expiré/annulé/gratuit
+      // Cette vérification doit être AVANT la vérification des statuts actifs
+      if (profileData?.subscription_status === 'expired' ||
+        profileData?.subscription_status === 'cancelled' ||
+        profileData?.subscription_status === 'free') {
+        return false; // Refus immédiat, pas de vérification supplémentaire
+      }
+
       // Vérifier si active, trial ou premium et pas expiré
-      if (profileData?.subscription_status === 'active' || 
-          profileData?.subscription_status === 'trial' ||
-          profileData?.subscription_status === 'premium') {
+      if (profileData?.subscription_status === 'active' ||
+        profileData?.subscription_status === 'trial' ||
+        profileData?.subscription_status === 'premium') {
         if (!profileData.subscription_end_date) return true; // Abonnement illimité
         const endDate = new Date(profileData.subscription_end_date);
         const now = new Date();
         const isExpired = endDate <= now;
-        
+
         // Si l'abonnement est expiré, mettre à jour le statut SYNCHRONEMENT
         if (isExpired) {
           // Mettre à jour le statut de manière SYNCHRONE pour garantir que c'est fait avant de retourner
           try {
             const { error: updateError } = await supabase
               .from('profiles')
-              .update({ 
+              .update({
                 subscription_status: 'expired',
                 subscription_end_date: null,
                 updated_at: new Date().toISOString()
               })
               .eq('id', userId);
-            
+
             if (updateError) {
               console.error('Erreur lors de la mise à jour du statut expiré:', updateError);
             } else {
@@ -65,14 +73,14 @@ export const subscriptionService = {
           } catch (err) {
             console.error('Erreur lors de la mise à jour du statut expiré:', err);
           }
-          
+
           return false; // Accès refusé car expiré
         }
-        
+
         return true; // Accès autorisé
       }
 
-      // Statut 'expired', 'cancelled', NULL, ou autre = pas d'accès
+      // Statut NULL ou autre = pas d'accès
       return false;
     } catch (error) {
       return false;
@@ -105,18 +113,18 @@ export const subscriptionService = {
           const endDate = new Date(data.subscription_end_date);
           const now = new Date();
           const isExpired = endDate <= now;
-          
+
           if (isExpired) {
             // Mettre à jour le statut de manière synchrone pour que le profil se rafraîchisse
             const { error: updateError } = await supabase
               .from('profiles')
-              .update({ 
+              .update({
                 subscription_status: 'free',
                 subscription_end_date: null,
                 updated_at: new Date().toISOString()
               })
               .eq('id', userId);
-            
+
             if (!updateError) {
               // Retourner les données mises à jour
               return {
@@ -141,7 +149,7 @@ export const subscriptionService = {
     try {
       // Récupérer les prix depuis la base de données
       const pricing = await settingsService.getPricing();
-      
+
       const plans = {
         monthly: { amount: pricing.monthly, duration: 1 },
         quarterly: { amount: pricing.quarterly, duration: 3 },

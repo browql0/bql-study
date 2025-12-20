@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Monitor, Tablet, Trash2, RefreshCw, Search, AlertCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Smartphone, Monitor, Tablet, Trash2, RefreshCw, Search, AlertCircle, AlertTriangle, CheckCircle, LogOut } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import './DevicesTab.css';
 
@@ -23,6 +23,7 @@ const DevicesTab = () => {
     show: false,
     message: ''
   });
+  const [disconnectAllModal, setDisconnectAllModal] = useState(false);
 
   useEffect(() => {
     loadCurrentUserRole();
@@ -256,6 +257,46 @@ const DevicesTab = () => {
     }
   };
 
+  const handleDisconnectAll = () => {
+    setDisconnectAllModal(true);
+  };
+
+  const confirmDisconnectAll = async () => {
+    setDisconnectAllModal(false);
+    setLoading(true);
+
+    try {
+      // Vérifier que l'utilisateur est admin
+      if (currentUserRole !== 'admin') {
+        throw new Error('Seuls les administrateurs peuvent déconnecter tous les appareils.');
+      }
+
+      // Désactiver tous les appareils actifs
+      const { error } = await supabase
+        .from('user_devices')
+        .update({ is_active: false })
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // Recharger la liste
+      await loadDevices(false);
+
+      setSuccessModal({
+        show: true,
+        message: `${devices.length} appareil(s) ont été déconnecté(s) avec succès.`
+      });
+    } catch (error) {
+      console.error('Erreur déconnexion tous:', error);
+      setErrorModal({
+        show: true,
+        message: 'Erreur lors de la déconnexion des appareils.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDeviceIcon = (type) => {
     switch (type) {
       case 'mobile':
@@ -320,26 +361,31 @@ const DevicesTab = () => {
 
   return (
     <div className="devices-tab">
-      <div className="devices-header-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>Gestion des appareils</h2>
-        <button
-          onClick={() => loadDevices(true)}
-          className="refresh-btn"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0',
-            backgroundColor: 'white',
-            cursor: 'pointer',
-            fontWeight: 500
-          }}
-        >
-          <RefreshCw size={18} />
-          Rafraîchir
-        </button>
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Gestion des Appareils</h2>
+          <p className="stats-subtitle">Gérez les appareils connectés de vos utilisateurs.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => loadDevices(true)}
+            className="btn-create-ticket"
+            style={{ justifyContent: 'center' }}
+          >
+            <RefreshCw size={18} />
+            Rafraîchir
+          </button>
+          <button
+            onClick={handleDisconnectAll}
+            className="btn-create-ticket danger"
+            style={{ justifyContent: 'center' }}
+            disabled={devices.length === 0}
+          >
+            <LogOut size={18} />
+            Déconnecter tous
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -554,6 +600,42 @@ const DevicesTab = () => {
                 onClick={() => setErrorModal({ show: false, message: '' })}
               >
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation déconnexion tous */}
+      {disconnectAllModal && (
+        <div className="device-modal-overlay" onClick={() => setDisconnectAllModal(false)}>
+          <div className="confirm-modal-wrapper" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <h3 className="confirm-modal-title">Déconnecter tous les appareils</h3>
+            </div>
+            <div className="confirm-modal-body">
+              <div className="confirm-icon-wrapper">
+                <AlertTriangle size={48} className="confirm-warning-icon" />
+              </div>
+              <p className="confirm-modal-message">
+                Êtes-vous sûr de vouloir déconnecter <strong>{devices.length} appareil(s)</strong> ?
+              </p>
+              <p className="confirm-modal-warning">
+                Tous les utilisateurs devront se reconnecter. Cette action est irréversible.
+              </p>
+            </div>
+            <div className="confirm-modal-actions">
+              <button
+                className="confirm-btn cancel-btn"
+                onClick={() => setDisconnectAllModal(false)}
+              >
+                Annuler
+              </button>
+              <button
+                className="confirm-btn confirm-btn-danger"
+                onClick={confirmDisconnectAll}
+              >
+                Déconnecter tous
               </button>
             </div>
           </div>

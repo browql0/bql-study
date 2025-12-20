@@ -1,29 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { settingsService } from '../../services/settingsService';
-import { 
-  Settings, 
-  DollarSign, 
-  Zap, 
-  Mail, 
-  Shield, 
-  Save, 
-  RotateCcw, 
-  Check, 
-  X, 
+import {
+  Settings,
+  DollarSign,
+  Zap,
+  Mail,
+  Shield,
+  Save,
+  RotateCcw,
+  Check,
+  X,
   AlertTriangle,
-  Info,
   CreditCard,
   FileText,
   MessageSquare,
-  Lock,
   Users,
   Bell,
   Globe,
   Eye,
   Download,
-  Sparkles,
-  TrendingUp,
-  Home
+  TrendingUp
 } from 'lucide-react';
 import './SettingsTab.css';
 
@@ -105,31 +101,9 @@ const SettingsTab = () => {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '70vh',
-        gap: '24px'
-      }}>
-        <div style={{
-          width: '64px',
-          height: '64px',
-          border: '5px solid rgba(102,126,234,0.1)',
-          borderTop: '5px solid #667eea',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }}></div>
-        <p style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#667eea',
-          animation: 'pulse 2s ease-in-out infinite'
-        }}>
-          <Sparkles size={20} style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
-          Chargement des paramètres...
-        </p>
+      <div className="settings-loading">
+        <div className="spinner"></div>
+        <p>Chargement des paramètres...</p>
       </div>
     );
   }
@@ -197,23 +171,39 @@ const SettingsTab = () => {
   ];
 
   return (
-    <div className="settings-wrapper-ultimate">
-      {/* Animated Background */}
-      <div className="settings-bg-animated"></div>
-      
-      {/* Header Premium */}
-      <div className="settings-hero-header">
-        <div className="settings-hero-icon">
-          <Settings size={32} />
+    <div className="settings-tab">
+      {/* Premium Header */}
+      <div className="stats-header-premium">
+        <div>
+          <h2 className="stats-title-gradient">Paramètres</h2>
+          <p className="stats-subtitle">Configurez votre application selon vos besoins.</p>
         </div>
-        <div className="settings-hero-content">
-          <h1 className="settings-hero-title">
-            <Sparkles size={28} style={{marginRight: '12px'}} />
-            Paramètres Avancés
-          </h1>
-          <p className="settings-hero-subtitle">
-            Personnalisez votre application selon vos besoins
-          </p>
+        <div className="settings-header-actions">
+          <button
+            className="settings-btn settings-btn-save"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <div className="settings-spinner-small"></div>
+                <span>Enregistrement...</span>
+              </>
+            ) : (
+              <>
+                <Save size={20} />
+                <span>Sauvegarder</span>
+              </>
+            )}
+          </button>
+          <button
+            className="settings-btn settings-btn-reset"
+            onClick={handleResetClick}
+            disabled={saving}
+          >
+            <RotateCcw size={20} />
+            <span>Réinitialiser</span>
+          </button>
         </div>
       </div>
 
@@ -225,48 +215,12 @@ const SettingsTab = () => {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="settings-actions-bar">
-        <button 
-          className="settings-btn settings-btn-save"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <>
-              <div className="settings-spinner-small"></div>
-              <span>Enregistrement...</span>
-            </>
-          ) : (
-            <>
-              <Save size={20} />
-              <span>Sauvegarder</span>
-            </>
-          )}
-        </button>
-        <button 
-          className="settings-btn settings-btn-reset"
-          onClick={handleResetClick}
-          disabled={saving}
-        >
-          <RotateCcw size={20} />
-          <span>Réinitialiser</span>
-        </button>
-        <button 
-          className="settings-btn settings-btn-home"
-          onClick={() => window.location.href = '/'}
-        >
-          <Home size={20} />
-          <span>Retour à l'Accueil</span>
-        </button>
-      </div>
-
       {/* Settings Grid */}
       <div className="settings-cards-grid">
         {/* Pricing Card */}
-        <div className="settings-card" data-card="pricing">
+        <div className="settings-card">
           <div className="settings-card-header">
-            <div className="settings-card-icon" style={{background: 'linear-gradient(135deg, #3b82f6, #2563eb)'}}>
+            <div className="settings-card-icon" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
               <DollarSign size={24} />
             </div>
             <div className="settings-card-title-block">
@@ -278,7 +232,7 @@ const SettingsTab = () => {
             <div className="pricing-input-group">
               <label>
                 <CreditCard size={18} />
-                <span>Mensuel (€)</span>
+                <span>Mensuel (DH)</span>
               </label>
               <input
                 type="number"
@@ -286,13 +240,13 @@ const SettingsTab = () => {
                 onChange={(e) => handlePriceChange('monthly', e.target.value)}
                 min="0"
                 step="1"
-                placeholder="25.00"
+                placeholder="25"
               />
             </div>
             <div className="pricing-input-group">
               <label>
                 <TrendingUp size={18} />
-                <span>Trimestriel </span>
+                <span>Trimestriel (DH)</span>
               </label>
               <input
                 type="number"
@@ -300,13 +254,13 @@ const SettingsTab = () => {
                 onChange={(e) => handlePriceChange('quarterly', e.target.value)}
                 min="0"
                 step="1"
-                placeholder="60.00"
+                placeholder="60"
               />
             </div>
             <div className="pricing-input-group">
               <label>
-                <Sparkles size={18} />
-                <span>Annuel (€)</span>
+                <CreditCard size={18} />
+                <span>Annuel (DH)</span>
               </label>
               <input
                 type="number"
@@ -314,16 +268,16 @@ const SettingsTab = () => {
                 onChange={(e) => handlePriceChange('yearly', e.target.value)}
                 min="0"
                 step="1"
-                placeholder="45.00"
+                placeholder="100"
               />
             </div>
           </div>
         </div>
 
         {/* Features Card */}
-        <div className="settings-card" data-card="features">
+        <div className="settings-card">
           <div className="settings-card-header">
-            <div className="settings-card-icon" style={{background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'}}>
+            <div className="settings-card-icon" style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}>
               <Zap size={24} />
             </div>
             <div className="settings-card-title-block">
@@ -355,9 +309,9 @@ const SettingsTab = () => {
         </div>
 
         {/* Emails Card */}
-        <div className="settings-card" data-card="emails">
+        <div className="settings-card">
           <div className="settings-card-header">
-            <div className="settings-card-icon" style={{background: 'linear-gradient(135deg, #ec4899, #db2777)'}}>
+            <div className="settings-card-icon" style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)' }}>
               <Mail size={24} />
             </div>
             <div className="settings-card-title-block">
@@ -384,9 +338,9 @@ const SettingsTab = () => {
         </div>
 
         {/* Permissions Card */}
-        <div className="settings-card" data-card="permissions">
+        <div className="settings-card">
           <div className="settings-card-header">
-            <div className="settings-card-icon" style={{background: 'linear-gradient(135deg, #f59e0b, #d97706)'}}>
+            <div className="settings-card-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
               <Shield size={24} />
             </div>
             <div className="settings-card-title-block">
@@ -434,14 +388,14 @@ const SettingsTab = () => {
               </p>
             </div>
             <div className="settings-modal-actions">
-              <button 
+              <button
                 className="settings-modal-btn settings-modal-btn-cancel"
                 onClick={() => setShowConfirmModal(false)}
               >
                 <X size={20} />
                 Annuler
               </button>
-              <button 
+              <button
                 className="settings-modal-btn settings-modal-btn-confirm"
                 onClick={handleReset}
               >

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Gift, Check, AlertCircle, Loader } from 'lucide-react';
+import { X, Gift, Check, AlertCircle, Loader, Ticket, Sparkles } from 'lucide-react';
 import { voucherService } from '../services/voucherService';
 import './VoucherModal.css';
 
@@ -32,7 +32,6 @@ const VoucherModal = ({ onClose, userId, onSuccess }) => {
     const result = await voucherService.redeemVoucher(code, userId);
 
     if (result.success) {
-      // Succès !
       await onSuccess(result);
       setTimeout(() => {
         onClose();
@@ -46,9 +45,9 @@ const VoucherModal = ({ onClose, userId, onSuccess }) => {
 
   const getPlanLabel = (planType) => {
     const labels = {
-      monthly: 'Mensuel (1 mois)',
-      quarterly: 'Trimestriel (3 mois)',
-      yearly: 'Semestre (6 mois)'
+      monthly: '1 Mois Premium',
+      quarterly: '3 Mois Premium',
+      yearly: '6 Mois Premium'
     };
     return labels[planType] || planType;
   };
@@ -56,27 +55,37 @@ const VoucherModal = ({ onClose, userId, onSuccess }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal voucher-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
         <div className="modal-header">
-          <h2>
-            <Gift size={24} />
-            Code Promo / Voucher
-          </h2>
-          <button className="btn-icon" onClick={onClose}>
+          <div className="header-icon-badge">
+            <Ticket size={24} />
+          </div>
+          <h2>Activer un Code</h2>
+          <button className="btn-icon-close" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
         <div className="voucher-content">
+          {/* Hero Section */}
           <div className="voucher-hero">
-            <div className="gift-icon">
-              <Gift size={48} />
+            <div className="gift-icon-container">
+              <div className="gift-orbit"></div>
+              <Gift size={42} className="hero-icon" />
+              <Sparkles size={16} className="sparkle s1" />
+              <Sparkles size={12} className="sparkle s2" />
             </div>
-            <h3>Vous avez un code promo ?</h3>
-            <p>Entrez votre code pour activer votre abonnement Premium</p>
+            <div className="hero-text">
+              <h3>Boostez votre apprentissage</h3>
+              <p>Entrez votre code ci-dessous pour débloquer instantanément vos avantages Premium.</p>
+            </div>
           </div>
 
+          {/* Input Section */}
           <div className="voucher-input-section">
-            <div className="code-input-wrapper">
+            <label className="input-label">Code Promo</label>
+            <div className={`code-input-wrapper ${validation?.valid ? 'success' : ''} ${validation?.valid === false || error ? 'error' : ''}`}>
+              <Ticket size={20} className="input-icon" />
               <input
                 type="text"
                 value={code}
@@ -86,80 +95,81 @@ const VoucherModal = ({ onClose, userId, onSuccess }) => {
                   setError('');
                 }}
                 onBlur={handleValidate}
-                placeholder="PREMIUM-XXXX-XXXX"
-                className={`code-input ${validation ? (validation.valid ? 'valid' : 'invalid') : ''}`}
+                placeholder="Ex: PREMIUM-2024"
+                className="code-input"
                 disabled={loading}
+                maxLength={20}
               />
               {validating && (
-                <div className="input-loader">
-                  <Loader size={20} className="spin" />
+                <div className="input-status">
+                  <Loader size={18} className="spin" />
+                </div>
+              )}
+              {!validating && validation?.valid && (
+                <div className="input-status success">
+                  <Check size={18} />
                 </div>
               )}
             </div>
 
+            {/* Validation Feedback */}
             {validation && validation.valid && (
-              <div className="validation-success">
-                <Check size={18} />
-                <div className="validation-details">
-                  <strong>Code valide !</strong>
-                  <p>Plan: {getPlanLabel(validation.details.plan_type)}</p>
-                  {validation.details.amount && (
-                    <p>Valeur: {validation.details.amount} DH</p>
-                  )}
+              <div className="validation-card success">
+                <div className="validation-icon">
+                  <Gift size={20} />
+                </div>
+                <div className="validation-info">
+                  <strong>Code Valide !</strong>
+                  <p>Vous allez recevoir : <span>{getPlanLabel(validation.details.plan_type)}</span></p>
                 </div>
               </div>
             )}
 
-            {validation && !validation.valid && (
-              <div className="validation-error">
-                <AlertCircle size={18} />
-                <span>{validation.message}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="voucher-error">
-                <AlertCircle size={18} />
-                <span>{error}</span>
+            {(error || (validation && !validation.valid)) && (
+              <div className="validation-card error">
+                <div className="validation-icon">
+                  <AlertCircle size={20} />
+                </div>
+                <div className="validation-info">
+                  <strong>Oups !</strong>
+                  <p>{error || validation?.message || "Ce code n'est pas valide"}</p>
+                </div>
               </div>
             )}
           </div>
 
+          {/* Actions */}
           <div className="voucher-actions">
             <button
-              className="btn btn-secondary"
+              className="btn-cancel"
               onClick={onClose}
               disabled={loading}
             >
               Annuler
             </button>
             <button
-              className="btn btn-primary btn-redeem"
+              className={`btn-redeem ${loading ? 'loading' : ''}`}
               onClick={handleRedeem}
               disabled={loading || !code.trim() || (validation && !validation.valid)}
             >
               {loading ? (
                 <>
-                  <Loader size={20} className="spin" />
-                  Activation...
+                  <Loader size={18} className="spin" />
+                  <span>Activation...</span>
                 </>
               ) : (
                 <>
-                  <Gift size={20} />
-                  Activer le code
+                  <Ticket size={18} />
+                  <span>Activer maintenant</span>
+                  <div className="btn-shine"></div>
                 </>
               )}
             </button>
           </div>
 
-          <div className="voucher-info">
-            <h4>Comment obtenir un code ?</h4>
-            <ul>
-              <li>📧 Codes envoyés par email lors de promotions</li>
-              <li>🎁 Codes partagés sur les réseaux sociaux</li>
-              <li>🤝 Codes offerts par des partenaires</li>
-              <li>🏆 Récompenses pour les utilisateurs fidèles</li>
-            </ul>
+          {/* Footer Info */}
+          <div className="voucher-footer">
+            <p>Pas encore de code ? <a href="#">Voir nos offres</a></p>
           </div>
         </div>
       </div>

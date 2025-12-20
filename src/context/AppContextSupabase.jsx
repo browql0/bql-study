@@ -61,10 +61,10 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const authStateChangeResult = onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Charger le rôle depuis la table profiles au lieu de user_metadata
+        // Charger le rôle et l'abonnement depuis la table profiles
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('role, name, created_at')
+          .select('role, name, created_at, subscription_status, subscription_end_date')
           .eq('id', session.user.id)
           .single();
 
@@ -74,7 +74,9 @@ export const AppProvider = ({ children }) => {
           name: profileData?.name || session.user.user_metadata?.name || session.user.email,
           username: session.user.email,
           role: profileData?.role || 'spectator',
-          created_at: profileData?.created_at
+          created_at: profileData?.created_at,
+          subscription_status: profileData?.subscription_status,
+          subscription_end_date: profileData?.subscription_end_date
         };
 
         await syncAuthRoleWithProfile(session.user, userData.role);
@@ -170,6 +172,29 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
+  // Heartbeat: Update last_sign_in_at every 2 minutes while active
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const updateHeartbeat = async () => {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_sign_in_at: new Date().toISOString() })
+          .eq('id', currentUser.id);
+      } catch (err) {
+        // Silently fail on heartbeat
+      }
+    };
+
+    // Initial beat
+    updateHeartbeat();
+
+    // Loop
+    const interval = setInterval(updateHeartbeat, 2 * 60 * 1000); // Every 2 mins
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
   // Écouter les changements de profil en temps réel
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -188,15 +213,20 @@ export const AppProvider = ({ children }) => {
         async (payload) => {
           console.log('Profil mis à jour en temps réel:', payload);
 
-          // Mettre à jour le rôle si il a changé
-          if (payload.new.role !== currentUser.role) {
+          // Vérifier si des champs importants ont changé
+          const roleChanged = payload.new.role !== currentUser.role;
+          const statusChanged = payload.new.subscription_status !== currentUser.subscription_status;
+
+          if (roleChanged || statusChanged) {
             setCurrentUser(prev => ({
               ...prev,
               role: payload.new.role,
+              subscription_status: payload.new.subscription_status,
+              subscription_end_date: payload.new.subscription_end_date,
               name: payload.new.name || prev.name
             }));
 
-            // Recharger la page pour appliquer les changements de permission
+            // Recharger la page pour appliquer les changements majeurs
             window.location.reload();
           }
         }
@@ -309,6 +339,15 @@ export const AppProvider = ({ children }) => {
       if (error) {
         return { success: false, error };
       }
+
+      // Update profile last_sign_in_at
+      if (data?.user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ last_sign_in_at: new Date().toISOString() })
+          .eq('id', data.user.id);
+      }
+
       return { success: true, user: data.user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -345,7 +384,7 @@ export const AppProvider = ({ children }) => {
       // Utiliser le nom exact du JSON pour l'enregistrement
       const exactName = nameValidation.exactName || name;
 
-      // VÉRIFICATION FINALE juste avant l'inscription pour éviter les race conditions
+      // VÉRIFICATION FINALE
       const { isNameAlreadyUsed } = await import('../services/studentNameService');
       const nameStillUsed = await isNameAlreadyUsed(exactName);
       if (nameStillUsed) {
@@ -354,24 +393,20 @@ export const AppProvider = ({ children }) => {
 
       const { data, error } = await authSignUp(normalizedEmail, password, exactName);
       if (error) {
-        // Le message d'erreur est déjà amélioré dans authService
         return { success: false, error };
       }
 
       // Vérifier et créer le profil avec trial si nécessaire
       if (data?.user?.id) {
         try {
-          // Attendre un peu pour que le trigger s'exécute
           await new Promise(resolve => setTimeout(resolve, 1000));
 
-          // Vérifier si le profil existe et a le trial
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('id, subscription_status, subscription_end_date')
+            .select('id, subscription_status')
             .eq('id', data.user.id)
             .single();
 
-          // Si le profil n'existe pas ou n'a pas le trial, le créer/corriger
           if (profileError || !profile || profile.subscription_status !== 'trial') {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 7);
@@ -393,7 +428,8 @@ export const AppProvider = ({ children }) => {
                   voucher_expired: false
                 },
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString()
               }, {
                 onConflict: 'id'
               });
@@ -401,16 +437,17 @@ export const AppProvider = ({ children }) => {
             if (upsertError) {
               console.warn('Erreur lors de la création/correction du profil avec trial:', upsertError);
             }
+          } else {
+            // If profile already existed (by trigger), ensure last_sign_in_at is set
+            await supabase.from('profiles').update({ last_sign_in_at: new Date().toISOString() }).eq('id', data.user.id);
           }
         } catch (profileCheckError) {
           console.warn('Erreur lors de la vérification du profil:', profileCheckError);
-          // On continue quand même car l'inscription a réussi
         }
       }
 
       // Notifier les admins d'un nouvel utilisateur (In-App + Push)
       try {
-        // Notification In-App
         const { notificationsService } = await import('../services/notificationsService');
         await notificationsService.notifyAllAdmins(
           'new_user',
@@ -419,7 +456,6 @@ export const AppProvider = ({ children }) => {
           { newUserId: data.user.id }
         );
 
-        // Notification Push
         const { notifyAdmins } = await import('../services/pushNotificationService');
         await notifyAdmins(
           'new_user',
@@ -432,14 +468,10 @@ export const AppProvider = ({ children }) => {
 
       return { success: true, user: data.user, message: 'Vérifiez votre email pour confirmer votre inscription' };
     } catch (error) {
-      // Gérer les erreurs inattendues
       let errorMessage = error.message || 'Une erreur est survenue lors de l\'inscription';
-
-      if (error.message?.includes('already registered') ||
-        error.message?.includes('already exists')) {
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         errorMessage = 'Cet email est déjà utilisé par un autre compte';
       }
-
       return { success: false, error: errorMessage };
     }
   };
