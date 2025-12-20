@@ -180,7 +180,8 @@ const BankTransferForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           {
             planType: selectedPlan,
             amount,
-            method: 'bank_transfer'
+            method: 'bank_transfer',
+            proofUrl: proofUrl
           }
         );
 

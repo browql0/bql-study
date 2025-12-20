@@ -107,7 +107,7 @@ const StatsTab = () => {
 
     // 3. Premium Trend (New Premium users in last 7 days vs Total Premium base)
     const currentPremium = profiles.filter(p => p.subscription_status === 'premium').length;
-    const newPremium = profiles.filter(p => p.subscription_status === 'premium' && (now - new Date(p.created_at).getTime()) < sevenDays).length;
+    const newPremium = profiles.filter(p => p.subscription_status === 'premium' && p.last_payment_date && (now - new Date(p.last_payment_date).getTime()) < sevenDays).length;
     const oldPremium = currentPremium - newPremium;
 
     const premiumTrend = oldPremium > 0

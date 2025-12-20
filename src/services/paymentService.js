@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { settingsService } from './settingsService';
+import { notificationsService } from './notificationsService';
 
 /**
  * Service de paiement pour CMI et Tijari Payment
@@ -84,6 +85,18 @@ export const paymentService = {
           .eq('id', userId);
 
         if (updateError) throw updateError;
+
+        // Notifier les admins du nouveau paiement
+        notificationsService.notifyAllAdmins(
+          'new_payment',
+          'Nouveau paiement (Simulation)',
+          `Un paiement de ${selectedPlan.amount} MAD a été reçu de ${userData.name || userData.email}`,
+          {
+            userId,
+            amount: selectedPlan.amount,
+            plan: plan
+          }
+        ).catch(err => console.error('Erreur notification admin:', err));
 
         return {
           success: true,
@@ -335,6 +348,18 @@ export const paymentService = {
           .eq('id', payment.user_id);
 
         if (updateError) throw updateError;
+
+        // Notifier les admins du nouveau paiement
+        notificationsService.notifyAllAdmins(
+          'new_payment',
+          'Nouveau paiement',
+          `Un paiement de ${payment.amount} MAD a été reçu de ${payment.user_email}`,
+          {
+            userId: payment.user_id,
+            amount: payment.amount,
+            plan: payment.plan_type
+          }
+        ).catch(err => console.error('Erreur notification admin:', err));
       }
 
       return { success: true, payment };

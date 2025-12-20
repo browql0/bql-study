@@ -11,7 +11,7 @@ const NotificationsPanel = ({ userId, onClose }) => {
 
   const loadNotifications = useCallback(async () => {
     if (!userId) return;
-    
+
     setLoading(true);
     try {
       console.log('[NotificationsPanel] Loading notifications for user:', userId);
@@ -23,7 +23,7 @@ const NotificationsPanel = ({ userId, onClose }) => {
       } else {
         console.error('[NotificationsPanel] Error loading notifications:', result.error);
       }
-      
+
       const countResult = await notificationsService.getUnreadCount(userId);
       console.log('[NotificationsPanel] Unread count result:', countResult);
       if (countResult.success) {
@@ -38,7 +38,7 @@ const NotificationsPanel = ({ userId, onClose }) => {
 
   useEffect(() => {
     if (!userId) return;
-    
+
     loadNotifications();
 
     // Écouter les nouvelles notifications en temps réel
@@ -207,12 +207,13 @@ const NotificationsPanel = ({ userId, onClose }) => {
             </div>
           ) : (
             <div className="notifications-list">
-              {notifications.map((notification) => {
+              {notifications.map((notification, index) => {
                 if (!notification) return null;
                 return (
                   <div
                     key={notification.id}
-                    className={`notification-item ${!notification.read ? 'unread' : ''}`}
+                    className={`notification-item ${!notification.read ? 'unread' : ''} type-${notification.type}`}
+                    style={{ animationDelay: `${index * 0.05}s` }}
                   >
                     <div className="notification-icon">
                       {getNotificationIcon(notification.type)}
@@ -220,11 +221,11 @@ const NotificationsPanel = ({ userId, onClose }) => {
                     <div className="notification-content">
                       <div className="notification-header-item">
                         <h3 className="notification-title">{notification.title}</h3>
-                        <span className="notification-time">
-                          {formatDate(notification.created_at)}
-                        </span>
                       </div>
                       <p className="notification-message">{notification.message}</p>
+                      <span className="notification-time">
+                        {formatDate(notification.created_at)}
+                      </span>
                     </div>
                     <div className="notification-actions">
                       {!notification.read && (

@@ -143,7 +143,7 @@ const UsersTab = () => {
     if (subscriptionFilter !== 'all') {
       filtered = filtered.filter(user => {
         if (subscriptionFilter === 'premium') return user.subscription_status === 'premium';
-        if (subscriptionFilter === 'none') return !user.subscription_status || user.subscription_status === 'free';
+        if (subscriptionFilter === 'none') return user.subscription_status !== 'premium';
         return true;
       });
     }
@@ -331,7 +331,7 @@ const UsersTab = () => {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
     premium: users.filter(u => u.subscription_status === 'premium').length,
-    free: users.filter(u => !u.subscription_status || u.subscription_status === 'free').length,
+    free: users.filter(u => u.subscription_status !== 'premium').length,
     spectators: users.filter(u => u.role === 'spectator').length,
     newThisWeek: users.filter(u => {
       const weekAgo = new Date();

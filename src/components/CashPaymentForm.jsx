@@ -108,7 +108,8 @@ const CashPaymentForm = ({ selectedPlan, amount, onClose, onSuccess }) => {
           {
             planType: selectedPlan,
             amount,
-            phone: formData.contactPhone
+            phone: formData.contactPhone,
+            method: 'cash'
           }
         );
 

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { deviceService } from './deviceService';
+import { notificationsService } from './notificationsService';
 
 /**
  * Vérifie si un email est déjà utilisé
@@ -8,17 +9,17 @@ import { deviceService } from './deviceService';
 export const isEmailAlreadyUsed = async (email) => {
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     // Essayer d'utiliser la fonction RPC si elle existe
     try {
       const { data, error } = await supabase.rpc('check_email_exists', {
         p_email: normalizedEmail
       });
-      
+
       if (!error && data !== null) {
         return data === true;
       }
-      
+
       if (error) {
         console.warn('Fonction RPC check_email_exists non disponible, utilisation de la méthode directe:', error);
         // Fallback: Vérifier directement dans profiles
@@ -29,7 +30,7 @@ export const isEmailAlreadyUsed = async (email) => {
       console.warn('Erreur lors de l\'appel RPC, utilisation de la méthode directe:', rpcError);
       return await checkEmailDirectly(normalizedEmail);
     }
-    
+
     return false;
   } catch (error) {
     console.warn('Erreur lors de la vérification de l\'email:', error);
@@ -67,13 +68,13 @@ export const signUp = async (email, password, name) => {
   try {
     // Normaliser l'email
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     // Vérifier si l'email est déjà utilisé
     const emailExists = await isEmailAlreadyUsed(normalizedEmail);
     if (emailExists) {
-      return { 
-        data: null, 
-        error: 'Cet email est déjà utilisé par un autre compte' 
+      return {
+        data: null,
+        error: 'Cet email est déjà utilisé par un autre compte'
       };
     }
 
@@ -91,31 +92,43 @@ export const signUp = async (email, password, name) => {
     if (error) {
       // Améliorer les messages d'erreur
       let errorMessage = error.message;
-      
+
       // Messages d'erreur plus clairs
-      if (error.message?.includes('already registered') || 
-          error.message?.includes('already exists') ||
-          error.message?.includes('User already registered')) {http://192.168.1.107:5173/
-        errorMessage = 'Cet email est déjà utilisé par un autre compte';
+      if (error.message?.includes('already registered') ||
+        error.message?.includes('already exists') ||
+        error.message?.includes('User already registered')) {
+          http://192.168.1.107:5173/
+          errorMessage = 'Cet email est déjà utilisé par un autre compte';
       } else if (error.message?.includes('Invalid email')) {
         errorMessage = 'Format d\'email invalide';
       } else if (error.message?.includes('Password')) {
         errorMessage = 'Le mot de passe ne respecte pas les critères requis';
       }
-      
+
       return { data: null, error: errorMessage };
     }
-    
+
+
+    // Notifier les admins du nouvel utilisateur
+    if (data.user) {
+      notificationsService.notifyAllAdmins(
+        'new_user',
+        'Nouvel utilisateur',
+        `Un nouvel utilisateur s'est inscrit : ${name} (${normalizedEmail})`,
+        { userId: data.user.id }
+      ).catch(err => console.error('Erreur notification admin:', err));
+    }
+
     return { data, error: null };
   } catch (error) {
     // Gérer les erreurs inattendues
     let errorMessage = error.message || 'Une erreur est survenue lors de l\'inscription';
-    
-    if (error.message?.includes('already registered') || 
-        error.message?.includes('already exists')) {
+
+    if (error.message?.includes('already registered') ||
+      error.message?.includes('already exists')) {
       errorMessage = 'Cet email est déjà utilisé par un autre compte';
     }
-    
+
     return { data: null, error: errorMessage };
   }
 };
@@ -135,17 +148,17 @@ export const signIn = async (email, password) => {
     if (data?.user) {
       try {
         const deviceResult = await deviceService.registerDevice();
-        
+
         if (!deviceResult.success) {
           // If device limit reached, sign out immediately
-          if (deviceResult.error === 'device_limit' || 
-              deviceResult.error?.includes('Limite d\'appareils') || 
-              deviceResult.error?.includes('P0001')) {
-            
+          if (deviceResult.error === 'device_limit' ||
+            deviceResult.error?.includes('Limite d\'appareils') ||
+            deviceResult.error?.includes('P0001')) {
+
             await supabase.auth.signOut();
-            return { 
-              data: null, 
-              error: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.' 
+            return {
+              data: null,
+              error: 'Vous avez atteint la limite de 2 appareils. Veuillez vous déconnecter d\'un appareil existant.'
             };
           }
         }
