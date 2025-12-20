@@ -18,7 +18,7 @@ const UserPaymentHistory = () => {
   const loadPayments = async () => {
     try {
       setLoading(true);
-      
+
       // Récupérer TOUS les paiements en ligne (CMI) - tous les statuts
       const { data: onlinePayments, error: onlineError } = await supabase
         .from('payments')
@@ -73,14 +73,14 @@ const UserPaymentHistory = () => {
           reference_number: p.transfer_reference || p.id.toString(),
           source: 'manual',
           // Informations supplémentaires pour les paiements manuels
-          payment_method_detail: p.payment_method === 'bank_transfer' ? 'Virement bancaire' : 
-                                p.payment_method === 'cash' ? 'Espèces' : 'Manuel',
+          payment_method_detail: p.payment_method === 'bank_transfer' ? 'Virement bancaire' :
+            p.payment_method === 'cash' ? 'Espèces' : 'Manuel',
           original_status: p.status // Garder le statut original pour référence
         };
       });
 
       // Combiner et trier par date
-      const allPayments = [...normalizedOnline, ...normalizedManual].sort((a, b) => 
+      const allPayments = [...normalizedOnline, ...normalizedManual].sort((a, b) =>
         new Date(b.created_at) - new Date(a.created_at)
       );
 
@@ -135,16 +135,25 @@ const UserPaymentHistory = () => {
   const getPlanName = (planType) => {
     switch (planType) {
       case 'monthly': return 'Mensuel';
-      case 'annual': return 'Annuel';
-      default: return planType || 'N/A';
+      case 'quarterly':
+      case 'trimestriel': return 'Trimestriel';
+      case 'annual':
+      case 'yearly': return 'Annuel';
+      case 'semestre': return 'Semestriel';
+      default: return planType || '';
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDateDay = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -260,8 +269,8 @@ const UserPaymentHistory = () => {
                 <tr key={payment.id} className={`payment-row ${getStatusClass(payment.status)}`}>
                   <td data-label="Date">
                     <div className="table-cell-date">
-                      <Calendar size={16} />
-                      {formatDate(payment.created_at)}
+                      <span className="date-main">{formatDateDay(payment.created_at)}</span>
+                      <span className="date-sub">{formatDateTime(payment.created_at)}</span>
                     </div>
                   </td>
                   <td data-label="Plan">

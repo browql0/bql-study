@@ -256,246 +256,486 @@
   letter-spacing: 0.5px;
 }
 
-/* ------------------ SUBSCRIPTION CARD ------------------ */
+/* ------------------ SUBSCRIPTION CARD PREMIUM ------------------ */
 
-.subscription-section-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 22px;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 24px 0;
-  letter-spacing: -0.5px;
+.subscription-wrapper {
+  margin-bottom: 48px;
 }
 
-.subscription-card-premium {
-  background: linear-gradient(135deg, #1e40af 0%, #172554 100%);
-  border-radius: 28px;
-  /* Slightly rounder */
-  padding: 40px;
-  /* More internal breathing room */
-  color: white;
+.subscription-premium-card {
+  background: white;
+  border-radius: 32px;
+  padding: 0;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 24px 48px -12px rgba(30, 64, 175, 0.5);
-  margin-bottom: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 20px 40px -12px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.subscription-card-premium.trial {
-  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-  box-shadow: 0 24px 48px -12px rgba(245, 158, 11, 0.5);
+.subscription-premium-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.15);
 }
 
-/* Premium Mesh Background for Card */
-.sub-card-pattern {
+/* --- CARD VARIANTS --- */
+
+/* TRIAL */
+.trial-card {
+  background: linear-gradient(135deg, #fffbeb, #fff7ed);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.trial-glow {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 0% 100%, rgba(255, 255, 255, 0.08) 0%, transparent 40%);
-  opacity: 1;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%);
+  filter: blur(40px);
+}
+
+.trial-icon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+}
+
+.trial-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.trial-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+}
+
+/* MONTHLY (Blue - Sapphire) */
+.monthly-card {
+  background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%);
+  /* Deep Blue */
+  color: white;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.monthly-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 60%);
+  opacity: 0.6;
+  filter: blur(40px);
+  animation: pulseGlow 4s infinite alternate;
+}
+
+.monthly-icon {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: white;
+  box-shadow: 0 12px 24px -4px rgba(59, 130, 246, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.monthly-badge {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+.monthly-btn {
+  background: white;
+  color: #1e3a8a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* QUARTERLY (Violet - Amethyst) */
+.quarterly-card {
+  background: linear-gradient(135deg, #581c87 0%, #2e1065 100%);
+  /* Deep Violet */
+  color: white;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.quarterly-glow {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.4) 0%, transparent 60%);
+  opacity: 0.6;
+  filter: blur(40px);
+  animation: pulseGlow 5s infinite alternate-reverse;
+}
+
+.quarterly-icon {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  color: white;
+  box-shadow: 0 12px 24px -4px rgba(124, 58, 237, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.quarterly-badge {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.2);
+}
+
+.quarterly-btn {
+  background: white;
+  color: #581c87;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* SEMESTRE (Gold/Ruby - Elite) */
+.yearly-card {
+  background: linear-gradient(135deg, #881337 0%, #4c0519 100%);
+  /* Deep Ruby */
+  color: white;
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated shine effect for the top tier */
+.yearly-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 6s infinite;
+}
+
+.yearly-glow {
+  position: absolute;
+  bottom: -50%;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.5) 0%, transparent 70%);
+  opacity: 0.7;
+  filter: blur(50px);
+  animation: pulseGlow 4s infinite alternate;
+}
+
+.yearly-icon {
+  background: linear-gradient(135deg, #fb7185, #e11d48);
+  color: white;
+  box-shadow: 0 12px 24px -4px rgba(225, 29, 72, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+  /* Slightly larger */
+}
+
+.yearly-badge {
+  background: linear-gradient(135deg, #f43f5e, #be123c);
+  color: white;
+  border: 1px solid rgba(251, 113, 133, 0.4);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.4);
+  font-weight: 800;
+  padding: 8px 20px;
+}
+
+.yearly-btn {
+  background: linear-gradient(135deg, #ffffff, #f1f5f9);
+  color: #881337;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes pulseGlow {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+
+  20% {
+    left: 200%;
+  }
+
+  100% {
+    left: 200%;
+  }
+}
+
+/* Adjust text colors for dark backgrounds on these cards */
+.monthly-card h3,
+.monthly-card p,
+.monthly-card .detail-item,
+.monthly-card strong,
+.quarterly-card h3,
+.quarterly-card p,
+.quarterly-card .detail-item,
+.quarterly-card strong,
+.yearly-card h3,
+.yearly-card p,
+.yearly-card .detail-item,
+.yearly-card strong {
+  color: white !important;
+}
+
+.monthly-card .detail-item svg,
+.quarterly-card .detail-item svg,
+.yearly-card .detail-item svg {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Hover effects for buttons */
+.monthly-btn:hover,
+.quarterly-btn:hover,
+.yearly-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  filter: brightness(1.1);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* FREE (Gray) */
+.free-card {
+  background: white;
+  border: 2px dashed #cbd5e1;
+}
+
+.free-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(203, 213, 225, 0.2) 0%, transparent 60%);
   pointer-events: none;
 }
 
-.sub-card-content {
+.free-icon {
+  background: #f1f5f9;
+  color: #64748b;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.free-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* --- COMMON ELEMENTS --- */
+
+.card-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#000000 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+.card-header {
+  padding: 32px 32px 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  position: relative;
-  z-index: 1;
-  margin-bottom: 40px;
-  /* More space between top info and footer */
-}
-
-/* Organized Plan Info */
-.sub-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sub-info h3 {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.sub-plan-name {
-  font-size: 48px;
-  /* Larger title */
-  font-weight: 900;
-  margin: 4px 0 12px 0;
-  line-height: 1;
-  letter-spacing: -1.5px;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.sub-status-badge {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 100px;
-  /* Pill shape */
-  font-size: 14px;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-  width: fit-content;
+  gap: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 2;
 }
 
-.sub-icon-wrapper {
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
+.card-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(12px);
-  box-shadow:
-    0 12px 24px -4px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transform: rotate(3deg);
-  /* Dynamic tilt */
+  flex-shrink: 0;
 }
 
-.sub-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  /* Center alignment looks cleaner */
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  padding-top: 28px;
-  position: relative;
-  z-index: 1;
+.card-title-block {
+  flex: 1;
 }
 
-.sub-date-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.card-title-block.centered {
+  text-align: center;
 }
 
-.sub-date-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+.card-title-block h3 {
+  margin: 0 0 6px 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.card-title-block p {
   margin: 0;
+  font-size: 15px;
+  color: #64748b;
   font-weight: 500;
+  max-width: 400px;
+}
+
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.sub-date-value {
-  font-size: 22px;
-  font-weight: 700;
-  display: block;
-  letter-spacing: -0.5px;
-}
-
-.renew-btn {
+.card-body {
+  padding: 24px 32px 32px;
+  position: relative;
+  z-index: 2;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  background: white;
-  color: #1e293b;
-  border: none;
-  border-radius: 16px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.renew-btn:hover {
-  background: #f8fafc;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-/* ------------------ EXPIRED/FREE CARD ------------------ */
-
-.subscription-expired-card {
+.subscription-details {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  border: 2px dashed #cbd5e1;
-  border-radius: 24px;
-  margin: 0 24px 32px;
+  gap: 32px;
 }
 
-[data-theme="dark"] .subscription-expired-card {
-  background: rgba(30, 41, 59, 0.7);
-  border-color: #334155;
-}
-
-.expired-icon-wrapper {
-  width: 64px;
-  height: 64px;
-  background: rgba(79, 143, 240, 0.1);
-  color: var(--primary-color);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.expired-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #1e293b;
-  margin-bottom: 8px;
-  letter-spacing: -0.5px;
-}
-
-[data-theme="dark"] .expired-title {
-  color: var(--text-dark);
-}
-
-.expired-description {
-  font-size: 15px;
-  color: var(--text-medium);
-  margin-bottom: 24px;
-}
-
-.subscribe-button {
+.detail-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 36px;
-  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
-  color: white;
-  border: none;
-  border-radius: 100px;
-  /* Pill button */
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  box-shadow:
-    0 10px 20px -5px rgba(245, 158, 11, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  font-size: 15px;
+  color: #475569;
 }
 
-.subscribe-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.6);
+.detail-item strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.features-list {
+  display: flex;
+  gap: 24px;
+  margin: 0 auto;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.check-icon {
+  color: #10b981;
+}
+
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 16px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 180px;
+  justify-content: center;
+}
+
+.card-action-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.1);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .card-body {
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  .subscription-details {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .features-list {
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .card-action-btn {
+    width: 100%;
+  }
+}
+
+/* DARK MODE */
+[data-theme="dark"] .subscription-premium-card {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .card-title-block h3,
+[data-theme="dark"] .detail-item strong {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .card-title-block p,
+[data-theme="dark"] .detail-item,
+[data-theme="dark"] .feature-item {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .card-pattern {
+  background-image: radial-gradient(#ffffff 1px, transparent 1px);
+  opacity: 0.05;
+}
+
+[data-theme="dark"] .free-card {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: #475569;
+}
+
+[data-theme="dark"] .free-icon {
+  background: #1e293b;
+  color: #cbd5e1;
 }
 
 /* ------------------ INFO GRID SECTION ------------------ */

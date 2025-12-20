@@ -93,8 +93,7 @@ const UsersTab = () => {
         const isPremium = user.subscription_status === 'premium' || user.subscription_status === 'trial';
         const isActive = isPremium && new Date(user.subscription_end_date) > new Date();
 
-        // LOG: Affiche le statut d'abonnement et la date de fin pour chaque utilisateur
-        console.log(`[DEBUG] Utilisateur: ${user.email} | Statut: ${user.subscription_status} | Fin: ${user.subscription_end_date}`);
+
 
         // Use calculated total if available, otherwise fallback to profile data
         // This fixes the issue where profile.total_spent might be 0 but payments exist
@@ -173,12 +172,15 @@ const UsersTab = () => {
         .from('profiles')
         .update({
           subscription_status: 'trial',
-          plan_type: 'monthly',
+          plan_type: 'monthly', // Contrainte DB n'accepte pas 'trial', utiliser 'monthly' pour les trials
           payment_amount: 0,
           subscription_end_date: trialEndDate.toISOString(),
-          last_payment_date: now.toISOString()
+          last_payment_date: now.toISOString(),
+          updated_at: now.toISOString() // Force real-time update
         })
         .eq('id', userId);
+
+
 
       if (error) throw error;
       await fetchAllUsers();
@@ -203,30 +205,35 @@ const UsersTab = () => {
       else if (months === 3) { planType = 'quarterly'; paymentAmount = pricing.quarterly || 320; }
       else if (months === 6) { planType = 'yearly'; paymentAmount = pricing.yearly || 600; }
 
-      // First fetch current stats to increment correctly
-      const { data: currentUser, error: fetchError } = await supabase
-        .from('profiles')
-        .select('total_spent, total_payments')
-        .eq('id', userId)
-        .single();
+      // 1. Créer une entrée de paiement dans la table payments
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          user_id: userId,
+          amount: paymentAmount,
+          currency: 'MAD',
+          status: 'completed',
+          payment_method: 'admin_grant',
+          transaction_id: `ADMIN-${Date.now()}`,
+          subscription_duration: months
+        });
 
-      if (fetchError) throw fetchError;
+      if (paymentError) throw paymentError;
 
-      const currentSpent = currentUser.total_spent || 0;
-      const currentPayments = currentUser.total_payments || 0;
-
+      // 2. Mettre à jour le profil utilisateur
       const { error } = await supabase
         .from('profiles')
         .update({
           subscription_status: 'premium',
           plan_type: planType,
           payment_amount: paymentAmount, // Store last payment amount
-          total_spent: currentSpent + paymentAmount,
-          total_payments: currentPayments + 1,
           subscription_end_date: endDate.toISOString(),
-          last_payment_date: new Date().toISOString()
+          last_payment_date: new Date().toISOString(),
+          updated_at: new Date().toISOString() // Force real-time update
         })
         .eq('id', userId);
+
+
 
       if (error) throw error;
       await fetchAllUsers();
@@ -247,11 +254,14 @@ const UsersTab = () => {
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({ subscription_status: 'expired', subscription_end_date: null })
+            .update({
+              subscription_status: 'expired',
+              subscription_end_date: null,
+              updated_at: new Date().toISOString() // Force real-time update
+            })
             .eq('id', userId);
 
-          // LOG: Vérifie la réponse de la requête
-          console.log(`[DEBUG] Révocation accès pour userId=${userId} | Erreur:`, error);
+
 
           if (error) throw error;
           await fetchAllUsers();

@@ -336,7 +336,7 @@ const SubjectList = ({ onSelectSubject, hasSubscription, onUpgrade, onOpenDashbo
                       </span>
                       <span className="chip">
                         <Layers size={16} />
-                        <span>{quizzesCount}</span>
+                        <span>{flashcardsCount}</span>
                       </span>
                     </div>
                   </div>

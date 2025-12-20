@@ -572,7 +572,7 @@
 @keyframes modalPop {
   from {
     opacity: 0;
-    transform: scale(0.9) translateY(20px);
+    transform: scale(0.92) translateY(30px);
   }
 
   to {
@@ -658,14 +658,22 @@
 }
 
 .modal-stat-card {
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   border-radius: 16px;
   border: 1px solid #e2e8f0;
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.modal-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
 }
 
 .modal-stat-label {
@@ -738,8 +746,22 @@
 }
 
 .btn-create-ticket:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   filter: brightness(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-create-ticket.primary:hover {
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+}
+
+.btn-create-ticket.success:hover {
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
+.btn-create-ticket.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 
@@ -790,21 +812,24 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: #3b82f6;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* --- Toast Notifications (Polished) --- */
 .toast-container {
   position: fixed;
-  top: 30px;
+  top: 80px;
+  /* En dessous du header (height ~60-70px) */
   right: 30px;
-  z-index: 10000;
+  z-index: 99999;
+  /* Au-dessus de tout, y compris le header */
   display: flex;
   flex-direction: column;
   gap: 16px;

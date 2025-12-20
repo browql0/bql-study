@@ -1,48 +1,80 @@
 import React from 'react';
-import { Lock, CreditCard } from 'lucide-react';
+import { Lock, Sparkles, CheckCircle, Crown } from 'lucide-react';
 import './ProtectedContent.css';
 
-const ProtectedContent = ({ 
-  children, 
-  hasAccess, 
+const ProtectedContent = ({
+  children,
+  hasAccess,
   onUpgrade,
   message = "Accès réservé aux membres Premium"
 }) => {
-  // Correction universelle : blocage si accès non valide
   if (hasAccess) {
     return <>{children}</>;
   }
 
-  // Blocage universel
   return (
-    <div className="protected-content">
-      <div className="protected-overlay">
-        <div className="protected-card">
-          <div className="protected-icon">
-            <Lock size={48} />
+    <div className="protected-content-wrapper">
+      {/* Background Blur Overlay */}
+      <div className="protected-content-blur">
+        {children}
+      </div>
+
+      {/* Premium Lock Overlay */}
+      <div className="protected-overlay-container">
+
+        <div className="premium-lock-card">
+          {/* BACKGROUND LAYER (Handles shine & overflow) */}
+          <div className="card-background-layer">
+            <div className="card-shine-effect"></div>
           </div>
-          <h3>Contenu Premium</h3>
-          <p>{message || "Votre accès premium ou période d'essai est expiré. Abonnez-vous pour débloquer le contenu."}</p>
-          <button 
-            className="btn-primary btn-upgrade"
-            onClick={onUpgrade}
-          >
-            <CreditCard size={20} />
-            Passer à Premium
-          </button>
-          <div className="protected-features">
-            <p>✨ Accès illimité à tout le contenu</p>
-            <p>📚 Notes, Quiz, Photos et Fichiers</p>
-            <p>🎓 Support prioritaire</p>
+
+          {/* CONTENT LAYER (Visible overflow for animations) */}
+          <div className="card-content-layer">
+            <div className="lock-icon-container">
+              <div className="lock-ring"></div>
+              <Lock size={42} className="lock-icon" />
+              <div className="lock-glow"></div>
+            </div>
+
+            <div className="lock-content">
+              <h3>{message}</h3>
+              <p className="lock-description">
+                Débloquez l'accès complet à cette ressource et profitez d'une expérience d'apprentissage sans limites.
+              </p>
+
+              <div className="premium-benefits-list">
+                <div className="benefit-item">
+                  <CheckCircle size={16} className="benefit-icon" />
+                  <span>Accès illimité aux fichiers & photos</span>
+                </div>
+                <div className="benefit-item">
+                  <CheckCircle size={16} className="benefit-icon" />
+                  <span>Quiz et exercices exclusifs</span>
+                </div>
+                <div className="benefit-item">
+                  <CheckCircle size={16} className="benefit-icon" />
+                  <span>Support prioritaire 24/7</span>
+                </div>
+              </div>
+
+              <button
+                className="premium-upgrade-btn"
+                onClick={onUpgrade}
+              >
+                <Crown size={20} />
+                <span>Passer au Premium</span>
+                <div className="btn-shine"></div>
+              </button>
+
+              <p className="trial-hint">
+                <Sparkles size={12} /> 7 jours d'essai gratuit disponibles
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      <div className="protected-blur">
-        {children}
-      </div>
     </div>
   );
-  
 };
 
 export default ProtectedContent;
