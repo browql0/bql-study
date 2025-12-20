@@ -6,7 +6,7 @@ const ProtectedContent = ({
   children,
   hasAccess,
   onUpgrade,
-  message = "Accès réservé aux membres Premium"
+  message = "Accès réservé aux membres Premium :)"
 }) => {
   if (hasAccess) {
     return <>{children}</>;
@@ -49,7 +49,7 @@ const ProtectedContent = ({
                 </div>
                 <div className="benefit-item">
                   <CheckCircle size={16} className="benefit-icon" />
-                  <span>Quiz et exercices exclusifs</span>
+                  <span>Quiz et flashcards exclusifs</span>
                 </div>
                 <div className="benefit-item">
                   <CheckCircle size={16} className="benefit-icon" />
@@ -67,7 +67,7 @@ const ProtectedContent = ({
               </button>
 
               <p className="trial-hint">
-                <Sparkles size={12} /> 7 jours d'essai gratuit disponibles
+                <Sparkles size={12} /> 7 jours d'essai gratuit disponibles pour les nouveaux membres
               </p>
             </div>
           </div>
