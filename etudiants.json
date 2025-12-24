@@ -827,12 +827,6 @@
         "gp": "G5",
         "sgp": "G52"
     },
-     {
-        "matricule": "T-2026-000472",
-        "nom": "SAIDI TALLAL SALMANE",
-        "gp": "G5",
-        "sgp": "G51"
-    },
     {
         "matricule": "T-2026-000342",
         "nom": "BARNOUSSI KHADIJA",
@@ -1010,6 +1004,12 @@
     {
         "matricule": "T-2026-000462",
         "nom": "ZAOUJAL ALAE EDDINE",
+        "gp": "G5",
+        "sgp": "G51"
+    },
+    {
+        "matricule": "T-2026-000472",
+        "nom": "SAIDI TALLAL SALMANE",
         "gp": "G5",
         "sgp": "G51"
     },
