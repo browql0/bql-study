@@ -20,7 +20,7 @@ export async function uploadToCloudflare(file, path) {
     throw new Error('Cloudflare R2 n\'est pas configuré. Vérifiez vos variables d\'environnement.');
   }
 
-  // Vérifier si le Worker est configuré (OBLIGATOIRE pour éviter les erreurs CORS)
+  // Vérifier si le Worker est configuré (O  cBLIGATOIRE pour éviter les erreurs CORS)
   const workerUrl = import.meta.env.VITE_CLOUDFLARE_WORKER_URL;
   if (!workerUrl) {
     const errorMessage = '❌ VITE_CLOUDFLARE_WORKER_URL n\'est pas configuré. Le Worker est OBLIGATOIRE pour les uploads.\n\n' +
