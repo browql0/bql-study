@@ -137,11 +137,27 @@ const PendingPaymentsPanel = () => {
             const currentPayments = userProfile.total_payments || 0;
             const newSpent = currentSpent + (payment.amount || 0);
 
+            // Calculate subscription duration
+            const durationMap = {
+              monthly: 1,
+              quarterly: 3,
+              yearly: 6
+            };
+            const months = durationMap[payment.plan_type] || 1;
+
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + months);
+
             await supabase.from('profiles').update({
               total_spent: newSpent,
               total_payments: currentPayments + 1,
               payment_amount: payment.amount, // Update last payment amount
-              last_payment_date: new Date().toISOString()
+              last_payment_date: new Date().toISOString(),
+              // Grant Premium Access
+              subscription_status: 'premium',
+              plan_type: payment.plan_type,
+              subscription_end_date: endDate.toISOString(),
+              updated_at: new Date().toISOString()
             }).eq('id', payment.user_id);
           }
         } catch (updateErr) {

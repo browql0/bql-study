@@ -167,6 +167,11 @@
   /* Removing the left border line style for a distinct pill style */
 }
 
+/* Hide mobile-only items on desktop */
+.mobile-only-nav-item {
+  display: none;
+}
+
 .sidebar-item:hover {
   background: rgba(59, 130, 246, 0.08);
   color: #3b82f6;
@@ -304,7 +309,13 @@
     z-index: 5 !important;
     -webkit-tap-highlight-color: transparent !important;
     transform: none !important;
+    transform: none !important;
     box-shadow: none !important;
+  }
+
+  /* Show mobile-only nav item on mobile */
+  .mobile-only-nav-item {
+    display: flex !important;
   }
 
   .sidebar-item::before {

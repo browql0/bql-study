@@ -146,18 +146,36 @@ const RevenueTab = () => {
         p.status === 'approved'
       );
 
-      const actualTotalRevenue = successfulPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      // Deduplicate: Remove 'admin_grant' payments if a manual payment exists for the same user/amount in approx same time
+      // This handles the case where admin manually granted premium to fix a manual payment issue
+      const uniquePayments = successfulPayments.filter((payment, index, self) => {
+        if (payment.payment_method === 'admin_grant') {
+          // Check if there is a 'manual' or 'bank_transfer' or 'cash' payment for same user & amount
+          // within 24h
+          const duplicate = self.find(p =>
+            p.id !== payment.id &&
+            p.user_id === payment.user_id &&
+            p.amount == payment.amount && // Loose equality for string/number match
+            p.payment_method !== 'admin_grant' &&
+            Math.abs(new Date(p.created_at) - new Date(payment.created_at)) < 24 * 60 * 60 * 1000
+          );
+          if (duplicate) return false; // Skip this admin_grant as it's likely a fix for the manual one
+        }
+        return true;
+      });
 
-      const actualMonthlyRevenue = successfulPayments
+      const actualTotalRevenue = uniquePayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      const actualMonthlyRevenue = uniquePayments
         .filter(p => new Date(p.created_at) >= thirtyDaysAgo)
         .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-      const actualWeeklyRevenue = successfulPayments
+      const actualWeeklyRevenue = uniquePayments
         .filter(p => new Date(p.created_at) >= sevenDaysAgo)
         .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-      const avgBasket = successfulPayments.length > 0
-        ? actualTotalRevenue / successfulPayments.length
+      const avgBasket = uniquePayments.length > 0
+        ? actualTotalRevenue / uniquePayments.length
         : 0;
 
       //For recent transactions, fetch user profiles if user_name is missing

@@ -75,6 +75,15 @@ const DashboardNavigation = ({ activeTab, setActiveTab }) => {
           <Settings size={20} />
           <span>Paramètres</span>
         </button>
+
+        {/* Mobile Only Home Button */}
+        <button
+          className="sidebar-item mobile-only-nav-item"
+          onClick={() => window.location.reload()}
+        >
+          <Home size={20} />
+          <span>Accueil</span>
+        </button>
       </nav>
 
       <div className="sidebar-footer">

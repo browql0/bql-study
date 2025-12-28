@@ -83,7 +83,25 @@ const StatsTab = () => {
   const [trends, setTrends] = useState({ total: 0, active: 0, premium: 0 });
   const [loading, setLoading] = useState(true);
 
-  // Calculate real trends helper
+  // Helper to determine if a user determines as premium consistently
+  const isPremiumUser = (user) => {
+    // 1. Check status (case insensitive)
+    if (user.subscription_status && user.subscription_status.toLowerCase() === 'premium') return true;
+
+    // 2. Fallback: Check if subscription_end_date is valid and in the future
+    // AND status is not explicitly 'trial' or 'expired'
+    // This catches users who might have a date set but status missing/incorrect
+    if (user.subscription_end_date) {
+      const endDate = new Date(user.subscription_end_date);
+      const isActive = endDate > new Date();
+      const status = user.subscription_status ? user.subscription_status.toLowerCase() : '';
+      if (isActive && status !== 'trial' && status !== 'expired') {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // Calculate real trends helper
   const calculateTrends = (profiles) => {
     const now = Date.now();
@@ -106,9 +124,16 @@ const StatsTab = () => {
       : (activeLast24h > 0 ? 100 : 0);
 
     // 3. Premium Trend (New Premium users in last 7 days vs Total Premium base)
-    const currentPremium = profiles.filter(p => p.subscription_status === 'premium').length;
-    const newPremium = profiles.filter(p => p.subscription_status === 'premium' && p.last_payment_date && (now - new Date(p.last_payment_date).getTime()) < sevenDays).length;
-    const oldPremium = currentPremium - newPremium;
+    const currentPremium = profiles.filter(p => isPremiumUser(p)).length;
+    // New premium count: Users who are premium AND had a payment/update recently
+    // Use last_payment_date if available, otherwise created_at or updated_at
+    const newPremium = profiles.filter(p => {
+      if (!isPremiumUser(p)) return false;
+      const dateToCheck = p.last_payment_date ? new Date(p.last_payment_date).getTime() : new Date(p.updated_at).getTime();
+      return (now - dateToCheck) < sevenDays;
+    }).length;
+
+    const oldPremium = currentPremium - newPremium > 0 ? currentPremium - newPremium : 0; // Prevent negative
 
     const premiumTrend = oldPremium > 0
       ? ((newPremium / oldPremium) * 100)
@@ -140,6 +165,8 @@ const StatsTab = () => {
           inactiveUsers: 0,
           adminUsers: 0,
           spectatorUsers: 0,
+          premiumUsersCount: 0,
+          trialUsersCount: 0,
           recentSignups: []
         });
         setLoading(false);
@@ -165,9 +192,12 @@ const StatsTab = () => {
       const adminUsers = profiles.filter(user => user.role === 'admin');
       const spectatorUsers = profiles.filter(user => user.role === 'spectator' || !user.role);
 
-      const premiumUsersCount = profiles.filter(user => user.subscription_status === 'premium').length;
+      // Use the helper for robust counting
+      const premiumUsersCount = profiles.filter(user => isPremiumUser(user)).length;
+
       const trialUsersCount = profiles.filter(user => user.subscription_status === 'trial').length;
-      const freeUsersCount = profiles.filter(user => user.subscription_status === 'expired').length;
+      const freeUsersCount = profiles.filter(user => user.subscription_status === 'expired' || (!user.subscription_status && !isPremiumUser(user))).length;
+
       setStats({
         totalUsers: profiles.length,
         onlineUsers: onlineUsers.length,
